@@ -1,0 +1,31 @@
+name: python
+
+on:
+  push:
+    paths:
+      - tools/**
+      - tests/**
+      - pyproject.toml
+      - uv.lock
+  pull_request:
+    paths:
+      - tools/**
+      - tests/**
+      - pyproject.toml
+      - uv.lock
+
+permissions: {}
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2
+      - run: uv run ty check tools tests
+      - run: uv run ruff format --check tools tests
+      - run: uv run pytest

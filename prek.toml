@@ -1,0 +1,50 @@
+#:schema https://www.schemastore.org/prek.json
+
+exclude = "^patches/"
+default_stages = ["pre-commit"]
+default_install_hook_types = ["pre-commit", "commit-msg"]
+
+[[repos]]
+repo = "local"
+
+[[repos.hooks]]
+id = "aether"
+name = "aether patches"
+entry = "uv run --quiet aether pre-commit"
+language = "system"
+pass_filenames = false
+always_run = true
+fail_fast = true
+
+[[repos]]
+repo = "builtin"
+hooks = [
+  { id = "trailing-whitespace" },
+  { id = "end-of-file-fixer" },
+  { id = "mixed-line-ending" },
+  { id = "check-yaml" },
+  { id = "check-toml" },
+  { id = "check-json" },
+  { id = "check-merge-conflict" },
+  { id = "check-case-conflict" },
+  { id = "check-added-large-files" },
+  { id = "detect-private-key" },
+]
+
+[[repos]]
+repo = "https://github.com/rvben/rumdl-pre-commit"
+rev = "b0cff962ee693b9e612c097d22e71e0cba127447"  # frozen: v0.3.2
+
+[[repos.hooks]]
+id = "rumdl-check"
+args = ["--fix"]
+
+[[repos]]
+repo = "local"
+
+[[repos.hooks]]
+id = "cocogitto"
+name = "cocogitto"
+entry = "cog verify --file"
+language = "system"
+stages = ["commit-msg"]

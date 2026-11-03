@@ -1,0 +1,91 @@
+<Project Sdk="Microsoft.NET.Sdk.WindowsDesktop">
+  <PropertyGroup>
+    <AssemblyName>Terraria</AssemblyName>
+    <GenerateAssemblyInfo>False</GenerateAssemblyInfo>
+    <OutputType>WinExe</OutputType>
+    <UseWindowsForms>True</UseWindowsForms>
+    <TargetFramework>net40</TargetFramework>
+    <StartupObject>Terraria.LinuxLaunch</StartupObject>
+    <!-- Sources live in src/ (base + patches); never glob .base/ or lib/. -->
+    <EnableDefaultItems>False</EnableDefaultItems>
+  </PropertyGroup>
+  <PropertyGroup>
+    <LangVersion>14.0</LangVersion>
+    <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
+    <CheckForOverflowUnderflow>False</CheckForOverflowUnderflow>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="src/**/*.cs" />
+  </ItemGroup>
+
+  <!-- Third-party libraries in lib/, extracted by ./aether setup from the embedded resources of
+       the shipped Terraria.exe (Linux build); FNA.dll is copied from the game directory. -->
+  <ItemGroup>
+    <Reference Include="System.Core" />
+    <Reference Include="FNA">
+      <HintPath>lib/FNA.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="ReLogic">
+      <HintPath>lib/ReLogic.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Ionic.Zip.CF">
+      <HintPath>lib/Ionic.Zip.CF.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Newtonsoft.Json">
+      <HintPath>lib/Newtonsoft.Json.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="SteelSeriesEngineWrapper">
+      <HintPath>lib/SteelSeriesEngineWrapper.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="RailSDK.Net">
+      <HintPath>lib/RailSDK.Net.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="System.Runtime.Serialization" />
+    <Reference Include="WindowsBase" />
+    <Reference Include="Steamworks.NET">
+      <HintPath>lib/Steamworks.NET.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="CsvHelper">
+      <HintPath>lib/CsvHelper.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="MP3Sharp">
+      <HintPath>lib/MP3Sharp.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="NVorbis">
+      <HintPath>lib/NVorbis.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+  </ItemGroup>
+
+  <!-- The game resolves these at runtime from its own manifest resources (see LinuxLaunch.Main),
+       so they are embedded under the same names the original executable uses. -->
+  <ItemGroup>
+    <EmbeddedResource Include="lib/ReLogic.dll" LogicalName="Terraria.Libraries.ReLogic.ReLogic.dll" />
+    <EmbeddedResource Include="lib/Ionic.Zip.CF.dll" LogicalName="Terraria.Libraries.DotNetZip.Ionic.Zip.CF.dll" />
+    <EmbeddedResource Include="lib/Newtonsoft.Json.dll" LogicalName="Terraria.Libraries.JSON.NET.Newtonsoft.Json.dll" />
+    <EmbeddedResource Include="lib/CsvHelper.dll" LogicalName="Terraria.Libraries.CsvHelper.CsvHelper.dll" />
+    <EmbeddedResource Include="lib/NVorbis.dll" LogicalName="Terraria.Libraries.NVorbis.NVorbis.dll" />
+    <EmbeddedResource Include="lib/System.ValueTuple.dll" LogicalName="Terraria.Libraries.NVorbis.System.ValueTuple.dll" />
+    <EmbeddedResource Include="lib/MP3Sharp.dll" LogicalName="Terraria.Libraries.MP3Sharp.MP3Sharp.dll" />
+    <EmbeddedResource Include="lib/Steamworks.NET.dll" LogicalName="Terraria.Libraries.Steamworks.NET.Linux.Steamworks.NET.dll" />
+    <EmbeddedResource Include="lib/RailSDK.Net.dll" LogicalName="Terraria.Libraries.RailSDK.Linux.RailSDK.Net.dll" />
+    <EmbeddedResource Include="lib/SteelSeriesEngineWrapper.dll" LogicalName="Terraria.Libraries.SteelSeries.SteelSeriesEngineWrapper.dll" />
+  </ItemGroup>
+
+  <!-- Localization, world generation config, material data, etc. Each file is named after its
+       manifest resource name. WithCulture="false" stops MSBuild from treating names such as
+       Terraria.Localization.Content.de-DE.json as satellite resources. -->
+  <ItemGroup>
+    <EmbeddedResource Include="src/Resources/*" LogicalName="%(Filename)%(Extension)" WithCulture="false" />
+  </ItemGroup>
+</Project>

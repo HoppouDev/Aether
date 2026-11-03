@@ -1,0 +1,3 @@
+#!/bin/sh
+# Patch workflow CLI (tools/aether, a uv project defined in pyproject.toml).
+exec uv run --quiet --project "$(dirname "$0")" aether "$@"

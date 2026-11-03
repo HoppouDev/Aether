@@ -1,0 +1,8 @@
+[global]
+flavor = "gfm"
+disable = ["MD033"]
+
+[MD013]
+line-length = 0
+reflow = true
+reflow-mode = "sentence-per-line"

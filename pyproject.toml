@@ -1,0 +1,32 @@
+[project]
+name = "aether-tools"
+version = "0.1.0"
+description = "Patch workflow for the Aether Terraria client: edit src/, commit patches/"
+requires-python = ">=3.11"
+dependencies = ["typer>=0.12"]
+
+[project.scripts]
+aether = "aether.cli:main"
+
+[dependency-groups]
+dev = [
+  "prek>=0.5.9",
+  "pytest>=9.2.0",
+  "ruff>=0.17.3",
+  "ty>=0.0.96",
+]
+
+[build-system]
+requires = ["uv_build>=0.13.5,<0.14"]
+build-backend = "uv_build"
+
+[tool.pytest.ini_options]
+addopts = ["-ra"]
+testpaths = ["tests"]
+
+[tool.ruff]
+src = ["tools", "tests"]
+
+[tool.uv.build-backend]
+module-name = "aether"
+module-root = "tools"
