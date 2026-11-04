@@ -17,6 +17,7 @@ dropped into a different runtime:
 """
 
 import shutil
+import struct
 import subprocess
 import sys
 import tempfile
@@ -60,11 +61,71 @@ def host_platform() -> str:
     return platform
 
 
+CONFIGURATIONS = ("Debug", "Release")
+# IMAGE_COR20_HEADER flags: the CLR runs the exe as 32-bit with either.
+COMIMAGE_FLAGS_32BITREQUIRED = 0x2
+COMIMAGE_FLAGS_32BITPREFERRED = 0x20000
+
+
 def output_exe(configuration: str) -> Path:
     return paths.REPO / "bin" / configuration / "net40" / "Terraria.exe"
 
 
-def build_command(configuration: str, platform: str) -> list[str]:
+def latest_build() -> Path:
+    """The most recently built Terraria.exe (Debug or Release)."""
+    builds = [exe for c in CONFIGURATIONS if (exe := output_exe(c)).is_file()]
+    if not builds:
+        raise AetherError(
+            "there's no build yet; run `./aether build` (or `./aether run`)."
+        )
+    return max(builds, key=lambda exe: exe.stat().st_mtime)
+
+
+def clr_flags(exe: Path) -> int:
+    """The CLR header flags of a .NET executable (PE file)."""
+    data = exe.read_bytes()
+    try:
+        (pe,) = struct.unpack_from("<I", data, 0x3C)
+        if data[pe : pe + 4] != b"PE\0\0":
+            raise ValueError("no PE signature")
+        coff = pe + 4
+        (sections,) = struct.unpack_from("<H", data, coff + 2)
+        (optional_size,) = struct.unpack_from("<H", data, coff + 16)
+        optional = coff + 20
+        (magic,) = struct.unpack_from("<H", data, optional)
+        directories = optional + (96 if magic == 0x10B else 112)  # PE32 / PE32+
+        (clr_rva,) = struct.unpack_from("<I", data, directories + 14 * 8)
+        table = optional + optional_size
+        for i in range(sections):
+            size, address, raw_size, raw_offset = struct.unpack_from(
+                "<IIII", data, table + i * 40 + 8
+            )
+            if address <= clr_rva < address + max(size, raw_size):
+                (flags,) = struct.unpack_from(
+                    "<I", data, raw_offset + clr_rva - address + 16
+                )
+                return flags
+        raise ValueError("no CLR header")
+    except (struct.error, ValueError) as e:
+        raise AetherError(f"{exe} isn't a .NET executable: {e}") from e
+
+
+def runs_32_bit(exe: Path) -> bool:
+    return bool(
+        clr_flags(exe) & (COMIMAGE_FLAGS_32BITREQUIRED | COMIMAGE_FLAGS_32BITPREFERRED)
+    )
+
+
+def check_build(exe: Path, platform: str) -> None:
+    """Refuses a build that can't run on platform (Windows needs the 32-bit build)."""
+    if platform == "windows" and not runs_32_bit(exe):
+        raise AetherError(
+            f"{exe} isn't a 32-bit build, so it can't load the 32-bit steam_api.dll and FNA "
+            "natives on Windows. Build it with `./aether build` (not plain `dotnet build`)."
+        )
+
+
+def build_command(configuration: str) -> list[str]:
     cmd = [
         "dotnet",
         "build",
@@ -76,9 +137,8 @@ def build_command(configuration: str, platform: str) -> list[str]:
         "-nodeReuse:false",
         "-p:UseSharedCompilation=false",
     ]
-    if platform == "windows":
-        # 32-bit, like the Windows build: its steam_api.dll and Steamworks.NET are x86.
-        cmd.append("-p:PlatformTarget=x86")
+    # On Windows, Terraria.csproj itself targets x86 (passing PlatformTarget here wouldn't
+    # survive incremental builds, which don't recompile when only a property changes).
     return cmd
 
 
@@ -86,7 +146,7 @@ def build_client(configuration: str, platform: str) -> Path:
     """Builds Terraria.csproj (and ReLogic) and returns the built Terraria.exe."""
     log(f"building the client ({configuration}, {platform})…")
     result = subprocess.run(
-        build_command(configuration, platform),
+        build_command(configuration),
         check=False,
         capture_output=True,
         text=True,

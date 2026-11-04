@@ -14,6 +14,8 @@ Notes on the game's modules live in `AGENTS.md` files under `src/Terraria/`; rea
 ./aether apply     # after pulling: rebuild src/ from .base/ + patches/
 ./aether status    # what you've changed vs the base, and whether patches/ is current
 ./aether run       # build the client and play it (saves go to .aether/saves/)
+./aether build     # just build (bin/<Debug|Release>/net40/Terraria.exe)
+./aether launch    # just play the most recent build (Debug or Release), no build
 ./aether update    # move the base to the newest Terraria on Steam and re-apply the patches (--check: just look)
 ```
 
@@ -56,13 +58,13 @@ dotnet build -c Debug
   Expect 0 errors and ~700 warnings (obsolete APIs, unused locals, unreachable code).
   These are normal for decompiled code, so don't "fix" them unless you're already editing that code.
 - The output is `bin/Debug/net40/Terraria.exe` only.
-  **Run it with `./aether run`** (`--release`, `--no-build`, `--save-dir`, `--real-saves`, `--platform-dir`; arguments after `--` go to the game; Steam must be running).
+  **Run it with `./aether run`** (build + launch; `--release`, `--save-dir`, `--real-saves`, `--platform-dir`; arguments after `--` go to the game; Steam must be running), or separately with `./aether build` and `./aether launch` (runs whichever of the Debug/Release builds is newer).
   It rebuilds `.aether/run/` around the client with **Aether's FNA** (`lib/FNA.dll` and the matching natives in `lib/fnalibs*/`), which replaces each build's older FNA 26.3 and its SDL3/FNA3D/FAudio:
   - **Linux:** inside the Linux build (the base): symlinks to it, plus copies of the launcher (`Terraria`, `Terraria.bin.x86_64`), the client and FNA, with `lib64/` holding `lib/fnalibs/lib64/` next to the game's Steam and file-dialog libraries.
     The launcher has to be a real copy: it finds `lib64/` relative to its real path, so a symlinked launcher silently loads the game's own natives.
   - **macOS:** inside a copy of the **macOS** build's `Terraria.app` (`--platform-dir`, default `.aether/game-macos/` from `./aether download --platform macos`, else the Steam install): `Contents/MacOS/` copied with `lib/fnalibs-apple/osx/` swapped into `osx/`, `Contents/Resources/` linked except the client and FNA.
     macOS needs that build's own `Content/`: its shaders and XACT audio banks differ from Linux's.
-  - **Windows:** no Mono; .NET Framework runs `Terraria.exe`, built for **x86** (`-p:PlatformTarget=x86`) to match the 32-bit `steam_api.dll` and Steamworks.NET.
+  - **Windows:** no Mono; .NET Framework runs `Terraria.exe`, built for **x86** (`Terraria.csproj` sets `PlatformTarget` on Windows, so every build there is 32-bit) to match the 32-bit `steam_api.dll` and Steamworks.NET; `launch` refuses a non-32-bit exe.
     The folder links the **Linux** build's `Content/` (the Windows build's is XNA's: Reach-profile images and XNA-compiled shaders), and copies `lib/fnalibs/x86/`, the Windows build's `steam_api.dll`, `nfd.dll`, `ReLogic.Native.dll` and RGB SDKs, and its Steamworks.NET (extracted from its `Terraria.exe` into `lib/windows/`).
     That Steamworks.NET sits next to the exe, so the CLR loads it instead of the Linux one embedded in the client; the Windows build comes from `--platform-dir`, `.aether/game-windows/` (`./aether download --platform windows`) or the Steam install.
   Saves default to `.aether/saves/`, so your real saves are left alone; the startup log should report `FNA3D v26.11.0` and `FAudio v26.11.0`.

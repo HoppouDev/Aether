@@ -1,4 +1,5 @@
 import json
+import os
 from pathlib import Path
 
 import pytest
@@ -224,9 +225,15 @@ def test_windows_needs_the_windows_build(builds):
 
 
 def test_windows_builds_32_bit():
-    assert "-p:PlatformTarget=x86" in game.build_command("Debug", "windows")
-    assert "-p:PlatformTarget=x86" not in game.build_command("Debug", "linux")
-    assert "-nodeReuse:false" in game.build_command("Release", "macos")
+    """The x86 target lives in Terraria.csproj (conditioned on Windows), not on the command
+    line, so incremental builds can't keep a stale AnyCPU binary."""
+    csproj = (paths.REPO / "Terraria.csproj").read_text()
+    assert (
+        "<PlatformTarget Condition=\"'$(OS)' == 'Windows_NT'\">x86</PlatformTarget>"
+        in csproj
+    )
+    assert "PlatformTarget" not in " ".join(game.build_command("Debug"))
+    assert "-nodeReuse:false" in game.build_command("Release")
 
 
 @pytest.mark.parametrize(
@@ -291,18 +298,83 @@ def test_relative_save_dir_is_resolved_against_the_callers_directory(
     from aether import cli
 
     seen = {}
+    exe = tmp_path / "Terraria.exe"
+    exe.write_bytes(b"client")
     monkeypatch.setattr(cli, "host_platform", lambda: "linux")
-    monkeypatch.setattr(
-        cli, "output_exe", lambda configuration: tmp_path / "Terraria.exe"
-    )
-    (tmp_path / "Terraria.exe").write_bytes(b"client")
+    monkeypatch.setattr(cli, "latest_build", lambda: exe)
     monkeypatch.setattr(cli, "prepare_run_dir", lambda *args: None)
     monkeypatch.setattr(
         cli,
         "launch",
-        lambda platform, run_dir, saves, args: seen.update(saves=saves) or 0,
+        lambda platform, run_dir, saves, args: seen.update(saves=saves, args=args) or 0,
     )
     monkeypatch.chdir(tmp_path)
-    result = CliRunner().invoke(cli.app, ["run", "--no-build", "--save-dir", "mysaves"])
+    result = CliRunner().invoke(
+        cli.app, ["launch", "--save-dir", "mysaves", "--", "-world", "my world.wld"]
+    )
     assert result.exit_code == 0, result.output
-    assert seen["saves"] == tmp_path / "mysaves"
+    assert seen == {"saves": tmp_path / "mysaves", "args": ["-world", "my world.wld"]}
+
+
+def test_latest_build_picks_the_newest_configuration(repo):
+    debug, release = game.output_exe("Debug"), game.output_exe("Release")
+    with pytest.raises(AetherError, match="aether build"):
+        game.latest_build()
+    for exe, mtime in ((debug, 100), (release, 200)):
+        exe.parent.mkdir(parents=True)
+        exe.write_bytes(b"exe")
+        os.utime(exe, (mtime, mtime))
+    assert game.latest_build() == release
+    os.utime(debug, (300, 300))
+    assert game.latest_build() == debug
+
+
+@pytest.mark.parametrize(
+    ("flags", "ok_on_windows"),
+    [(0x1, False), (0x3, True), (0x20001, True)],  # AnyCPU, x86, AnyCPU32BitPreferred
+)
+def test_windows_needs_a_32_bit_build(tmp_path, monkeypatch, flags, ok_on_windows):
+    monkeypatch.setattr(game, "clr_flags", lambda exe: flags)
+    exe = tmp_path / "Terraria.exe"
+    game.check_build(exe, "linux")
+    game.check_build(exe, "macos")
+    if ok_on_windows:
+        game.check_build(exe, "windows")
+    else:
+        with pytest.raises(AetherError, match="isn't a 32-bit build"):
+            game.check_build(exe, "windows")
+
+
+def test_clr_flags_reads_real_executables():
+    exe = Path.home() / ".local/share/Steam/steamapps/common/Terraria/Terraria.exe"
+    if not exe.is_file():
+        pytest.skip("no Terraria install")
+    assert game.clr_flags(exe) & 0x1  # IL-only
+    assert not game.runs_32_bit(exe)  # the Linux build is AnyCPU
+
+
+def test_clr_flags_rejects_non_pe_files(tmp_path):
+    junk = tmp_path / "junk.exe"
+    junk.write_bytes(b"not a PE file at all" * 10)
+    with pytest.raises(AetherError, match="isn't a .NET executable"):
+        game.clr_flags(junk)
+
+
+def test_build_command_prints_the_output(repo, monkeypatch):
+    from typer.testing import CliRunner
+
+    from aether import cli
+
+    monkeypatch.setattr(cli, "host_platform", lambda: "windows")
+    built = []
+    monkeypatch.setattr(
+        cli,
+        "build_client",
+        lambda configuration, platform: (
+            built.append((configuration, platform)) or game.output_exe(configuration)
+        ),
+    )
+    result = CliRunner().invoke(cli.app, ["build", "--release"])
+    assert result.exit_code == 0, result.output
+    assert built == [("Release", "windows")]
+    assert "bin/Release/net40/Terraria.exe" in result.output.replace("\\", "/")

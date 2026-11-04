@@ -11,7 +11,14 @@ import typer
 from . import __doc__ as package_doc
 from . import paths
 from .decompile import build_base
-from .game import build_client, host_platform, launch, output_exe, prepare_run_dir
+from .game import (
+    build_client,
+    check_build,
+    host_platform,
+    latest_build,
+    launch,
+    prepare_run_dir,
+)
 from .guard import stage_patches, staged_problems
 from .patches import (
     digest_patch_set,
@@ -175,60 +182,52 @@ def update(
         raise typer.Exit(1)
 
 
-@app.command(
-    "run",
-    context_settings={"allow_extra_args": True, "ignore_unknown_options": True},
-)
-def run_game(
-    ctx: typer.Context,
-    game_dir: Annotated[
-        Path | None,
-        typer.Option(
-            "--game-dir",
-            envvar="TERRARIA_DIR",
-            help="Terraria install dir (default: `aether download`'s copy, else the Steam library path).",
-        ),
-    ] = None,
-    platform_dir: Annotated[
-        Path | None,
-        typer.Option(
-            "--platform-dir",
-            help="macOS/Windows only: that OS's Terraria build, for its natives, launcher and "
-            "(macOS) Content (default: `aether download --platform`'s copy, else the Steam install).",
-        ),
-    ] = None,
-    release: Annotated[
-        bool, typer.Option("--release", help="Build in Release instead of Debug.")
-    ] = False,
-    no_build: Annotated[
-        bool, typer.Option("--no-build", help="Run the last build without rebuilding.")
-    ] = False,
-    save_dir: Annotated[
-        Path | None,
-        typer.Option(
-            "--save-dir",
-            help="Save directory (default: .aether/saves/, away from your real saves).",
-        ),
-    ] = None,
-    real_saves: Annotated[
-        bool, typer.Option("--real-saves", help="Use the game's normal save directory.")
-    ] = False,
-) -> None:
-    """Build the client and run it in a scratch copy of the game (.aether/run/).
+GameDirOption = Annotated[
+    Path | None,
+    typer.Option(
+        "--game-dir",
+        envvar="TERRARIA_DIR",
+        help="Terraria install dir (default: `aether download`'s copy, else the Steam library path).",
+    ),
+]
+PlatformDirOption = Annotated[
+    Path | None,
+    typer.Option(
+        "--platform-dir",
+        help="macOS/Windows only: that OS's Terraria build, for its natives, launcher and "
+        "(macOS) Content (default: `aether download --platform`'s copy, else the Steam install).",
+    ),
+]
+ReleaseOption = Annotated[
+    bool, typer.Option("--release", help="Build in Release instead of Debug.")
+]
+SaveDirOption = Annotated[
+    Path | None,
+    typer.Option(
+        "--save-dir",
+        help="Save directory (default: .aether/saves/, away from your real saves).",
+    ),
+]
+RealSavesOption = Annotated[
+    bool, typer.Option("--real-saves", help="Use the game's normal save directory.")
+]
+GAME_ARGS = {"allow_extra_args": True, "ignore_unknown_options": True}
 
-    Linux runs inside the Linux build; macOS inside a copy of the macOS build's app bundle;
-    Windows with the Linux build's Content and the Windows build's DLLs. Extra arguments go to
-    the game, e.g. `./aether run -- -world path/to/world.wld`. Steam has to be running.
-    """
+
+def launch_build(
+    exe: Path,
+    game_dir: Path | None,
+    platform_dir: Path | None,
+    save_dir: Path | None,
+    real_saves: bool,
+    args: list[str],
+) -> None:
+    """Runs a built client in a scratch copy of the game; exits with the game's exit code."""
     platform = host_platform()
-    configuration = "Release" if release else "Debug"
-    exe = output_exe(configuration)
-    if not no_build:
-        exe = build_client(configuration, platform)
-    elif not exe.is_file():
-        raise AetherError(
-            f"there's no {configuration} build yet; run without --no-build."
-        )
+    check_build(exe, platform)
+    log(
+        f"launching {exe.relative_to(paths.REPO) if exe.is_relative_to(paths.REPO) else exe}"
+    )
     prepare_run_dir(
         platform,
         (game_dir or default_game_dir()).expanduser(),
@@ -241,9 +240,53 @@ def run_game(
     # Resolve now: the game runs with the run folder as its working directory, and that
     # folder is wiped on every run, so a relative save dir would lose the saves.
     saves = None if real_saves else (save_dir or paths.SAVES_DIR).expanduser().resolve()
-    code = launch(platform, paths.RUN_DIR, saves, list(ctx.args))
+    code = launch(platform, paths.RUN_DIR, saves, args)
     if code != 0:
         raise typer.Exit(code)
+
+
+@app.command()
+def build(release: ReleaseOption = False) -> None:
+    """Build the client (Terraria.csproj with ReLogic); on Windows as the 32-bit build it needs."""
+    exe = build_client("Release" if release else "Debug", host_platform())
+    print(exe.relative_to(paths.REPO))
+
+
+@app.command("launch", context_settings=GAME_ARGS)
+def launch_command(
+    ctx: typer.Context,
+    game_dir: GameDirOption = None,
+    platform_dir: PlatformDirOption = None,
+    save_dir: SaveDirOption = None,
+    real_saves: RealSavesOption = False,
+) -> None:
+    """Run the most recent build (Debug or Release) without building.
+
+    Same run folder and options as `aether run`; extra arguments go to the game.
+    """
+    launch_build(
+        latest_build(), game_dir, platform_dir, save_dir, real_saves, list(ctx.args)
+    )
+
+
+@app.command("run", context_settings=GAME_ARGS)
+def run_game(
+    ctx: typer.Context,
+    game_dir: GameDirOption = None,
+    platform_dir: PlatformDirOption = None,
+    release: ReleaseOption = False,
+    save_dir: SaveDirOption = None,
+    real_saves: RealSavesOption = False,
+) -> None:
+    """Build the client and run it in a scratch copy of the game (.aether/run/).
+
+    Linux runs inside the Linux build; macOS inside a copy of the macOS build's app bundle;
+    Windows with the Linux build's Content and the Windows build's DLLs. Extra arguments go to
+    the game, e.g. `./aether run -- -world path/to/world.wld`. Steam has to be running.
+    `aether build` and `aether launch` do the two halves separately.
+    """
+    exe = build_client("Release" if release else "Debug", host_platform())
+    launch_build(exe, game_dir, platform_dir, save_dir, real_saves, list(ctx.args))
 
 
 @app.command()
