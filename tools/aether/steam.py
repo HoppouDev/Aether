@@ -322,9 +322,10 @@ def default_game_dir() -> Path:
 
 
 def platform_game_dir(platform: str) -> Path:
-    """A macOS/Windows build for `aether run`: the downloaded one, else this OS's Steam install."""
+    """A macOS/Windows build: the downloaded one, else the Steam install if this OS is that
+    platform (the Steam install of another OS's build isn't on this machine)."""
     downloaded = downloaded_dir(platform)
     pin = platform_pin(load_base_json(), platform)
-    if (downloaded / pin["exe"]).is_file():
+    if (downloaded / pin["exe"]).is_file() or host_platform() != platform:
         return downloaded
     return paths.DEFAULT_GAME_DIR

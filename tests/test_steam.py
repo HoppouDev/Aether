@@ -236,3 +236,38 @@ def test_windows_searches_package_manager_steamcmd_folders(monkeypatch):
     roots = [str(r).replace("\\", "/") for r in steam.steamcmd_roots()]
     assert "/choco/lib/steamcmd/tools" in roots
     assert any(r.endswith("scoop/apps/steamcmd/current") for r in roots)
+
+
+@pytest.mark.parametrize(
+    ("host", "platform", "steam_install"),
+    [
+        ("darwin", "macos", True),
+        ("win32", "windows", True),
+        (
+            "linux",
+            "macos",
+            False,
+        ),  # packaging another OS's target: only a download works
+        ("linux", "windows", False),
+        ("win32", "macos", False),
+    ],
+)
+def test_platform_game_dir(repo, monkeypatch, host, platform, steam_install):
+    pins = {"exe": "Terraria.exe", "depot": 1, "manifest": "1", "exe_sha256": None}
+    paths.BASE_JSON.write_text(
+        json.dumps(
+            {
+                **repo.pinned,
+                "steam": {"app": 105600},
+                "platforms": {"macos": pins, "windows": pins},
+            }
+        )
+    )
+    monkeypatch.setattr(steam.sys, "platform", host)
+    monkeypatch.setattr(paths, "DEFAULT_GAME_DIR", repo.root / "steam-install")
+    downloaded = steam.downloaded_dir(platform)
+    expected = paths.DEFAULT_GAME_DIR if steam_install else downloaded
+    assert steam.platform_game_dir(platform) == expected
+    (downloaded / "Terraria.exe").parent.mkdir(parents=True)
+    (downloaded / "Terraria.exe").write_bytes(b"exe")
+    assert steam.platform_game_dir(platform) == downloaded

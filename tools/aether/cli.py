@@ -12,12 +12,15 @@ from . import __doc__ as package_doc
 from . import paths
 from .decompile import build_base
 from .game import (
+    TARGETS,
     build_client,
     check_build,
     host_platform,
     latest_build,
     launch,
+    package,
     prepare_run_dir,
+    resolve_target,
 )
 from .guard import stage_patches, staged_problems
 from .patches import (
@@ -246,10 +249,50 @@ def launch_build(
 
 
 @app.command()
-def build(release: ReleaseOption = False) -> None:
-    """Build the client (Terraria.csproj with ReLogic); on Windows as the 32-bit build it needs."""
+def build(
+    release: ReleaseOption = False,
+    target: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--target",
+            help="Also package a self-contained dist/<target>/ to play on that OS: lin64, "
+            "win64, mac (mac64 and macarm are the same universal bundle) or all. Repeatable.",
+        ),
+    ] = None,
+    game_dir: GameDirOption = None,
+    platform_dir: PlatformDirOption = None,
+) -> None:
+    """Build the client (Terraria.csproj with ReLogic), and optionally package it per OS.
+
+    The client is one AnyCPU Terraria.exe for every OS; a target folder wraps it in that
+    OS's runtime, copied from the Linux build (the base) and, for mac, the macOS build
+    (`./aether download --platform macos`); win64 also takes TerrariaServer.exe from the
+    Windows build if it's there. dist/ holds game files: it's for playing, not sharing.
+    """
+    targets = list(
+        dict.fromkeys(t for name in target or [] for t in resolve_target(name))
+    )
+    platforms = [TARGETS[t] for t in targets if TARGETS[t] != "linux"]
+    if platform_dir is not None and len(platforms) != 1:
+        raise AetherError(
+            "--platform-dir needs exactly one mac or win64 target (it's that OS's build)."
+        )
     exe = build_client("Release" if release else "Debug", host_platform())
     print(exe.relative_to(paths.REPO))
+    base = (game_dir or default_game_dir()).expanduser()
+    for name in targets:
+        platform = TARGETS[name]
+        check_build(exe, platform)
+        other = (
+            None
+            if platform == "linux"
+            else (platform_dir or platform_game_dir(platform))
+        )
+        print(
+            package(name, exe, base, other and other.expanduser()).relative_to(
+                paths.REPO
+            )
+        )
 
 
 @app.command("launch", context_settings=GAME_ARGS)

@@ -22,7 +22,7 @@ FORBIDDEN_EXTENSIONS = {
 }
 # Staged files with these extensions are checked against .base/ for verbatim copies.
 CONTENT_CHECK_EXTENSIONS = {".cs", ".json", ".tsv"}
-GENERATED_DIRS = {".base", "lib", ".aether"}
+GENERATED_DIRS = {".base", "lib", ".aether", "dist"}
 
 
 def stage_patches() -> None:

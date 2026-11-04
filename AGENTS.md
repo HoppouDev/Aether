@@ -14,7 +14,7 @@ Notes on the game's modules live in `AGENTS.md` files under `src/Terraria/`; rea
 ./aether apply     # after pulling: rebuild src/ from .base/ + patches/
 ./aether status    # what you've changed vs the base, and whether patches/ is current
 ./aether run       # build the client and play it (saves go to .aether/saves/)
-./aether build     # just build (bin/<Debug|Release>/net40/Terraria.exe)
+./aether build     # just build (bin/<Debug|Release>/net40/Terraria.exe); --target lin64|win64|mac|all: also package dist/<target>/
 ./aether launch    # just play the most recent build (Debug or Release), no build
 ./aether update    # move the base to the newest Terraria on Steam and re-apply the patches (--check: just look)
 ```
@@ -64,24 +64,31 @@ dotnet build -c Debug
     The launcher has to be a real copy: it finds `lib64/` relative to its real path, so a symlinked launcher silently loads the game's own natives.
   - **macOS:** inside a copy of the **macOS** build's `Terraria.app` (`--platform-dir`, default `.aether/game-macos/` from `./aether download --platform macos`, else the Steam install): `Contents/MacOS/` copied with `lib/fnalibs-apple/osx/` swapped into `osx/`, `Contents/Resources/` linked except the client and FNA.
     macOS needs that build's own `Content/`: its shaders and XACT audio banks differ from Linux's.
-  - **Windows:** no Mono; .NET Framework runs `Terraria.exe`, built for **x86** (`Terraria.csproj` sets `PlatformTarget` on Windows, so every build there is 32-bit) to match the 32-bit `steam_api.dll` and Steamworks.NET; `launch` refuses a non-32-bit exe.
-    The folder links the **Linux** build's `Content/` (the Windows build's is XNA's: Reach-profile images and XNA-compiled shaders), and copies `lib/fnalibs/x86/`, the Windows build's `steam_api.dll`, `nfd.dll`, `ReLogic.Native.dll` and RGB SDKs, and its Steamworks.NET (extracted from its `Terraria.exe` into `lib/windows/`).
-    That Steamworks.NET sits next to the exe, so the CLR loads it instead of the Linux one embedded in the client; the Windows build comes from `--platform-dir`, `.aether/game-windows/` (`./aether download --platform windows`) or the Steam install.
+  - **Windows:** no Mono; .NET Framework runs the same AnyCPU `Terraria.exe` as a **64-bit** process (`launch` refuses a build flagged 32-bit).
+    The folder links the **Linux** build's `Content/` (the Windows build's is XNA's: Reach-profile images and XNA-compiled shaders), and copies `lib/fnalibs/x64/` and `lib/fnalibs/D3D12/` (FNA3D's Direct3D 12 Agility SDK), plus the official 64-bit Steamworks.NET and `steam_api64.dll` from `lib/steamworks/` (pinned in `tools/steamworks.json`: Terraria embeds that same Steamworks.NET 2024.8.0 release unmodified, so its x64 build is the drop-in match).
+    That Steamworks.NET sits next to the exe, so the CLR loads it instead of the Linux one embedded in the client.
+    The Windows build (`--platform-dir`, `.aether/game-windows/` from `./aether download --platform windows`, or the Steam install) is optional: it only supplies the vanilla 32-bit `TerrariaServer.exe` and its own `steam_api.dll`, for Host & Play.
+    Its other natives are 32-bit and unused: `ReLogic.Native.dll` is only the XNA IME, the RGB SDKs fail silently, and there's no x64 `nfd.dll`, so Aether's patch to `NativeFileDialog.cs` makes the file browser (resource-pack/world import) return nothing instead of crashing.
   Saves default to `.aether/saves/`, so your real saves are left alone; the startup log should report `FNA3D v26.11.0` and `FAudio v26.11.0`.
-  macOS and Windows are implemented but not yet tested on real machines.
+  macOS and Windows are implemented but not yet tested on real machines (Linux and the `lin64` target are).
+- **`./aether build --target`** (`lin64`, `win64`, `mac`, with `mac64`/`macarm` as aliases of the one universal `mac` bundle, or `all`; repeatable) also packages `dist/<target>/`, the same layout as the run folder but copied, so it's self-contained and runs on that OS.
+  It can be built on any OS: `lin64` and `win64` need the Linux build (`--game-dir`), `mac` the macOS build (`./aether download --platform macos` or `--platform-dir`, which needs exactly one mac/win64 target); another OS's Steam install isn't looked for.
+  `dist/` contains the game's files: it's gitignored and for playing on your own machines, not for distributing.
+  Saves default to `.aether/saves/`, so your real saves are left alone; the startup log should report `FNA3D v26.11.0` and `FAudio v26.11.0`. macOS and Windows are implemented but not yet tested on real machines.
 - The client exe has no headless mode: `Main.dedServ` is only set in the separate server build, so any runtime test opens a game window.
 
 ## Layout
 
 | Path | Committed? | What it is |
 | --- | --- | --- |
-| `aether`, `pyproject.toml`, `uv.lock`, `tools/` | yes | Patch workflow CLI: a uv project (typer) whose package is `tools/aether/` (`cli.py` commands, `decompile.py` recipe, `fna.py` FNA build and natives, `patches.py` diff/apply, `guard.py` commit guard, `tree.py`, `pinning.py`, `paths.py`, `util.py`); `./aether` runs it with `uv run`. Plus the pinned base (`tools/base.json`) and FNA (`tools/fna.json`). |
+| `aether`, `pyproject.toml`, `uv.lock`, `tools/` | yes | Patch workflow CLI: a uv project (typer) whose package is `tools/aether/` (`cli.py` commands, `decompile.py` recipe, `fna.py` FNA build and natives, `steamworks.py` the 64-bit Steamworks.NET, `game.py` building, run folders and `dist/` targets, `steam.py` SteamCMD, `update.py`, `patches.py` diff/apply, `guard.py` commit guard, `tree.py`, `pinning.py`, `paths.py`, `util.py`); `./aether` runs it with `uv run`. Plus the pinned base (`tools/base.json`), FNA (`tools/fna.json`) and Steamworks.NET (`tools/steamworks.json`). |
 | `patches/` | yes | Aether itself: the client's changes to the game, as unified diffs mirroring `src/`. |
 | `prek.toml`, `rumdl.toml`, `cog.toml` | yes | Git hooks (patch guard, basic checks, rumdl, conventional-pre-commit, cocogitto) and their configs. |
 | `Terraria.csproj`, `ReLogic/ReLogic.csproj`, `dotnet-tools.json` | yes | Project files (`Terraria.csproj` compiles `src/**/*.cs` except `src/ReLogic/`, references `lib/` and the ReLogic project, embeds `src/Resources/*`; `ReLogic.csproj` builds `ReLogic.dll` from `src/ReLogic/`) and the pinned ilspycmd. |
 | `src/` | only `AGENTS.md` | Editable tree: `Terraria/` (game code, one folder per namespace), `ReLogic/` (Re-Logic's framework: assets, fonts, RGB, OS layer), `BCrypt/`, `nativefiledialog.cs`, `Properties/` (bundled third-party source, assembly attributes) and `Resources/` (embedded data files, each named after its exact manifest resource name). |
 | `.base/` | no | Pristine decompile, same shape as `src/`. |
-| `lib/` | no | Third-party DLLs extracted from `Terraria.exe`'s embedded resources (`lib/ReLogic.dll` is only used to decompile; the build uses the one compiled from `src/ReLogic/`), `FNA.dll` + `FNA.dll.config` built from the pinned FNA commit, `fnalibs/` and `fnalibs-apple/` (FNA's native libraries for Linux, Windows and macOS, hash-checked), and `windows/` (the Windows Steamworks.NET, extracted on first Windows run). |
+| `dist/` | no | `./aether build --target` output: one self-contained, playable folder per OS (contains game files). |
+| `lib/` | no | Third-party DLLs extracted from `Terraria.exe`'s embedded resources (`lib/ReLogic.dll` is only used to decompile; the build uses the one compiled from `src/ReLogic/`), `FNA.dll` + `FNA.dll.config` built from the pinned FNA commit, `fnalibs/` and `fnalibs-apple/` (FNA's native libraries for Linux, Windows and macOS, hash-checked), and `steamworks/` (the official 64-bit Windows Steamworks.NET and `steam_api64.dll`, from the release pinned in `tools/steamworks.json`). |
 
 ## Dependencies and embedded resources
 

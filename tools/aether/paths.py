@@ -12,6 +12,9 @@ PATCHES = REPO / "patches"
 STATE = REPO / ".aether"
 BASE_JSON = REPO / "tools" / "base.json"
 FNA_JSON = REPO / "tools" / "fna.json"
+STEAMWORKS_JSON = REPO / "tools" / "steamworks.json"
+# Self-contained builds per target (`aether build --target`); they contain game files.
+DIST = REPO / "dist"
 FNA_CACHE = STATE / "fna"  # FNA source checkout and build, reused across setups
 # The pinned Linux build, fetched by `aether download`.
 DOWNLOADED_GAME_DIR = STATE / "game"

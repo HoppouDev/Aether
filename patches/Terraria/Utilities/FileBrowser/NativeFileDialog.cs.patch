@@ -1,0 +1,28 @@
+--- a/Terraria/Utilities/FileBrowser/NativeFileDialog.cs
++++ b/Terraria/Utilities/FileBrowser/NativeFileDialog.cs
+@@ -1,3 +1,4 @@
++using System;
+ using System.Linq;
+ 
+ namespace Terraria.Utilities.FileBrowser;
+@@ -7,9 +8,18 @@
+     public string OpenFilePanel(string title, ExtensionFilter[] extensions)
+     {
+         string[] value = extensions.SelectMany((ExtensionFilter x) => x.Extensions).ToArray();
+-        if (nativefiledialog.NFD_OpenDialog(string.Join(",", value), null, out var outPath) == nativefiledialog.nfdresult_t.NFD_OKAY)
++        // Aether: there's no 64-bit Windows nfd.dll, so a missing or wrong-architecture native
++        // file dialog means "no file chosen" instead of crashing the game.
++        try
+         {
+-            return outPath;
++            if (nativefiledialog.NFD_OpenDialog(string.Join(",", value), null, out var outPath) == nativefiledialog.nfdresult_t.NFD_OKAY)
++            {
++                return outPath;
++            }
++        }
++        catch (Exception e) when (e is DllNotFoundException || e is BadImageFormatException || e is EntryPointNotFoundException)
++        {
++            Console.WriteLine("Native file dialog unavailable: " + e.Message);
+         }
+         return null;
+     }

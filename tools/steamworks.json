@@ -1,0 +1,9 @@
+{
+  "version": "2024.8.0",
+  "url": "https://github.com/rlabrecque/Steamworks.NET/releases/download/2024.8.0/Steamworks.NET-Standalone_2024.8.0.zip",
+  "sha256": "08094d1372c6d793d6b5b87c59f1362a10fe8580acb1db6bfaf081a511f6758c",
+  "files": {
+    "Windows-x64/Steamworks.NET.dll": "e45b2c62e3d651e3e7cf79449f338f208399061c945e76fc1aefa7010b34b9e8",
+    "Windows-x64/steam_api64.dll": "1add7f151fa644870a735ae86e68d1f019f296130d8e7c0a7ed3ecc7482dccbc"
+  }
+}

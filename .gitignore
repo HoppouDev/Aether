@@ -53,3 +53,6 @@ Thumbs.db
 # Nothing under patches/ may ever be ignored, or edits would silently go uncommitted.
 !/patches/**/
 !/patches/**
+
+# Self-contained per-target builds (`aether build --target`): they contain game files.
+/dist/

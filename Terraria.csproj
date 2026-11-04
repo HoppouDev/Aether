@@ -8,11 +8,6 @@
     <StartupObject>Terraria.LinuxLaunch</StartupObject>
     <!-- Sources live in src/ (base + patches); never glob .base/ or lib/. -->
     <EnableDefaultItems>False</EnableDefaultItems>
-    <!-- On Windows the client runs on .NET Framework with the 32-bit steam_api.dll,
-         Steamworks.NET and FNA natives, so it must run as a 32-bit process. Mono on
-         Linux/macOS keeps the AnyCPU build. Set here (not on the command line) so every
-         Windows build, incremental or plain `dotnet build`, gets it. -->
-    <PlatformTarget Condition="'$(OS)' == 'Windows_NT'">x86</PlatformTarget>
   </PropertyGroup>
   <PropertyGroup>
     <LangVersion>14.0</LangVersion>

@@ -104,6 +104,8 @@ def repo(tmp_path, monkeypatch) -> Repo:
         "LIB": "lib",
         "PATCHES": "patches",
         "STATE": ".aether",
+        "DIST": "dist",
+        "STEAMWORKS_JSON": "tools/steamworks.json",
         "BASE_JSON": "tools/base.json",
         "STAMP": ".base/.stamp",
     }.items():
