@@ -1,6 +1,6 @@
 --- a/ReLogic/OS/Platform.cs
 +++ b/ReLogic/OS/Platform.cs
-@@ -1,12 +1,35 @@
+@@ -1,12 +1,36 @@
  using System;
  using ReLogic.OS.Linux;
 +using ReLogic.OS.OSX;
@@ -29,8 +29,9 @@
 +                return new OsxPlatform();
 +            }
 +        }
-+        catch (DllNotFoundException)
++        catch (Exception)
 +        {
++            // SDL couldn't be loaded or queried (missing, wrong architecture, ...): not macOS.
 +        }
 +        return new LinuxPlatform();
 +    }

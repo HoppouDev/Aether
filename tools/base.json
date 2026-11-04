@@ -2,5 +2,24 @@
   "game_version": "1.4.5.8",
   "exe_sha256": "ae6adf9ccd9131cfadf5fdc60cea5f97de4ed24084ce7f29582133aaa7a5df3a",
   "ilspycmd": "11.1.0.9782",
-  "recipe": 2
+  "recipe": 2,
+  "steam": {
+    "app": 105600,
+    "depot": 105602,
+    "manifest": "4206021387845829879"
+  },
+  "platforms": {
+    "macos": {
+      "depot": 105603,
+      "manifest": "7648670563869725321",
+      "exe": "Terraria.app/Contents/Resources/Terraria.exe",
+      "exe_sha256": "d52c7ea7e4e312d8937fd20d1f2609f0d6bd26daddf5bfab2d106ca9077103e0"
+    },
+    "windows": {
+      "depot": 105601,
+      "manifest": "2046220459945595868",
+      "exe": "Terraria.exe",
+      "exe_sha256": "960a03bff6050cf7be16dfc1a7b19e10fc2c4f8f835a6a3b135a50dd9e6ba2f3"
+    }
+  }
 }

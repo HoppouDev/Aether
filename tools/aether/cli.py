@@ -11,6 +11,7 @@ import typer
 from . import __doc__ as package_doc
 from . import paths
 from .decompile import build_base
+from .game import build_client, host_platform, launch, output_exe, prepare_run_dir
 from .guard import stage_patches, staged_problems
 from .patches import (
     digest_patch_set,
@@ -22,6 +23,7 @@ from .patches import (
     sync_patches,
 )
 from .pinning import require_base
+from .steam import PLATFORMS, default_game_dir, download_game, platform_game_dir
 from .tree import changed_files
 from .util import AetherError, log, require_executables, run
 
@@ -44,7 +46,7 @@ def setup(
         typer.Option(
             "--game-dir",
             envvar="TERRARIA_DIR",
-            help="Terraria install dir (default: the Steam library path).",
+            help="Terraria install dir (default: `aether download`'s copy, else the Steam library path).",
         ),
     ] = None,
     allow_version_mismatch: Annotated[
@@ -86,11 +88,112 @@ def setup(
         # Check against the *old* base: against a rebuilt one (new recipe or game
         # version), an untouched src/ would look edited.
         ensure_src_captured()
-    build_base(
-        (game_dir or paths.DEFAULT_GAME_DIR).expanduser(), allow_version_mismatch
-    )
+    build_base((game_dir or default_game_dir()).expanduser(), allow_version_mismatch)
     if not base_only:
         apply(force=True)
+
+
+@app.command()
+def download(
+    username: Annotated[
+        str | None,
+        typer.Option(
+            "--username",
+            envvar="STEAM_USERNAME",
+            help="Steam account that owns Terraria (prompted if omitted).",
+        ),
+    ] = None,
+    force: Annotated[
+        bool, typer.Option("--force", help="Download again even if it's already there.")
+    ] = False,
+    platform: Annotated[
+        str,
+        typer.Option(
+            "--platform", help="Which build: linux (the base), macos or windows."
+        ),
+    ] = "linux",
+) -> None:
+    """Download a pinned Terraria build with SteamCMD (the Linux base, into .aether/game/).
+
+    `--platform macos|windows` fetches that build into .aether/game-<platform>/ instead;
+    `aether run` uses it on that OS for the natives, launcher and Content it needs.
+    """
+    if platform not in PLATFORMS:
+        raise AetherError(f"--platform must be one of {', '.join(PLATFORMS)}.")
+    if not username:
+        username = typer.prompt("Steam username")
+    download_game(username, force=force, platform=platform)
+
+
+@app.command(
+    "run",
+    context_settings={"allow_extra_args": True, "ignore_unknown_options": True},
+)
+def run_game(
+    ctx: typer.Context,
+    game_dir: Annotated[
+        Path | None,
+        typer.Option(
+            "--game-dir",
+            envvar="TERRARIA_DIR",
+            help="Terraria install dir (default: `aether download`'s copy, else the Steam library path).",
+        ),
+    ] = None,
+    platform_dir: Annotated[
+        Path | None,
+        typer.Option(
+            "--platform-dir",
+            help="macOS/Windows only: that OS's Terraria build, for its natives, launcher and "
+            "(macOS) Content (default: `aether download --platform`'s copy, else the Steam install).",
+        ),
+    ] = None,
+    release: Annotated[
+        bool, typer.Option("--release", help="Build in Release instead of Debug.")
+    ] = False,
+    no_build: Annotated[
+        bool, typer.Option("--no-build", help="Run the last build without rebuilding.")
+    ] = False,
+    save_dir: Annotated[
+        Path | None,
+        typer.Option(
+            "--save-dir",
+            help="Save directory (default: .aether/saves/, away from your real saves).",
+        ),
+    ] = None,
+    real_saves: Annotated[
+        bool, typer.Option("--real-saves", help="Use the game's normal save directory.")
+    ] = False,
+) -> None:
+    """Build the client and run it in a scratch copy of the game (.aether/run/).
+
+    Linux runs inside the Linux build; macOS inside a copy of the macOS build's app bundle;
+    Windows with the Linux build's Content and the Windows build's DLLs. Extra arguments go to
+    the game, e.g. `./aether run -- -world path/to/world.wld`. Steam has to be running.
+    """
+    platform = host_platform()
+    configuration = "Release" if release else "Debug"
+    exe = output_exe(configuration)
+    if not no_build:
+        exe = build_client(configuration, platform)
+    elif not exe.is_file():
+        raise AetherError(
+            f"there's no {configuration} build yet; run without --no-build."
+        )
+    prepare_run_dir(
+        platform,
+        (game_dir or default_game_dir()).expanduser(),
+        (platform_dir or platform_game_dir(platform)).expanduser()
+        if platform != "linux"
+        else Path(),
+        exe,
+        paths.RUN_DIR,
+    )
+    # Resolve now: the game runs with the run folder as its working directory, and that
+    # folder is wiped on every run, so a relative save dir would lose the saves.
+    saves = None if real_saves else (save_dir or paths.SAVES_DIR).expanduser().resolve()
+    code = launch(platform, paths.RUN_DIR, saves, list(ctx.args))
+    if code != 0:
+        raise typer.Exit(code)
 
 
 @app.command()

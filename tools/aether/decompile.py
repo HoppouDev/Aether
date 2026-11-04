@@ -11,7 +11,7 @@ import tempfile
 from pathlib import Path
 
 from . import paths
-from .fna import build_fna, fetch_fnalibs, load_fna_json
+from .fna import build_fna, fetch_natives, load_fna_json
 from .pinning import load_base_json, write_stamp
 from .tree import tree_files
 from .util import AetherError, link_or_copy, log, run, sha256_file
@@ -185,10 +185,11 @@ def build_base(game_dir: Path, allow_mismatch: bool) -> None:
     pinned = load_base_json()
     exe = game_dir / "Terraria.exe"
     fna = game_dir / "FNA.dll"
-    for required in (exe, fna):
+    for required in (exe, fna, game_dir / "Terraria.bin.x86_64"):
         if not required.is_file():
             raise AetherError(
-                f"{required} not found. Pass --game-dir or set $TERRARIA_DIR."
+                f"{required} not found: {game_dir} isn't the Linux build of Terraria (the "
+                "base). Run `./aether download` to get it, or pass --game-dir / set $TERRARIA_DIR."
             )
     exe_sha = check_exe(exe, pinned, allow_mismatch)
     ref_dir = reference_assemblies_dir()
@@ -212,7 +213,7 @@ def build_base(game_dir: Path, allow_mismatch: bool) -> None:
         # The client builds and runs on Aether's pinned FNA, not the game's older copy.
         fna_pin = load_fna_json()
         build_fna(fna_pin, new_lib)
-        fetch_fnalibs(fna_pin, new_lib / "fnalibs")
+        fetch_natives(fna_pin, new_lib)
 
         # Decompile against the net40 reference assemblies (not the game's Mono mscorlib,
         # which makes ILSpy emit MathF.PI), the extracted libraries, and the game's own

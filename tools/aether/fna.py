@@ -2,7 +2,7 @@
 
 The game ships an older FNA (26.3) with mismatched natives; Aether builds FNA itself from the
 pinned commit and uses the matching native libraries (SDL3, FNA3D, FAudio, Theorafile) from
-FNA's fnalibs build, so managed and native code come from the same release on every platform.
+FNA's fnalibs and fnalibs-apple builds, so managed and native code come from the same release on every platform.
 """
 
 import json
@@ -80,37 +80,42 @@ def verify_files(root: Path, expected: dict[str, str]) -> list[str]:
     return problems
 
 
-def fetch_fnalibs(pinned: dict, dest: Path) -> None:
-    """Downloads the pinned fnalibs build into dest and verifies every file's hash."""
-    libs = pinned["fnalibs"]
-    log(f"fetching FNA native libraries ({libs['repo']} run {libs['run_id']})…")
-    with tempfile.TemporaryDirectory(prefix="aether-fnalibs-") as tmp:
-        result = subprocess.run(
-            [
-                "gh",
-                "run",
-                "download",
-                str(libs["run_id"]),
-                "-R",
-                libs["repo"],
-                "-n",
-                libs["artifact"],
-                "-D",
-                tmp,
-            ],
-            check=False,
-            capture_output=True,
-            text=True,
-        )
-        if result.returncode != 0:
-            raise AetherError(
-                "couldn't download the FNA native libraries with the GitHub CLI "
-                "(needs `gh auth login`; CI artifacts also expire after 90 days):\n"
-                + (result.stderr or result.stdout).strip()
+def fetch_natives(pinned: dict, lib: Path) -> None:
+    """Downloads every pinned native-library package into lib/<artifact>/, hash-checked.
+
+    `fnalibs` holds Linux and Windows (x86/x64) libraries, `fnalibs-apple` the macOS ones.
+    """
+    natives = pinned["natives"]
+    log(f"fetching FNA native libraries ({natives['repo']} run {natives['run_id']})…")
+    for artifact, files in natives["artifacts"].items():
+        with tempfile.TemporaryDirectory(prefix="aether-fnalibs-") as tmp:
+            result = subprocess.run(
+                [
+                    "gh",
+                    "run",
+                    "download",
+                    str(natives["run_id"]),
+                    "-R",
+                    natives["repo"],
+                    "-n",
+                    artifact,
+                    "-D",
+                    tmp,
+                ],
+                check=False,
+                capture_output=True,
+                text=True,
             )
-        problems = verify_files(Path(tmp), libs["files"])
-        if problems:
-            raise AetherError(
-                "fnalibs don't match tools/fna.json:\n  " + "\n  ".join(problems)
-            )
-        shutil.copytree(tmp, dest)
+            if result.returncode != 0:
+                raise AetherError(
+                    f"couldn't download {artifact} with the GitHub CLI "
+                    "(needs `gh auth login`; CI artifacts also expire after 90 days):\n"
+                    + (result.stderr or result.stdout).strip()
+                )
+            problems = verify_files(Path(tmp), files)
+            if problems:
+                raise AetherError(
+                    f"{artifact} doesn't match tools/fna.json:\n  "
+                    + "\n  ".join(problems)
+                )
+            shutil.copytree(tmp, lib / artifact)

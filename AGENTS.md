@@ -8,10 +8,12 @@ Notes on the game's modules live in `AGENTS.md` files under `src/Terraria/`; rea
 ## Patch workflow
 
 ```bash
+./aether download  # optional: fetch the pinned Linux build with SteamCMD into .aether/game/
 ./aether setup     # first time / after a clone: decompile your Terraria.exe into .base/ + lib/, build src/
 ./aether diff      # after editing src/: regenerate patches/ (the pre-commit hook also does this)
 ./aether apply     # after pulling: rebuild src/ from .base/ + patches/
 ./aether status    # what you've changed vs the base, and whether patches/ is current
+./aether run       # build the client and play it (saves go to .aether/saves/)
 ```
 
 `./aether` needs [uv](https://docs.astral.sh/uv/) (plus git, the .NET SDK, `diff`, `patch`, and the GitHub CLI `gh`, logged in, which `setup` uses to fetch FNA's native libraries); uv installs the CLI's Python dependencies from `uv.lock` on first run.
@@ -34,7 +36,11 @@ Notes on the game's modules live in `AGENTS.md` files under `src/Terraria/`; rea
 - `setup` checks `Terraria.exe` against the sha256 pinned in `tools/base.json` (1.4.5.8). ilspycmd is pinned in `dotnet-tools.json`.
   The decompile recipe lives in `tools/aether/decompile.py` (`build_base`; libraries in `PATCHABLE_LIBRARIES` are decompiled too, into `src/<name>/`): net40 reference assemblies plus the extracted DLLs (not the game's Mono `mscorlib`, which makes ILSpy emit `MathF.PI`), `--nested-directories -p`, leading tabs → 4 spaces, CRLF → LF for resources.
   Changing the recipe changes `.base/`; bump `recipe` in `base.json`, regenerate, and refresh all patches.
-- The game location defaults to `~/.local/share/Steam/steamapps/common/Terraria`; override it with `--game-dir` or `$TERRARIA_DIR`.
+- The game location defaults to `aether download`'s copy in `.aether/game/` if there is one, otherwise `~/.local/share/Steam/steamapps/common/Terraria`; override it with `--game-dir` or `$TERRARIA_DIR`.
+- `download` runs SteamCMD's `download_depot` for the Linux depot and manifest pinned in `tools/base.json` (`steam`), so it always gets the pinned build rather than the current one, and works on any OS that runs SteamCMD.
+  `--platform macos|windows` fetches those builds (pinned under `platforms`) into `.aether/game-<platform>/`; they only supply runtime files to `run`, never the base.
+  It only passes the Steam username (`--username` / `$STEAM_USERNAME` / prompt); SteamCMD asks for the password and Steam Guard code itself and caches the login.
+  SteamCMD comes from PATH (`steamcmd` / `steamcmd.exe`), `~/.steam/steamcmd/`, or is installed from Valve's build for the host OS (Linux and macOS tarballs, Windows zip) into `.aether/steamcmd/`; the download is found by searching that SteamCMD's folder for `steamapps/content/app_105600/depot_105602`, which covers each OS's layout.
 
 ## Build and run
 
@@ -46,10 +52,17 @@ dotnet build -c Debug
   Expect 0 errors and ~700 warnings (obsolete APIs, unused locals, unreachable code).
   These are normal for decompiled code, so don't "fix" them unless you're already editing that code.
 - The output is `bin/Debug/net40/Terraria.exe` only.
-  It runs on the Mono runtime bundled with the game, so it has to sit inside a copy of the game directory (`Content/`, MonoKickstart launcher, Steam and file-dialog native libs), but with **Aether's FNA**: `lib/FNA.dll` + `lib/FNA.dll.config` and the natives in `lib/fnalibs/lib64/` replace the game's older FNA 26.3 and its `lib64/` SDL3/FNA3D/FAudio.
-  To test without touching the Steam install, build a scratch folder of symlinks to the game directory, but **copy** `Terraria`, `Terraria.bin.x86_64` and the `lib64/` entries you replace: the launcher finds `lib64/` relative to its real path, so a symlinked launcher loads the game's own natives.
-  Then add the built `Terraria.exe`, `lib/FNA.dll*` and `lib/fnalibs/lib64/*`, and launch `./Terraria -savedirectory <scratch dir>` so the real saves in `~/.local/share/Terraria` are left alone.
-  The startup log should report `FNA3D v26.11.0` and `FAudio v26.11.0`.
+  **Run it with `./aether run`** (`--release`, `--no-build`, `--save-dir`, `--real-saves`, `--platform-dir`; arguments after `--` go to the game; Steam must be running).
+  It rebuilds `.aether/run/` around the client with **Aether's FNA** (`lib/FNA.dll` and the matching natives in `lib/fnalibs*/`), which replaces each build's older FNA 26.3 and its SDL3/FNA3D/FAudio:
+  - **Linux:** inside the Linux build (the base): symlinks to it, plus copies of the launcher (`Terraria`, `Terraria.bin.x86_64`), the client and FNA, with `lib64/` holding `lib/fnalibs/lib64/` next to the game's Steam and file-dialog libraries.
+    The launcher has to be a real copy: it finds `lib64/` relative to its real path, so a symlinked launcher silently loads the game's own natives.
+  - **macOS:** inside a copy of the **macOS** build's `Terraria.app` (`--platform-dir`, default `.aether/game-macos/` from `./aether download --platform macos`, else the Steam install): `Contents/MacOS/` copied with `lib/fnalibs-apple/osx/` swapped into `osx/`, `Contents/Resources/` linked except the client and FNA.
+    macOS needs that build's own `Content/`: its shaders and XACT audio banks differ from Linux's.
+  - **Windows:** no Mono; .NET Framework runs `Terraria.exe`, built for **x86** (`-p:PlatformTarget=x86`) to match the 32-bit `steam_api.dll` and Steamworks.NET.
+    The folder links the **Linux** build's `Content/` (the Windows build's is XNA's: Reach-profile images and XNA-compiled shaders), and copies `lib/fnalibs/x86/`, the Windows build's `steam_api.dll`, `nfd.dll`, `ReLogic.Native.dll` and RGB SDKs, and its Steamworks.NET (extracted from its `Terraria.exe` into `lib/windows/`).
+    That Steamworks.NET sits next to the exe, so the CLR loads it instead of the Linux one embedded in the client; the Windows build comes from `--platform-dir`, `.aether/game-windows/` (`./aether download --platform windows`) or the Steam install.
+  Saves default to `.aether/saves/`, so your real saves are left alone; the startup log should report `FNA3D v26.11.0` and `FAudio v26.11.0`.
+  macOS and Windows are implemented but not yet tested on real machines.
 - The client exe has no headless mode: `Main.dedServ` is only set in the separate server build, so any runtime test opens a game window.
 
 ## Layout
@@ -62,11 +75,11 @@ dotnet build -c Debug
 | `Terraria.csproj`, `ReLogic/ReLogic.csproj`, `dotnet-tools.json` | yes | Project files (`Terraria.csproj` compiles `src/**/*.cs` except `src/ReLogic/`, references `lib/` and the ReLogic project, embeds `src/Resources/*`; `ReLogic.csproj` builds `ReLogic.dll` from `src/ReLogic/`) and the pinned ilspycmd. |
 | `src/` | only `AGENTS.md` | Editable tree: `Terraria/` (game code, one folder per namespace), `ReLogic/` (Re-Logic's framework: assets, fonts, RGB, OS layer), `BCrypt/`, `nativefiledialog.cs`, `Properties/` (bundled third-party source, assembly attributes) and `Resources/` (embedded data files, each named after its exact manifest resource name). |
 | `.base/` | no | Pristine decompile, same shape as `src/`. |
-| `lib/` | no | Third-party DLLs extracted from `Terraria.exe`'s embedded resources (`lib/ReLogic.dll` is only used to decompile; the build uses the one compiled from `src/ReLogic/`), `FNA.dll` + `FNA.dll.config` built from the pinned FNA commit, and `fnalibs/` (FNA's native libraries for every platform, hash-checked). |
+| `lib/` | no | Third-party DLLs extracted from `Terraria.exe`'s embedded resources (`lib/ReLogic.dll` is only used to decompile; the build uses the one compiled from `src/ReLogic/`), `FNA.dll` + `FNA.dll.config` built from the pinned FNA commit, `fnalibs/` and `fnalibs-apple/` (FNA's native libraries for Linux, Windows and macOS, hash-checked), and `windows/` (the Windows Steamworks.NET, extracted on first Windows run). |
 
 ## Dependencies and embedded resources
 
-- **FNA** is pinned to one release in `tools/fna.json` (26.11): `setup` builds `FNA.NetFramework.csproj` from that commit (cached in `.aether/fna/`) and downloads the matching native libraries from FNA's `fnalibs-dailies` CI build, verifying every file's hash.
+- **FNA** is pinned to one release in `tools/fna.json` (26.11): `setup` builds `FNA.NetFramework.csproj` from that commit (cached in `.aether/fna/`) and downloads the matching native libraries (`fnalibs` and `fnalibs-apple`) from FNA's `fnalibs-dailies` CI build, verifying every file's hash.
   The game's own FNA (26.3) is only used to decompile, so `.base/` doesn't depend on the FNA version.
   CI artifacts expire after 90 days; the pinned run (from 2026-11-03) expires around 2027-02-01, so re-pin before then or mirror the libraries.
 - At startup, `LinuxLaunch.Main` resolves missing assemblies from the exe's own manifest resources (by suffix `<AssemblyName>.dll`).

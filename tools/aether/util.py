@@ -34,13 +34,28 @@ def require_executables(*names: str) -> None:
         )
 
 
+def host_platform() -> str | None:
+    """ "linux", "macos" or "windows"; None for anything else."""
+    if sys.platform.startswith("linux"):
+        return "linux"
+    return {"darwin": "macos", "win32": "windows"}.get(sys.platform)
+
+
 def link_or_copy(src: Path, dst: Path) -> None:
-    """Symlinks dst -> src, copying instead where symlinks aren't allowed (Windows without
-    Developer Mode)."""
+    """Symlinks dst -> src. Where symlinks aren't allowed (Windows without Developer Mode),
+    folders become junctions and files copies."""
+    src = src.resolve()
     try:
-        dst.symlink_to(src)
+        dst.symlink_to(src, target_is_directory=src.is_dir())
     except OSError:
-        shutil.copyfile(src, dst)
+        if os.name != "nt":
+            raise
+        if src.is_dir():
+            import _winapi
+
+            _winapi.CreateJunction(str(src), str(dst))
+        else:
+            shutil.copyfile(src, dst)
 
 
 def sha256_file(path: Path) -> str:
