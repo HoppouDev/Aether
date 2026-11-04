@@ -6,17 +6,19 @@ prompts for the password and Steam Guard code itself; Aether only passes the use
 """
 
 import os
+import re
 import shutil
 import subprocess
 import sys
 import tarfile
 import tempfile
+import time
 import urllib.request
 import zipfile
 from pathlib import Path
 
 from . import paths
-from .pinning import load_base_json
+from .pinning import load_base_json, save_base_json
 from .util import AetherError, host_platform, log, sha256_file
 
 _INSTALLER = "https://steamcdn-a.akamaihd.net/client/installer"
@@ -136,6 +138,71 @@ def find_depot_dirs(root: Path, app: int, depot: int) -> list[Path]:
     return found
 
 
+def parse_keyvalues(text: str) -> dict:
+    """Parses Valve's text KeyValues ("key" "value" / "key" { ... }) into nested dicts."""
+    tokens = re.findall(r'"((?:[^"\\]|\\.)*)"|([{}])', text)
+    root: dict = {}
+    stack = [root]
+    key = None
+    for quoted, brace in tokens:
+        if brace == "{":
+            child: dict = {}
+            stack[-1][key] = child
+            stack.append(child)
+            key = None
+        elif brace == "}":
+            if len(stack) > 1:
+                stack.pop()
+        elif key is None:
+            key = quoted
+        else:
+            stack[-1][key] = quoted
+            key = None
+    return root
+
+
+def app_info(cmd: list[str], app: int) -> dict:
+    """Steam's public app info for app, via an anonymous SteamCMD login (no credentials)."""
+    result = subprocess.run(
+        [
+            *cmd,
+            "+login",
+            "anonymous",
+            "+app_info_update",
+            "1",
+            "+app_info_print",
+            str(app),
+            "+quit",
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+        errors="replace",
+    )
+    start = result.stdout.find(f'"{app}"')
+    if start < 0:
+        raise AetherError(
+            f"SteamCMD printed no app info for {app}:\n{result.stdout[-1500:]}"
+        )
+    info = parse_keyvalues(result.stdout[start:]).get(str(app))
+    if not isinstance(info, dict):
+        raise AetherError(f"couldn't parse SteamCMD's app info for {app}.")
+    return info
+
+
+def latest_manifests(info: dict, depots: list[int]) -> dict[int, str]:
+    """The public branch's manifest of each depot."""
+    found = {}
+    for depot in depots:
+        try:
+            found[depot] = info["depots"][str(depot)]["manifests"]["public"]["gid"]
+        except (KeyError, TypeError) as e:
+            raise AetherError(
+                f"Steam's app info has no public manifest for depot {depot}."
+            ) from e
+    return found
+
+
 def platform_pin(pinned: dict, platform: str) -> dict:
     """A build's depot pin: app, depot, manifest, and its Terraria.exe path and hash."""
     if platform == "linux":
@@ -154,13 +221,20 @@ def downloaded_dir(platform: str) -> Path:
     return paths.STATE / f"game-{platform}"
 
 
-def find_downloaded_depot(pin: dict, roots: list[Path]) -> Path | None:
-    """The newest downloaded depot folder that holds the pinned build."""
+def find_downloaded_depot(
+    pin: dict, roots: list[Path], since: float = 0.0
+) -> Path | None:
+    """The newest downloaded depot folder that holds the pinned build.
+
+    Without a pinned hash (a manifest `aether update` just found) only folders written
+    since the download started count, so a leftover older download isn't mistaken for it.
+    """
     candidates = [
         d
         for root in roots
         for d in find_depot_dirs(root, pin["app"], pin["depot"])
         if is_pinned_game(d, pin)
+        and (pin.get("exe_sha256") or (d / pin["exe"]).stat().st_mtime >= since)
     ]
     if not candidates:
         return None
@@ -168,8 +242,12 @@ def find_downloaded_depot(pin: dict, roots: list[Path]) -> Path | None:
 
 
 def is_pinned_game(game_dir: Path, pin: dict) -> bool:
+    """Whether game_dir holds the pinned build. A pin without a hash yet (just updated to a
+    new manifest, not downloaded since) only requires the exe to exist."""
     exe = game_dir / pin["exe"]
-    return exe.is_file() and sha256_file(exe) == pin["exe_sha256"]
+    if not exe.is_file():
+        return False
+    return pin.get("exe_sha256") is None or sha256_file(exe) == pin["exe_sha256"]
 
 
 def download_game(
@@ -177,26 +255,31 @@ def download_game(
     dest: Path | None = None,
     force: bool = False,
     platform: str = "linux",
+    pin: dict | None = None,
 ) -> Path:
-    """Downloads a pinned build (the Linux base by default) with SteamCMD; returns its folder."""
+    """Downloads a pinned build (the Linux base by default) with SteamCMD; returns its folder.
+
+    pin overrides tools/base.json's (e.g. a newer manifest during `aether update`).
+    """
     pinned = load_base_json()
-    pin = platform_pin(pinned, platform)
+    pin = pin or platform_pin(pinned, platform)
     dest = dest or downloaded_dir(platform)
-    if not force and is_pinned_game(dest, pin):
+    if not force and is_pinned_game(dest, pin) and pin.get("exe_sha256"):
         log(f"{dest} already has the pinned {pinned['game_version']} {platform} build.")
         return dest
 
     cmd = find_steamcmd() or bootstrap_steamcmd()
     log(
-        f"downloading Terraria {pinned['game_version']} for {platform} (depot {pin['depot']}, "
-        f"manifest {pin['manifest']}); SteamCMD may ask for your password and Steam Guard code."
+        f"downloading Terraria for {platform} (depot {pin['depot']}, manifest "
+        f"{pin['manifest']}); SteamCMD may ask for your password and Steam Guard code."
     )
     # Inherit the terminal: SteamCMD prompts for credentials itself. Its exit code isn't
     # reliable, so success is judged by the downloaded files.
+    started = time.time() - 1
     subprocess.run([*cmd, *download_args(username, pin)], check=False)
 
     roots = search_roots(cmd)
-    depot = find_downloaded_depot(pin, roots)
+    depot = find_downloaded_depot(pin, roots, since=started)
     if depot is None:
         searched = "\n  ".join(str(r) for r in roots)
         raise AetherError(
@@ -212,8 +295,20 @@ def download_game(
         path = dest / name
         if path.is_file():
             path.chmod(path.stat().st_mode | 0o111)
+    if platform != "linux" and pin.get("exe_sha256") is None:
+        record_platform_hash(platform, pin["manifest"], sha256_file(dest / pin["exe"]))
     log(f"downloaded the pinned {platform} build into {dest}.")
     return dest
+
+
+def record_platform_hash(platform: str, manifest: str, exe_sha256: str) -> None:
+    """Pins the exe hash of a macOS/Windows manifest the first time it's downloaded."""
+    pinned = load_base_json()
+    entry = pinned["platforms"][platform]
+    if entry["manifest"] == manifest and entry.get("exe_sha256") is None:
+        entry["exe_sha256"] = exe_sha256
+        save_base_json(pinned)
+        log(f"pinned the {platform} build's Terraria.exe hash in tools/base.json.")
 
 
 def default_game_dir() -> Path:

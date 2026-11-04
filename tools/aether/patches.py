@@ -100,6 +100,25 @@ def generate_patches(out_dir: Path, changes: Changes | None = None) -> None:
                 target.write_bytes(data)
 
 
+def patches_version_file() -> Path:
+    """Records the game version patches/ is known to apply to (committed with the patches)."""
+    return paths.PATCHES / "GAME_VERSION"
+
+
+def patches_game_version() -> str | None:
+    path = patches_version_file()
+    return path.read_text().strip() if path.is_file() else None
+
+
+def mark_patches_compatible(version: str) -> bool:
+    """Records that patches/ applies to version; returns whether that changed anything."""
+    if patches_game_version() == version:
+        return False
+    paths.PATCHES.mkdir(parents=True, exist_ok=True)
+    patches_version_file().write_text(version + "\n")
+    return True
+
+
 def patch_files(root: Path) -> dict[Path, bytes]:
     if not root.is_dir():
         return {}

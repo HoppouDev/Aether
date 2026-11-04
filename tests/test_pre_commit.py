@@ -55,7 +55,11 @@ def test_pre_commit_regenerates_and_stages_patches(git_repo):
 
     result = runner.invoke(cli.app, ["pre-commit"])
     assert result.exit_code == 0, result.output
-    assert staged(git_repo.root) == ["patches/Terraria/Main.cs.patch"]
+    assert staged(git_repo.root) == [
+        "patches/GAME_VERSION",
+        "patches/Terraria/Main.cs.patch",
+    ]
+    assert (git_repo.patches / "GAME_VERSION").read_text() == "test\n"
 
 
 @needs_diff_patch

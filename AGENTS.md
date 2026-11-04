@@ -1,6 +1,6 @@
 # Aether
 
-Aether is a Terraria utility client: a modified build of Terraria 1.4.5.8 (Linux Steam build, `Terraria.exe`, `Main.curRelease = 326`).
+Aether is a Terraria utility client: a modified build of Terraria (the Linux Steam build's `Terraria.exe`), currently based on the version pinned in `tools/base.json` (`game_version`).
 It is **not** a decompilation project.
 The client's changes are kept as *patches* against the game's code, and the game's own code and data are never committed: every developer regenerates them locally from their own copy of the game, which is decompiled only to give the patches something to apply to.
 Notes on the game's modules live in `AGENTS.md` files under `src/Terraria/`; read the nearest one before editing a module.
@@ -14,6 +14,7 @@ Notes on the game's modules live in `AGENTS.md` files under `src/Terraria/`; rea
 ./aether apply     # after pulling: rebuild src/ from .base/ + patches/
 ./aether status    # what you've changed vs the base, and whether patches/ is current
 ./aether run       # build the client and play it (saves go to .aether/saves/)
+./aether update    # move the base to the newest Terraria on Steam and re-apply the patches (--check: just look)
 ```
 
 `./aether` needs [uv](https://docs.astral.sh/uv/) (plus git, the .NET SDK, `diff`, `patch`, and the GitHub CLI `gh`, logged in, which `setup` uses to fetch FNA's native libraries); uv installs the CLI's Python dependencies from `uv.lock` on first run.
@@ -33,7 +34,10 @@ Notes on the game's modules live in `AGENTS.md` files under `src/Terraria/`; rea
   Fix the file by hand, delete the `.rej`, then run `./aether diff`.
 - Keep diffs small: edit in place and keep the decompiler's formatting.
   Reformatting or renaming produces huge patches that break on every regeneration.
-- `setup` checks `Terraria.exe` against the sha256 pinned in `tools/base.json` (1.4.5.8). ilspycmd is pinned in `dotnet-tools.json`.
+- **Versions:** `tools/base.json` pins the build the base is decompiled from (`game_version`, Linux depot manifest, `Terraria.exe` sha256, plus the macOS/Windows manifests), and `setup` checks the exe against it.
+  `patches/GAME_VERSION` records the game version the patches are known to apply to; it's committed with them.
+  `diff` sets it to the base's version (patches made against the base apply to it by definition), and so does an `apply` or `setup` in which every patch applies; `status` and `diff --check` report when the two differ.
+  ilspycmd is pinned in `dotnet-tools.json`.
   The decompile recipe lives in `tools/aether/decompile.py` (`build_base`; libraries in `PATCHABLE_LIBRARIES` are decompiled too, into `src/<name>/`): net40 reference assemblies plus the extracted DLLs (not the game's Mono `mscorlib`, which makes ILSpy emit `MathF.PI`), `--nested-directories -p`, leading tabs → 4 spaces, CRLF → LF for resources.
   Changing the recipe changes `.base/`; bump `recipe` in `base.json`, regenerate, and refresh all patches.
 - The game location defaults to `aether download`'s copy in `.aether/game/` if there is one, otherwise `~/.local/share/Steam/steamapps/common/Terraria`; override it with `--game-dir` or `$TERRARIA_DIR`.
@@ -102,8 +106,11 @@ dotnet build -c Debug
 - **One build for every OS:** Aether's patch to `src/ReLogic/OS/Platform.cs` picks the platform at runtime (`FnaWindowsPlatform`, `OsxPlatform` or `LinuxPlatform`) where Re-Logic's builds hard-wire it.
   For new code, test `Platform.IsWindows` / `IsOSX` / `IsLinux` only for OS behaviour (Win32 calls, paths), and `Program.IsXna` for anything tied to XNA's WinForms window (`Control.FromHandle`, `Form`): the client always runs on FNA, so those branches must stay off on Windows too.
 - To turn a raw number into a name, look it up in `src/Terraria/ID/` (e.g. `ItemID.cs`; `ItemID.Search.GetName(id)` at runtime).
-- When the game updates (or the recipe changes): pin the new exe hash and version in `tools/base.json`, run `./aether setup`, fix any `.rej` files, and run `./aether diff`.
-  `setup` checks for unsaved `src/` edits against the old base before rebuilding it; `setup --base-only` followed by `apply` would see an untouched `src/` as edited and refuse.
+- **When the game updates:** `./aether update --check` compares the pin with Steam's current public manifests (anonymous SteamCMD login, exit 1 if there's a newer build).
+  `./aether update` then checks for unsaved `src/` edits against the old base, downloads the new Linux build into `.aether/game/`, re-pins `tools/base.json` (version read from the exe, new manifests; macOS/Windows hashes are recorded on their next `download --platform`), rebuilds `.base/` and re-applies the patches.
+  If every patch applies, `patches/GAME_VERSION` moves to the new version; otherwise fix the `src/**/*.rej` conflicts and run `./aether diff`, which regenerates the patches and moves it.
+  Commit the re-pinned `tools/base.json` together with the patches.
+- When the recipe changes: bump `recipe` in `tools/base.json` and run `./aether setup` (not `--base-only`): it checks for unsaved `src/` edits against the old base before rebuilding it.
 
 ## Module index
 

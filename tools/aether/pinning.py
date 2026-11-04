@@ -10,6 +10,10 @@ def load_base_json() -> dict:
     return json.loads(paths.BASE_JSON.read_text())
 
 
+def save_base_json(pinned: dict) -> None:
+    paths.BASE_JSON.write_text(json.dumps(pinned, indent=2) + "\n")
+
+
 def write_stamp(directory, exe_sha256: str, pinned: dict) -> None:
     stamp = {
         "exe_sha256": exe_sha256,

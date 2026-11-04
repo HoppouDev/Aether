@@ -14,9 +14,9 @@ Player save code itself lives in `../Player.cs` (`SavePlayer` ~line 55457, `Load
 
 - `SaveWorld(...)` / `LoadWorld()` are the entry points (temp file plus backup handling, cloud vs local).
   The binary format is `SaveWorld_Version2` / `LoadWorld_Version2`.
-- Layout: `SaveFileFormatHeader` (release number `326`, `FileMetadata` with the "relogic" magic number and file type, revision, then a table of section pointers), followed by sections in a fixed order: world header, tiles, chests, signs, NPCs, tile entities, weighted pressure plates, town manager, bestiary, creative powers, then a footer.
+- Layout: `SaveFileFormatHeader` (the release number `Main.curRelease`, `FileMetadata` with the "relogic" magic number and file type, revision, then a table of section pointers), followed by sections in a fixed order: world header, tiles, chests, signs, NPCs, tile entities, weighted pressure plates, town manager, bestiary, creative powers, then a footer.
   The pointer table is rewritten at the end (`SaveHeaderPointers`).
-- Loading checks the stored release against `326` (`if (num > 326)`): **files written by a newer version are rejected**, and older versions are upgraded through `versionNumber`-gated branches in the `Load*` methods.
+- Loading checks the stored release against the current one (`if (num > <curRelease>)`, inlined as a number by the decompiler): **files written by a newer version are rejected**, and older versions are upgraded through `versionNumber`-gated branches in the `Load*` methods.
 - **Format changes must stay symmetric**: change `SaveX` and `LoadX` together.
   If the output should stay loadable by vanilla, don't change the format at all, because vanilla validates section offsets (`ValidateWorld`).
 - `WorldFileData.cs` holds world metadata shown in menus (seed, size, difficulty, secret-seed flags).

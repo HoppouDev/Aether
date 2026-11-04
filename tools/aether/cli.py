@@ -16,15 +16,19 @@ from .guard import stage_patches, staged_problems
 from .patches import (
     digest_patch_set,
     ensure_src_captured,
+    mark_patches_compatible,
     patch_files,
+    patches_game_version,
     rebuild_src,
     record_state,
     regenerated_patch_set,
     sync_patches,
 )
-from .pinning import require_base
+from .pinning import load_base_json, require_base
 from .steam import PLATFORMS, default_game_dir, download_game, platform_game_dir
 from .tree import changed_files
+from .update import update as update_base
+from .update import update_available
 from .util import AetherError, log, require_executables, run
 
 app = typer.Typer(
@@ -125,6 +129,52 @@ def download(
     download_game(username, force=force, platform=platform)
 
 
+@app.command()
+def update(
+    username: Annotated[
+        str | None,
+        typer.Option(
+            "--username",
+            envvar="STEAM_USERNAME",
+            help="Steam account that owns Terraria (prompted if omitted).",
+        ),
+    ] = None,
+    check: Annotated[
+        bool,
+        typer.Option(
+            "--check",
+            help="Only check for a newer build (exit 1 if there is one); no login needed.",
+        ),
+    ] = False,
+    force: Annotated[
+        bool,
+        typer.Option("--force", help="Rebuild even if already on the newest build."),
+    ] = False,
+) -> None:
+    """Move the base to the newest Terraria build on Steam and re-apply the patches.
+
+    Downloads the new Linux build, re-pins tools/base.json, rebuilds .base/ and src/, and
+    marks patches/ compatible with the new version if every patch applies (exit 1 if not:
+    fix the .rej conflicts, then `./aether diff`).
+    """
+    if check:
+        newer, latest, buildid = update_available()
+        pinned = load_base_json()
+        if newer:
+            print(
+                f"newer build on Steam (build {buildid}, Linux manifest {latest['linux']}); "
+                f"pinned: {pinned['game_version']} (manifest {pinned['steam']['manifest']})."
+            )
+            raise typer.Exit(1)
+        print(f"up to date: {pinned['game_version']} (Steam build {buildid}).")
+        return
+    require_executables("git", "dotnet", "gh", "diff", "patch")
+    if not username:
+        username = typer.prompt("Steam username")
+    if not update_base(username, force):
+        raise typer.Exit(1)
+
+
 @app.command(
     "run",
     context_settings={"allow_extra_args": True, "ignore_unknown_options": True},
@@ -216,13 +266,22 @@ def diff(
             "src/ doesn't exist. Run `./aether apply` (or `./aether setup`)."
         )
     new_files = regenerated_patch_set()
+    base_version = load_base_json()["game_version"]
     if check:
         if new_files != patch_files(paths.PATCHES):
             log("patches/ is out of date with src/. Run `./aether diff`.")
             raise typer.Exit(1)
+        if patches_game_version() != base_version:
+            log(
+                f"patches/ isn't marked compatible with {base_version}. Run `./aether diff`."
+            )
+            raise typer.Exit(1)
         return
     changes = sync_patches(new_files)
     record_state(digest_patch_set(new_files))
+    # Patches generated against the base apply to the base's game version by definition.
+    if mark_patches_compatible(base_version):
+        changes.append(f"marked patches/ compatible with {base_version}")
     if not quiet:
         for line in changes:
             print(line)
@@ -236,6 +295,7 @@ def apply(force: ForceOption = False) -> None:
     require_base()
     if not rebuild_src(force):
         raise typer.Exit(1)
+    mark_patches_compatible(load_base_json()["game_version"])
 
 
 @app.command()
@@ -256,6 +316,14 @@ def status() -> None:
         if up_to_date
         else "patches/ is OUT OF DATE; run `./aether diff`."
     )
+    base_version, compatible = load_base_json()["game_version"], patches_game_version()
+    if compatible == base_version:
+        print(f"base and patches/: Terraria {base_version}.")
+    else:
+        print(
+            f"base is Terraria {base_version}, but patches/ is marked compatible with "
+            f"{compatible or 'no version'}: fix any .rej conflicts, then `./aether diff`."
+        )
 
 
 @app.command("check-staged")

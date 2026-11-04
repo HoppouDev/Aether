@@ -21,7 +21,7 @@ The networking code is split between this folder (transport and the newer module
 - `remoteClient = -1` means "everyone" (server broadcast) or "the server" (from a client); `ignoreClient` skips one player (usually the sender when relaying).
 - The `number..number7` / `number2..4` parameters mean different things for each packet type.
   Read the matching `case` before calling.
-- Handshake: the client sends `"Terraria" + 326` (`Main.curRelease`) and the server compares the string exactly.
+- Handshake: the client sends `"Terraria" + <curRelease>` (`Main.curRelease`, inlined as a number in `NetMessage`/`MessageBuffer`) and the server compares the string exactly.
   Any change to the protocol makes this build incompatible with vanilla clients and servers, so bump or diverge the version string deliberately if you change packets.
 
 ## Net modules

@@ -15,7 +15,16 @@ BASE_FILES = {"Terraria/Main.cs": "class Main\n{\n    int a = 1;\n}\n"}
 
 def test_diff_check_and_status(repo):
     repo.make_base(BASE_FILES)
+    # No patches/GAME_VERSION yet: patches aren't marked compatible with the base.
+    assert runner.invoke(cli.app, ["diff", "--check"]).exit_code == 1
+    assert (
+        "marked patches/ compatible with test"
+        in runner.invoke(cli.app, ["diff"]).output
+    )
     assert runner.invoke(cli.app, ["diff", "--check"]).exit_code == 0
+    assert (
+        "base and patches/: Terraria test." in runner.invoke(cli.app, ["status"]).output
+    )
 
     main = repo.src / "Terraria/Main.cs"
     main.write_text(main.read_text().replace("int a = 1;", "int a = 2;"))

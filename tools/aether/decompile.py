@@ -4,6 +4,7 @@ Any change to the output of this module changes .base/: bump `recipe` in tools/b
 """
 
 import concurrent.futures
+import json
 import re
 import shutil
 import subprocess
@@ -43,6 +44,17 @@ def ilspy(*cmd_args: str, **kwargs) -> subprocess.CompletedProcess:
         cwd=paths.REPO,
         **kwargs,
     )
+
+
+def exe_version(exe: Path) -> str:
+    """The game version of a Terraria.exe: its assembly version (e.g. "1.4.5.8")."""
+    out = ilspy(
+        "--dump-table", "Assembly", "--json", str(exe), capture_output=True
+    ).stdout
+    try:
+        return json.loads(out)["rows"][0]["Version"]
+    except (ValueError, KeyError, IndexError) as e:
+        raise AetherError(f"couldn't read the version of {exe}") from e
 
 
 def reference_assemblies_dir() -> Path:
