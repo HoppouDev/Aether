@@ -220,18 +220,26 @@ def apply_patches() -> tuple[list[str], list[str]]:
     return failed, inexact
 
 
+def ensure_src_captured() -> None:
+    """Fails if src/ has edits (relative to the current .base/) that patches/ lacks.
+
+    "Captured" means src/ is unchanged since it was last synced with patches/, or it
+    already matches patches/ (e.g. patches/ changed upstream, src/ was never edited).
+    """
+    if not (paths.SRC.is_dir() and tree_files(paths.SRC)):
+        return
+    current = digest_patch_set(regenerated_patch_set())
+    if current not in (recorded_digest(), digest_patch_set(patch_files(paths.PATCHES))):
+        raise AetherError(
+            "src/ has edits that aren't captured in patches/ and would be lost.\n"
+            "Run `./aether diff` to keep them, or pass --force to discard them."
+        )
+
+
 def rebuild_src(force: bool) -> bool:
     """Resets src/ to .base/ + patches/. Returns False if any patch failed to apply."""
-    if paths.SRC.is_dir() and tree_files(paths.SRC) and not force:
-        current = digest_patch_set(regenerated_patch_set())
-        if current not in (
-            recorded_digest(),
-            digest_patch_set(patch_files(paths.PATCHES)),
-        ):
-            raise AetherError(
-                "src/ has edits that aren't captured in patches/ and would be lost.\n"
-                "Run `./aether diff` to keep them, or `./aether apply --force` to discard them."
-            )
+    if not force:
+        ensure_src_captured()
     reset_src_to_base()
     failed, inexact = apply_patches()
     record_state(digest_patch_set(regenerated_patch_set()))

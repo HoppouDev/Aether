@@ -1,11 +1,14 @@
 import shutil
 import subprocess
+from pathlib import Path
 
 import pytest
 
 from aether.decompile import (
     LIBRARY_RESOURCES,
+    PATCHABLE_LIBRARIES,
     expand_leading_tabs,
+    library_source_path,
     normalize_line_endings,
 )
 
@@ -60,3 +63,20 @@ def test_library_resources_map_to_unique_dll_names():
         res.startswith("Terraria.Libraries.") and res.endswith(name)
         for res, name in LIBRARY_RESOURCES.items()
     )
+
+
+@pytest.mark.parametrize(
+    ("rel", "expected"),
+    [
+        ("ReLogic/Content/Asset.cs", "Content/Asset.cs"),
+        ("ReLogic/Utilities/SlotId.cs", "Utilities/SlotId.cs"),
+        ("Properties/AssemblyInfo.cs", "Properties/AssemblyInfo.cs"),
+        ("ReLogic.cs", "ReLogic.cs"),  # a file, not the namespace folder
+    ],
+)
+def test_library_source_path_drops_the_root_namespace_folder(rel, expected):
+    assert library_source_path(Path(rel), "ReLogic") == Path(expected)
+
+
+def test_patchable_libraries_are_extracted_libraries():
+    assert set(PATCHABLE_LIBRARIES) <= set(LIBRARY_RESOURCES.values())

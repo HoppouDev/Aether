@@ -16,7 +16,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="src/**/*.cs" />
+    <Compile Include="src/**/*.cs" Exclude="src/ReLogic/**" />
   </ItemGroup>
 
   <!-- Third-party libraries in lib/, extracted by ./aether setup from the embedded resources of
@@ -25,10 +25,6 @@
     <Reference Include="System.Core" />
     <Reference Include="FNA">
       <HintPath>lib/FNA.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="ReLogic">
-      <HintPath>lib/ReLogic.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="Ionic.Zip.CF">
@@ -70,7 +66,6 @@
   <!-- The game resolves these at runtime from its own manifest resources (see LinuxLaunch.Main),
        so they are embedded under the same names the original executable uses. -->
   <ItemGroup>
-    <EmbeddedResource Include="lib/ReLogic.dll" LogicalName="Terraria.Libraries.ReLogic.ReLogic.dll" />
     <EmbeddedResource Include="lib/Ionic.Zip.CF.dll" LogicalName="Terraria.Libraries.DotNetZip.Ionic.Zip.CF.dll" />
     <EmbeddedResource Include="lib/Newtonsoft.Json.dll" LogicalName="Terraria.Libraries.JSON.NET.Newtonsoft.Json.dll" />
     <EmbeddedResource Include="lib/CsvHelper.dll" LogicalName="Terraria.Libraries.CsvHelper.CsvHelper.dll" />
@@ -81,6 +76,17 @@
     <EmbeddedResource Include="lib/RailSDK.Net.dll" LogicalName="Terraria.Libraries.RailSDK.Linux.RailSDK.Net.dll" />
     <EmbeddedResource Include="lib/SteelSeriesEngineWrapper.dll" LogicalName="Terraria.Libraries.SteelSeries.SteelSeriesEngineWrapper.dll" />
   </ItemGroup>
+
+  <!-- ReLogic is built from src/ReLogic/ (so patches can change it) and embedded like the
+       extracted libraries above. -->
+  <ItemGroup>
+    <ProjectReference Include="ReLogic/ReLogic.csproj" Private="False" />
+  </ItemGroup>
+  <Target Name="EmbedReLogic" AfterTargets="ResolveProjectReferences">
+    <ItemGroup>
+      <EmbeddedResource Include="@(_ResolvedProjectReferencePaths)" Condition="'%(Filename)' == 'ReLogic'" LogicalName="Terraria.Libraries.ReLogic.ReLogic.dll" />
+    </ItemGroup>
+  </Target>
 
   <!-- Localization, world generation config, material data, etc. Each file is named after its
        manifest resource name. WithCulture="false" stops MSBuild from treating names such as

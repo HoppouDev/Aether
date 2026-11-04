@@ -11,8 +11,8 @@ lib/
 *.orig
 
 # Build output
-/bin/
-/obj/
+bin/
+obj/
 *.pdb
 
 # Python (uv project for tools/aether)

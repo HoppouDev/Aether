@@ -30,6 +30,11 @@ LIBRARY_RESOURCES = {
 }
 
 
+# Libraries from lib/ that are also decompiled into .base/<folder>/, so patches can change
+# them too. Terraria.csproj builds them from src/ instead of using the extracted DLLs.
+PATCHABLE_LIBRARIES = {"ReLogic.dll": "ReLogic"}
+
+
 def ilspy(*cmd_args: str, **kwargs) -> subprocess.CompletedProcess:
     """Runs the ilspycmd version pinned in dotnet-tools.json."""
     return run(
@@ -119,6 +124,45 @@ def extract_resources(exe: Path, out_dir: Path) -> list[str]:
     return names
 
 
+def library_source_path(rel: Path, root_namespace: str) -> Path:
+    """Where a file of a decompiled library goes below its .base/<folder>/.
+
+    ILSpy nests the library's namespaces under a folder named after its root namespace
+    (ReLogic/Content/X.cs); that level is dropped, so the folder itself is the root
+    namespace. Other files (Properties/AssemblyInfo.cs) keep their path.
+    """
+    if len(rel.parts) > 1 and rel.parts[0] == root_namespace:
+        return Path(*rel.parts[1:])
+    return rel
+
+
+def decompile_project(
+    assembly: Path, work_dir: Path, dest: Path, root_namespace: str | None = None
+) -> int:
+    """Decompiles assembly as a project and writes its normalized .cs files into dest.
+
+    Returns the number of .cs files written.
+    """
+    work_dir.mkdir(parents=True)
+    ilspy(
+        "--nested-directories",
+        "-p",
+        "-o",
+        str(work_dir),
+        str(assembly),
+        capture_output=True,
+    )
+    cs_files = list(work_dir.rglob("*.cs"))
+    for path in cs_files:
+        rel = path.relative_to(work_dir)
+        if root_namespace:
+            rel = library_source_path(rel, root_namespace)
+        out = dest / rel
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_bytes(expand_leading_tabs(path.read_bytes()))
+    return len(cs_files)
+
+
 def check_exe(exe: Path, pinned: dict, allow_mismatch: bool) -> str:
     """Returns the exe's sha256, failing if it isn't the pinned build (unless allowed)."""
     exe_sha = sha256_file(exe)
@@ -152,7 +196,7 @@ def build_base(game_dir: Path, allow_mismatch: bool) -> None:
         tmp = Path(tmp_name)
         resources, refs, decomp = tmp / "resources", tmp / "refs", tmp / "decomp"
         new_base, new_lib = tmp / "base", tmp / "lib"
-        for d in (resources, refs, decomp, new_base / "Resources", new_lib):
+        for d in (resources, refs, new_base / "Resources", new_lib):
             d.mkdir(parents=True)
 
         log("extracting embedded resources…")
@@ -178,22 +222,14 @@ def build_base(game_dir: Path, allow_mismatch: bool) -> None:
         link_or_copy(exe, refs / "Terraria.exe")
 
         log(f"decompiling with ilspycmd {pinned['ilspycmd']} (takes ~20s)…")
-        ilspy(
-            "--nested-directories",
-            "-p",
-            "-o",
-            str(decomp),
-            str(refs / "Terraria.exe"),
-            capture_output=True,
-        )
-
-        cs_files = list(decomp.rglob("*.cs"))
-        if len(cs_files) < 1000:
-            raise AetherError(f"decompilation produced only {len(cs_files)} .cs files")
-        for path in cs_files:
-            dst = new_base / path.relative_to(decomp)
-            dst.parent.mkdir(parents=True, exist_ok=True)
-            dst.write_bytes(expand_leading_tabs(path.read_bytes()))
+        count = decompile_project(refs / "Terraria.exe", decomp / "Terraria", new_base)
+        if count < 1000:
+            raise AetherError(f"decompilation produced only {count} .cs files")
+        for dll, folder in PATCHABLE_LIBRARIES.items():
+            if not decompile_project(
+                refs / dll, decomp / folder, new_base / folder, folder
+            ):
+                raise AetherError(f"decompiling {dll} produced no .cs files")
 
         write_stamp(new_base, exe_sha, pinned)
         for final, built in ((paths.BASE, new_base), (paths.LIB, new_lib)):

@@ -14,6 +14,7 @@ from .decompile import build_base
 from .guard import stage_patches, staged_problems
 from .patches import (
     digest_patch_set,
+    ensure_src_captured,
     patch_files,
     rebuild_src,
     record_state,
@@ -81,11 +82,15 @@ def setup(
     else:
         log("warning: not a git checkout; skipping the git hooks.")
     run(["dotnet", "tool", "restore"], cwd=paths.REPO, capture_output=True)
+    if not base_only and not force and paths.STAMP.is_file():
+        # Check against the *old* base: against a rebuilt one (new recipe or game
+        # version), an untouched src/ would look edited.
+        ensure_src_captured()
     build_base(
         (game_dir or paths.DEFAULT_GAME_DIR).expanduser(), allow_version_mismatch
     )
     if not base_only:
-        apply(force)
+        apply(force=True)
 
 
 @app.command()
