@@ -12,8 +12,8 @@ Edits here become `patches/ReLogic/…` like any other `src/` edit.
 - It's a separate assembly: `internal` members on either side aren't visible to the other (the only `InternalsVisibleTo` is for `ReLogic.Tests`).
   Changing a public signature means patching every caller in `src/Terraria/` in the same change.
 - ReLogic references only FNA, Newtonsoft.Json, Ionic.Zip.CF and SteelSeriesEngineWrapper (from `lib/`); adding a dependency means adding it to `ReLogic/ReLogic.csproj`.
-- This is the **Linux** build: `Platform.Current` is hard-wired to `new LinuxPlatform()`.
-  The `OS/Windows/`, `OS/OSX/` and `Localization/IME/Windows/` code is present but never selected.
+- The base is the **Linux** build, which hard-wires `Platform.Current = new LinuxPlatform()`; Aether patches it to pick the platform at runtime (see [OS/AGENTS.md](OS/AGENTS.md)).
+  `WindowsPlatform`, `OS/Windows/WindowService` and `Localization/IME/Windows/` assume XNA's WinForms window and stay unused.
 
 ## Modules
 
@@ -25,7 +25,7 @@ Edits here become `patches/ReLogic/…` like any other `src/` edit.
 | [`Graphics/`](Graphics/AGENTS.md) | Text rendering | `DynamicSpriteFont` (all in-game fonts, via `Terraria/GameContent/FontAssets`) and its `.xnb` reader |
 | [`Peripherals/RGB/`](Peripherals/AGENTS.md) | Keyboard and mouse lighting | `ChromaEngine` (`Main.Chroma`), with Razer, Corsair, Logitech and SteelSeries device groups; the effects themselves are in `Terraria/GameContent/RGB/` |
 | [`OS/`](OS/AGENTS.md) | Platform services | `Platform.Get<T>()` / `Platform.IsLinux`; services `IPathService` (save path), `IClipboard`, `IWindowService`, `IImeService` |
-| [`Localization/IME/`](Localization/AGENTS.md) | Text input for non-Latin languages | `FnaIme` on Linux, registered by `LinuxPlatform` |
+| [`Localization/IME/`](Localization/AGENTS.md) | Text input for non-Latin languages | `FnaIme` on every OS (registered by `LinuxPlatform`, `OsxPlatform` and `FnaWindowsPlatform`) |
 | `Reflection/` | ID-name lookup | `IdDictionary` (`ItemID.Search` etc.: `GetName`, `GetId`, `TryGetName`) |
 | `Threading/` | Parallel loops | `FastParallel.For` (used by the lighting engine and snapshots) |
 | `Text/` | Text wrapping and metrics | `WrappedTextBuilder`, `TextUtilities` |

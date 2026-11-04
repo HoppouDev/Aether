@@ -1,0 +1,11 @@
+--- a/Terraria/FocusHelper.cs
++++ b/Terraria/FocusHelper.cs
+@@ -139,7 +139,7 @@
+         IsSelectedApplication = Main.instance.IsActive;
+         bool flag = !Main.SettingPlayWhenUnfocused;
+         wantsToPause = (!IsSelectedApplication && Main.netMode == 0) & flag;
+-        if (Platform.IsWindows)
++        if (Program.IsXna)
+         {
+             Form form = Control.FromHandle(Main.instance.Window.Handle);
+             bool flag2 = form.WindowState == FormWindowState.Minimized;

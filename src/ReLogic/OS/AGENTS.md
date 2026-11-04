@@ -4,7 +4,8 @@ A small service locator over the operating system.
 
 ## How it works
 
-- `Platform.Current` is the platform object; this Linux build hard-wires it to `new LinuxPlatform()`.
+- `Platform.Current` is the platform object.
+  The decompiled base hard-wires `new LinuxPlatform()` (Re-Logic builds one exe per OS); Aether's patch replaces that with `CreateForCurrentOS()`: `FnaWindowsPlatform` when `Environment.OSVersion` is Windows, `OsxPlatform` when `SDL_GetPlatform()` reports macOS, otherwise `LinuxPlatform` (also the fallback if SDL can't load).
   `Platform.IsLinux` / `IsWindows` / `IsOSX` read its `Type`.
 - Services are registered per platform (`RegisterService<T>`) and looked up by interface: `Platform.Get<T>()`, `Platform.Has<T>()`, `Platform.IfHas<T>(action)`.
   The implementations (`Linux/`, `Base/`, …) are `internal`; Terraria only ever sees the interfaces.
@@ -23,5 +24,6 @@ A small service locator over the operating system.
 
 ## Editing notes
 
-- Adding a service: define the interface here, implement it for Linux (and register it in `LinuxPlatform`), then use `Platform.Get<T>()` from Terraria.
-- `Windows/` and `OSX/` are present but never constructed in this build; changes there have no effect.
+- Adding a service: define the interface here, implement it, register it in `LinuxPlatform`, `OsxPlatform` and `FnaWindowsPlatform`, then use `Platform.Get<T>()` from Terraria.
+- `Windows/FnaWindowsPlatform` (Aether's) is Windows under FNA: the SDL-based Linux clipboard and window services, `FnaIme`, and the Windows `PathService` (Documents/My Games).
+  Re-Logic's `WindowsPlatform` (window-message hook, Imm32 IME, `WindowsMouseNotifier`) assumes XNA's WinForms window and is never constructed.

@@ -63,7 +63,7 @@ def setup(
     force: ForceOption = False,
 ) -> None:
     """Decompile the game into .base/ and lib/, install the git hooks, then build src/."""
-    require_executables("git", "dotnet", "diff", "patch")
+    require_executables("git", "dotnet", "gh", "diff", "patch")
     in_git = subprocess.run(
         ["git", "rev-parse", "--is-inside-work-tree"],
         check=False,

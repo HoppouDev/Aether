@@ -1,0 +1,101 @@
+--- a/Terraria/Main.cs
++++ b/Terraria/Main.cs
+@@ -3917,7 +3917,7 @@
+ 
+     private static void TrySupporting8K()
+     {
+-        if (!Platform.IsWindows)
++        if (!Program.IsXna)
+         {
+             return;
+         }
+@@ -4458,7 +4458,7 @@
+         }
+         PendingBorderlessState = screenBorderless;
+         screenBorderlessPendingResizes = (screenBorderless ? 6 : 0);
+-        if (Platform.IsWindows && !dedServ)
++        if (Program.IsXna && !dedServ)
+         {
+             Form form = Control.FromHandle(instance.Window.Handle);
+             if (screenBorderless)
+@@ -4856,7 +4856,7 @@
+                 {
+                     binaryReader.ReadBoolean();
+                 }
+-                if (num >= 91 && binaryReader.ReadBoolean() && !dedServ && Platform.IsWindows)
++                if (num >= 91 && binaryReader.ReadBoolean() && !dedServ && Program.IsXna)
+                 {
+                     Control.FromHandle(Window.Handle).WindowState = FormWindowState.Maximized;
+                 }
+@@ -6847,7 +6847,7 @@
+         NetworkInitializer.Load();
+         ChatInitializer.Load();
+         LucyAxeMessage.Initialize();
+-        if (Platform.IsWindows && !dedServ)
++        if (Program.IsXna && !dedServ)
+         {
+             IntPtr systemMenu = GetSystemMenu(Window.Handle, bRevert: false);
+             int menuItemCount = GetMenuItemCount(systemMenu);
+@@ -20271,7 +20271,7 @@
+                     text2 = PasteTextIn(allowMultiLine, text2);
+                 }
+             }
+-            if (!Platform.IsWindows && inputText.IsKeyDown(Microsoft.Xna.Framework.Input.Keys.Escape) && !oldInputText.IsKeyDown(Microsoft.Xna.Framework.Input.Keys.Escape))
++            if (!Program.IsXna && inputText.IsKeyDown(Microsoft.Xna.Framework.Input.Keys.Escape) && !oldInputText.IsKeyDown(Microsoft.Xna.Framework.Input.Keys.Escape))
+             {
+                 inputTextEscape = true;
+             }
+@@ -53417,7 +53417,7 @@
+     private static bool IsBorderlessDisplayAvailable()
+     {
+         bool result = false;
+-        if (Platform.IsWindows)
++        if (Program.IsXna)
+         {
+             result = true;
+         }
+@@ -67754,7 +67754,7 @@
+     {
+         bool flag = false;
+         Form form = null;
+-        if (Platform.IsWindows)
++        if (Program.IsXna)
+         {
+             form = Control.FromHandle(instance.Window.Handle);
+             screenMaximized = form.WindowState == FormWindowState.Maximized;
+@@ -67785,7 +67785,7 @@
+                     TryPickingDefaultUIScale(800f);
+                 }
+             }
+-            if (Platform.IsWindows)
++            if (Program.IsXna)
+             {
+                 form.MinimumSize = new Size(0, 0);
+                 if (!fullscreen && !flag3)
+@@ -67824,7 +67824,7 @@
+         else
+         {
+             PlayerInput.RawMouseScale = Vector2.One;
+-            if (Platform.IsWindows)
++            if (Program.IsXna)
+             {
+                 form.MinimumSize = new Size(minScreenW, minScreenH);
+                 if (flag)
+@@ -67839,7 +67839,7 @@
+             num4 = graphics.GraphicsDevice.Viewport.Height;
+             flag2 = graphics.PreferredBackBufferWidth != graphics.GraphicsDevice.Viewport.Width || graphics.PreferredBackBufferHeight != graphics.GraphicsDevice.Viewport.Height;
+         }
+-        if (Platform.IsWindows && !fullscreen && !flag2)
++        if (Program.IsXna && !fullscreen && !flag2)
+         {
+             if (form.ClientSize.Width < graphics.PreferredBackBufferWidth)
+             {
+@@ -67884,7 +67884,7 @@
+             PendingResolutionWidth = screenWidth;
+             PendingResolutionHeight = screenHeight;
+             PlayerInput.CacheOriginalScreenDimensions();
+-            if (Platform.IsWindows && !fullscreen)
++            if (Program.IsXna && !fullscreen)
+             {
+                 if (screenBorderless)
+                 {

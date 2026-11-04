@@ -10,6 +10,8 @@ LIB = REPO / "lib"  # DLLs extracted from Terraria.exe, plus FNA.dll
 PATCHES = REPO / "patches"
 STATE = REPO / ".aether"
 BASE_JSON = REPO / "tools" / "base.json"
+FNA_JSON = REPO / "tools" / "fna.json"
+FNA_CACHE = STATE / "fna"  # FNA source checkout and build, reused across setups
 STAMP = BASE / ".stamp"
 
 DEFAULT_GAME_DIR = (

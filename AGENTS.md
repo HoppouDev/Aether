@@ -14,7 +14,7 @@ Notes on the game's modules live in `AGENTS.md` files under `src/Terraria/`; rea
 ./aether status    # what you've changed vs the base, and whether patches/ is current
 ```
 
-`./aether` needs [uv](https://docs.astral.sh/uv/) (plus the .NET SDK, `diff` and `patch`); uv installs the CLI's Python dependencies from `uv.lock` on first run.
+`./aether` needs [uv](https://docs.astral.sh/uv/) (plus git, the .NET SDK, `diff`, `patch`, and the GitHub CLI `gh`, logged in, which `setup` uses to fetch FNA's native libraries); uv installs the CLI's Python dependencies from `uv.lock` on first run.
 
 - **Edit `src/` directly**: it's the game code (Terraria and Re-Logic's `ReLogic` library) with all of Aether's patches applied.
   It is gitignored (apart from the `AGENTS.md` docs); what gets committed is `patches/`, one unified diff per changed, added or deleted file (`patches/<path under src>.patch`).
@@ -46,24 +46,29 @@ dotnet build -c Debug
   Expect 0 errors and ~700 warnings (obsolete APIs, unused locals, unreachable code).
   These are normal for decompiled code, so don't "fix" them unless you're already editing that code.
 - The output is `bin/Debug/net40/Terraria.exe` only.
-  It runs on the Mono runtime bundled with the game, so it has to sit inside a copy of the game directory (FNA, native libs in `lib64/`, `Content/`, MonoKickstart launcher).
-  To test without touching the Steam install, symlink the game directory into a scratch folder, replace `Terraria.exe` there, and launch `./Terraria -savedirectory <scratch dir>` so the real saves in `~/.local/share/Terraria` are left alone.
+  It runs on the Mono runtime bundled with the game, so it has to sit inside a copy of the game directory (`Content/`, MonoKickstart launcher, Steam and file-dialog native libs), but with **Aether's FNA**: `lib/FNA.dll` + `lib/FNA.dll.config` and the natives in `lib/fnalibs/lib64/` replace the game's older FNA 26.3 and its `lib64/` SDL3/FNA3D/FAudio.
+  To test without touching the Steam install, build a scratch folder of symlinks to the game directory, but **copy** `Terraria`, `Terraria.bin.x86_64` and the `lib64/` entries you replace: the launcher finds `lib64/` relative to its real path, so a symlinked launcher loads the game's own natives.
+  Then add the built `Terraria.exe`, `lib/FNA.dll*` and `lib/fnalibs/lib64/*`, and launch `./Terraria -savedirectory <scratch dir>` so the real saves in `~/.local/share/Terraria` are left alone.
+  The startup log should report `FNA3D v26.11.0` and `FAudio v26.11.0`.
 - The client exe has no headless mode: `Main.dedServ` is only set in the separate server build, so any runtime test opens a game window.
 
 ## Layout
 
 | Path | Committed? | What it is |
 | --- | --- | --- |
-| `aether`, `pyproject.toml`, `uv.lock`, `tools/` | yes | Patch workflow CLI: a uv project (typer) whose package is `tools/aether/` (`cli.py` commands, `decompile.py` recipe, `patches.py` diff/apply, `guard.py` commit guard, `tree.py`, `pinning.py`, `paths.py`, `util.py`); `./aether` runs it with `uv run`. Plus the pinned base (`tools/base.json`). |
+| `aether`, `pyproject.toml`, `uv.lock`, `tools/` | yes | Patch workflow CLI: a uv project (typer) whose package is `tools/aether/` (`cli.py` commands, `decompile.py` recipe, `fna.py` FNA build and natives, `patches.py` diff/apply, `guard.py` commit guard, `tree.py`, `pinning.py`, `paths.py`, `util.py`); `./aether` runs it with `uv run`. Plus the pinned base (`tools/base.json`) and FNA (`tools/fna.json`). |
 | `patches/` | yes | Aether itself: the client's changes to the game, as unified diffs mirroring `src/`. |
 | `prek.toml`, `rumdl.toml`, `cog.toml` | yes | Git hooks (patch guard, basic checks, rumdl, conventional-pre-commit, cocogitto) and their configs. |
 | `Terraria.csproj`, `ReLogic/ReLogic.csproj`, `dotnet-tools.json` | yes | Project files (`Terraria.csproj` compiles `src/**/*.cs` except `src/ReLogic/`, references `lib/` and the ReLogic project, embeds `src/Resources/*`; `ReLogic.csproj` builds `ReLogic.dll` from `src/ReLogic/`) and the pinned ilspycmd. |
 | `src/` | only `AGENTS.md` | Editable tree: `Terraria/` (game code, one folder per namespace), `ReLogic/` (Re-Logic's framework: assets, fonts, RGB, OS layer), `BCrypt/`, `nativefiledialog.cs`, `Properties/` (bundled third-party source, assembly attributes) and `Resources/` (embedded data files, each named after its exact manifest resource name). |
 | `.base/` | no | Pristine decompile, same shape as `src/`. |
-| `lib/` | no | Third-party DLLs extracted from `Terraria.exe`'s embedded resources, plus `FNA.dll` from the game folder (`lib/ReLogic.dll` is only used to decompile; the build uses the one compiled from `src/ReLogic/`). |
+| `lib/` | no | Third-party DLLs extracted from `Terraria.exe`'s embedded resources (`lib/ReLogic.dll` is only used to decompile; the build uses the one compiled from `src/ReLogic/`), `FNA.dll` + `FNA.dll.config` built from the pinned FNA commit, and `fnalibs/` (FNA's native libraries for every platform, hash-checked). |
 
 ## Dependencies and embedded resources
 
+- **FNA** is pinned to one release in `tools/fna.json` (26.11): `setup` builds `FNA.NetFramework.csproj` from that commit (cached in `.aether/fna/`) and downloads the matching native libraries from FNA's `fnalibs-dailies` CI build, verifying every file's hash.
+  The game's own FNA (26.3) is only used to decompile, so `.base/` doesn't depend on the FNA version.
+  CI artifacts expire after 90 days; the pinned run (from 2026-11-03) expires around 2027-02-01, so re-pin before then or mirror the libraries.
 - At startup, `LinuxLaunch.Main` resolves missing assemblies from the exe's own manifest resources (by suffix `<AssemblyName>.dll`).
   So the `lib/` DLLs are referenced with `Private=False` (not copied to the output) and embedded under their original names (`Terraria.Libraries.ReLogic.ReLogic.dll`, etc.).
   ReLogic is the exception: it's built from `src/ReLogic/` by `ReLogic/ReLogic.csproj`, and `Terraria.csproj`'s `EmbedReLogic` target embeds that build under the same name.
@@ -81,6 +86,8 @@ dotnet build -c Debug
   Keep that style when editing nearby code.
 - The core files are enormous (`NPC.cs` ~97k lines, `WorldGen.cs` ~88k, `Projectile.cs` ~81k, `Main.cs` ~68k, `Player.cs` ~58k, `Item.cs` ~50k).
   Find things with `grep -n` and read ranges with offsets; never read these files whole.
+- **One build for every OS:** Aether's patch to `src/ReLogic/OS/Platform.cs` picks the platform at runtime (`FnaWindowsPlatform`, `OsxPlatform` or `LinuxPlatform`) where Re-Logic's builds hard-wire it.
+  For new code, test `Platform.IsWindows` / `IsOSX` / `IsLinux` only for OS behaviour (Win32 calls, paths), and `Program.IsXna` for anything tied to XNA's WinForms window (`Control.FromHandle`, `Form`): the client always runs on FNA, so those branches must stay off on Windows too.
 - To turn a raw number into a name, look it up in `src/Terraria/ID/` (e.g. `ItemID.cs`; `ItemID.Search.GetName(id)` at runtime).
 - When the game updates (or the recipe changes): pin the new exe hash and version in `tools/base.json`, run `./aether setup`, fix any `.rej` files, and run `./aether diff`.
   `setup` checks for unsaved `src/` edits against the old base before rebuilding it; `setup --base-only` followed by `apply` would see an untouched `src/` as edited and refuse.

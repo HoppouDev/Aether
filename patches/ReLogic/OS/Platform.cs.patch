@@ -1,0 +1,39 @@
+--- a/ReLogic/OS/Platform.cs
++++ b/ReLogic/OS/Platform.cs
+@@ -1,12 +1,35 @@
+ using System;
+ using ReLogic.OS.Linux;
++using ReLogic.OS.OSX;
++using ReLogic.OS.Windows;
+ using ReLogic.Utilities;
++using SDL3;
+ 
+ namespace ReLogic.OS;
+ 
+ public abstract class Platform : IDisposable
+ {
+-    public static readonly Platform Current = new LinuxPlatform();
++    public static readonly Platform Current = CreateForCurrentOS();
++
++    // Aether: Re-Logic picks the platform per OS build; Aether's single FNA build picks it at runtime.
++    private static Platform CreateForCurrentOS()
++    {
++        if (Environment.OSVersion.Platform == PlatformID.Win32NT)
++        {
++            return new FnaWindowsPlatform();
++        }
++        try
++        {
++            if (SDL.SDL_GetPlatform() == "macOS")
++            {
++                return new OsxPlatform();
++            }
++        }
++        catch (DllNotFoundException)
++        {
++        }
++        return new LinuxPlatform();
++    }
+ 
+     public readonly PlatformType Type;
+ 

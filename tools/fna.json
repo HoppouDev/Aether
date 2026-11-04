@@ -1,0 +1,29 @@
+{
+  "version": "26.11",
+  "commit": "6f9735ad5b495b36581b1387824fa57f371937a2",
+  "fnalibs": {
+    "repo": "FNA-XNA/fnalibs-dailies",
+    "run_id": 41706379185,
+    "artifact": "fnalibs",
+    "files": {
+      "D3D12/D3D12Core.dll": "021b47ff5a0c33f03d84c51b1ce730c717798d3190658a27da92c637a1fe93b5",
+      "README.txt": "7508124fd16e26f1c2d3596fafeeb22326aa4dbcd344e0aff647e1b78aa92751",
+      "lib64/libFAudio.so.0": "d713dfbc7b8c0fb835e9bff380cb01afff7746bec3ed9f6e2dbf68f4c7832b66",
+      "lib64/libFNA3D.so.0": "1c46f72f02869066ab97809e424ebfaf7273a1561ad1f647e113931c7c8776aa",
+      "lib64/libSDL3.so.0": "ff1e6a3ef72c458cd22227e847fc3f5f6f3d69c5c9c6b8c9280c5ad1f0f991c7",
+      "lib64/libtheorafile.so": "c7b16205cfe70f428487ae6548dceedf59288a68130939c89b4a1141a14319fb",
+      "libaarch64/libFAudio.so.0": "a490ed06f56c2d56ef27119f11ad352d775eff5fd533f7879a97e7302c7e6f38",
+      "libaarch64/libFNA3D.so.0": "44084956c7c8d4cd67cb44ee15304146b26a811c7fb24923b9ad685a005f9f45",
+      "libaarch64/libSDL3.so.0": "63a4e27620f8f37869af0ea631bb4382373f2dff5085dbd798eb16769f76698a",
+      "libaarch64/libtheorafile.so": "c7cda9d27e99a0c626c074d131c2b000dac5cecdd368f65052140ed609822e6e",
+      "x64/FAudio.dll": "7037c31dbfbeab740052c14f5a1369cc76f706a03d7fef7dfe4cb0cb9822d517",
+      "x64/FNA3D.dll": "57983dba70d57cff3077e8dc277bb9cc4525f46b11090ff4dcff4ac49714be33",
+      "x64/SDL3.dll": "8d23dce32a16e3f7c655ce3636e807f8cef781c74079d1c0a1a0597f967b9eec",
+      "x64/libtheorafile.dll": "d19e2bde1464333ca3dfe70ee224218a212c8acba6ea0be8a1ab08977dd56385",
+      "x86/FAudio.dll": "94b41c478b964c57f3c0007cf8d8e190e3663b8155c77c6f348b56d351257f5b",
+      "x86/FNA3D.dll": "fddb3f8fd9829c9abd8dd0f587b5fbc7ced8fe98e1a5f28eaeb63c2ad8ff1445",
+      "x86/SDL3.dll": "83d41400e57cb4835f14f8e7534655c239d483b9771ca7dd3c04ec71a3ec6cfb",
+      "x86/libtheorafile.dll": "cc7b31b47e0759c3469bd64bead6db2acce8b1e4e92c09d5b1ea9bfe2ed5602a"
+    }
+  }
+}

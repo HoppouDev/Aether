@@ -1,0 +1,12 @@
+--- a/Terraria/Program.cs
++++ b/Terraria/Program.cs
+@@ -240,7 +240,8 @@
+     private static void LogFNANativeLibVersions()
+     {
+         Console.WriteLine(("SDL v" + SDL.SDL_GetVersion() + "." + SDL.SDL_GetRevision()) ?? "");
+-        uint num = FNA3D.FNA3D_LinkedVersion();
++        // Aether: FNA 26.11 made its FNA3D bindings internal, so call them through FNA itself.
++        uint num = (uint)typeof(GraphicsDevice).Assembly.GetType("Microsoft.Xna.Framework.Graphics.FNA3D", throwOnError: true).GetMethod("FNA3D_LinkedVersion").Invoke(null, null);
+         Console.WriteLine(("FNA3D v" + num / 10000 + "." + num / 100 % 100 + "." + num % 100) ?? "");
+         uint num2 = FAudio.FAudioLinkedVersion();
+         Console.WriteLine(("FAudio v" + num2 / 10000 + "." + num2 / 100 % 100 + "." + num2 % 100) ?? "");
