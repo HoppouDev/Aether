@@ -23,7 +23,7 @@ Notes on the game's modules live in `AGENTS.md` files under `src/Terraria/`; rea
   Never edit `.base/`; it's the reference all patches are made against.
 - The **pre-commit hook** (prek, installed by `setup`; hooks in `prek.toml`) first runs `aether pre-commit`, which runs `./aether diff`, stages `patches/`, then refuses the commit if anything under `src/` (except `AGENTS.md`), `.base/` or `lib/` is staged, if a binary or game-asset type (`.dll`, `.exe`, `.xnb`, …) is staged, or if a staged `.cs`/`.json`/`.tsv` file is a verbatim copy of a decompiled file.
   Never `git add -f` inside `src/`, and don't bypass the hook with `--no-verify`.
-  Commit messages must follow Conventional Commits (checked by cocogitto, `cog`, which must be installed).
+  Commit messages must follow Conventional Commits (checked by conventional-pre-commit and by cocogitto, `cog`, which must be installed).
 - Because the hook regenerates patches from **all** of `src/`, every commit includes every current source edit.
   To commit only part of your work, stash the rest out of `src/` first.
 - `apply` refuses to overwrite `src/` edits that aren't captured in `patches/` (run `diff` first, or `apply --force` to discard them).
@@ -56,7 +56,7 @@ dotnet build -c Debug
 | --- | --- | --- |
 | `aether`, `pyproject.toml`, `uv.lock`, `tools/` | yes | Patch workflow CLI: a uv project (typer) whose package is `tools/aether/` (`cli.py` commands, `decompile.py` recipe, `patches.py` diff/apply, `guard.py` commit guard, `tree.py`, `pinning.py`, `paths.py`, `util.py`); `./aether` runs it with `uv run`. Plus the pinned base (`tools/base.json`). |
 | `patches/` | yes | Aether itself: the client's changes to the game, as unified diffs mirroring `src/`. |
-| `prek.toml`, `rumdl.toml`, `cog.toml` | yes | Git hooks (patch guard, basic checks, rumdl, cocogitto) and their configs. |
+| `prek.toml`, `rumdl.toml`, `cog.toml` | yes | Git hooks (patch guard, basic checks, rumdl, conventional-pre-commit, cocogitto) and their configs. |
 | `Terraria.csproj`, `dotnet-tools.json` | yes | Project file (compiles `src/**/*.cs`, references `lib/`, embeds `src/Resources/*`) and the pinned ilspycmd. |
 | `src/` | only `AGENTS.md` | Editable tree: `Terraria/` (game code, one folder per namespace), `BCrypt/`, `nativefiledialog.cs`, `Properties/` (bundled third-party source, assembly attributes) and `Resources/` (embedded data files, each named after its exact manifest resource name). |
 | `.base/` | no | Pristine decompile, same shape as `src/`. |
