@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/Aether/UI/Game/InGamePreview.cs
-@@ -0,0 +1,287 @@
+@@ -0,0 +1,318 @@
 +using System;
 +using Microsoft.Xna.Framework.Input;
 +using Terraria;
@@ -25,7 +25,8 @@
 +/// <item>N brings the nearest town NPC over and talks to it, and H does that and opens the stylist's hair window;</item>
 +/// <item>K adds banner kills (a claimable slime and zombie banner);</item>
 +/// <item>O places a dresser beside the player (in the world: use a test world) and opens its clothes window;</item>
-+/// <item>V cycles the life and mana style, and J sets 333/500 life (with life fruit) and 77/200 mana.</item>
++/// <item>V cycles the life and mana style, and J sets 333/500 life (with life fruit) and 77/200 mana;</item>
++/// <item>X kills the player, and E shows invasion progress (in turn: partway, a wave, cleared).</item>
 +/// </list>
 +/// </summary>
 +public static class InGamePreview
@@ -45,6 +46,12 @@
 +    private static bool _styleKeyWasDown;
 +
 +    private static bool _statsKeyWasDown;
++
++    private static bool _deathKeyWasDown;
++
++    private static bool _invasionKeyWasDown;
++
++    private static int _invasionReports;
 +
 +    private static bool _buffKeyWasDown;
 +
@@ -164,6 +171,30 @@
 +            Main.LocalPlayer.statMana = 77;
 +        }
 +        _statsKeyWasDown = statsKey;
++        bool deathKey = chord && Main.keyState.IsKeyDown(Keys.X);
++        if (deathKey && !_deathKeyWasDown && !Main.LocalPlayer.dead)
++        {
++            Main.LocalPlayer.KillMe(PlayerDeathReason.ByCustomReason("Aether test"), 9999.0, 0);
++        }
++        _deathKeyWasDown = deathKey;
++        bool invasionKey = chord && Main.keyState.IsKeyDown(Keys.E);
++        if (invasionKey && !_invasionKeyWasDown)
++        {
++            // Only the progress display: a third of the way, then wave 3 of a wave event, then cleared.
++            switch (_invasionReports++ % 3)
++            {
++            case 0:
++                Main.ReportInvasionProgress(30, 90, 1, 0);
++                break;
++            case 1:
++                Main.ReportInvasionProgress(120, 200, 5, 3);
++                break;
++            default:
++                Main.ReportInvasionProgress(90, 90, 1, 0);
++                break;
++            }
++        }
++        _invasionKeyWasDown = invasionKey;
 +        bool buffKey = chord && Main.keyState.IsKeyDown(Keys.U);
 +        if (buffKey && !_buffKeyWasDown)
 +        {

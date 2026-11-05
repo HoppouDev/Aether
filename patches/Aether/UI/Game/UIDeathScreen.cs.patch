@@ -1,0 +1,197 @@
+--- /dev/null
++++ b/Aether/UI/Game/UIDeathScreen.cs
+@@ -0,0 +1,194 @@
++using Microsoft.Xna.Framework;
++using Microsoft.Xna.Framework.Graphics;
++using ReLogic.Graphics;
++using Terraria;
++using Terraria.GameContent;
++using Terraria.GameContent.UI.Chat;
++using Terraria.GameInput;
++using Terraria.Localization;
++using Terraria.UI;
++using Terraria.UI.Chat;
++
++namespace Aether.UI.Game;
++
++/// <summary>A line of text drawn with SpriteBatch.DrawString at a position, scale and colour set by its screen.</summary>
++public class UIPlacedText : UIElement
++{
++    public DynamicSpriteFont Font;
++
++    public string Text;
++
++    public Vector2 Position;
++
++    public Color Color;
++
++    public float Scale = 1f;
++
++    public UIPlacedText()
++    {
++        IgnoresMouseInteraction = true;
++    }
++
++    protected override void DrawSelf(SpriteBatch spriteBatch)
++    {
++        if (Text != null)
++        {
++            spriteBatch.DrawString(Font, Text, Position, Color, 0f, default(Vector2), Scale, SpriteEffects.None, 0f);
++        }
++    }
++}
++
++/// <summary>
++/// The respawn skip prompt ("Press [jump] to respawn", with the button's glyph), which fades in and
++/// shrinks into place once the timer can be skipped.
++/// </summary>
++public class UIRespawnSkipPrompt : UIElement
++{
++    public bool Shown;
++
++    public float TextTop;
++
++    public float Fade;
++
++    public float Grow;
++
++    public UIRespawnSkipPrompt()
++    {
++        IgnoresMouseInteraction = true;
++    }
++
++    protected override void DrawSelf(SpriteBatch spriteBatch)
++    {
++        if (!Shown)
++        {
++            return;
++        }
++        const float scaleBase = 0.7f;
++        Color color = Main.LocalPlayer.GetDeathAlpha(Color.Transparent) * Fade;
++        TextSnippet[] snippets = ChatManager.ParseMessage(Language.GetTextValue("Game.RespawnSkip"), color).ToArray();
++        foreach (TextSnippet snippet in snippets)
++        {
++            snippet.UseRawColor = true;
++        }
++        float glyphScale = 1.75f;
++        Utils.Swap(ref GlyphTagHandler.GlyphsScale, ref glyphScale);
++        Vector2 size = ChatManager.GetStringSize(FontAssets.DeathText.Value, snippets, Vector2.One);
++        float scale = (1f + Grow) * scaleBase;
++        GlyphTagHandler.GlyphsOffset = new Vector2(0f, 6f * scale);
++        ChatManager.DrawColorCodedString(spriteBatch, FontAssets.DeathText.Value, snippets, new Vector2((float)(Main.screenWidth / 2) - size.X * 0.5f * scale, (float)(Main.screenHeight / 2) + TextTop + size.Y * 0.5f * scaleBase), 0f, Vector2.Zero, new Vector2(scale, scale), out var _);
++        Utils.Swap(ref GlyphTagHandler.GlyphsScale, ref glyphScale);
++        GlyphTagHandler.GlyphsOffset = Vector2.Zero;
++    }
++}
++
++/// <summary>
++/// What's shown while the player is dead (Main.DrawInterface_35_YouDied): "You were slain", the coins
++/// dropped, the respawn skip prompt (jump skips the timer when allowed) and the respawn countdown, all
++/// centred and fading with the death alpha; spectating shows only the prompt and countdown.
++/// </summary>
++public class UIDeathScreen : UIGameScreen
++{
++    public static readonly UIDeathScreen Instance = new UIDeathScreen();
++
++    private UIPlacedText _title;
++
++    private UIPlacedText _coins;
++
++    private UIRespawnSkipPrompt _skip;
++
++    private UIPlacedText _countdown;
++
++    public override void OnInitialize()
++    {
++        _title = new UIPlacedText();
++        _coins = new UIPlacedText();
++        _skip = new UIRespawnSkipPrompt();
++        _countdown = new UIPlacedText();
++        Append(_title);
++        Append(_coins);
++        Append(_skip);
++        Append(_countdown);
++    }
++
++    /// <summary>Called by Main.DrawInterface_35_YouDied in place of its body; false: run that.</summary>
++    public static bool Draw()
++    {
++        if (!UIInventorySlots.Enabled)
++        {
++            return false;
++        }
++        if (Main.LocalPlayer.dead)
++        {
++            GameScreens.Draw(Instance, Main.spriteBatch);
++            if (PlayerInput.SettingsForUI.ShowGamepadHints)
++            {
++                Main.DrawGamepadInstructions();
++            }
++        }
++        return true;
++    }
++
++    public override void UpdateState()
++    {
++        Player player = Main.LocalPlayer;
++        Color color = player.GetDeathAlpha(Color.Transparent);
++        float y = -60f;
++        _title.Text = null;
++        _coins.Text = null;
++        _countdown.Text = null;
++        if (player.spectating < 0)
++        {
++            Place(_title, FontAssets.DeathText.Value, Lang.inter[38].Value, y, color, 1f);
++            if (player.lostCoins > 0)
++            {
++                y += 50f;
++                Place(_coins, FontAssets.MouseText.Value, Language.GetTextValue("Game.DroppedCoins", player.lostCoinString), y, color, 1f);
++                y -= 26f;
++            }
++        }
++        else
++        {
++            y += 24f;
++        }
++        bool skipPressed = Utils.JustBecameTrue(PlayerInput.Triggers.Current.Jump, ref Main._respawnSkipButtonClickable);
++        _skip.Shown = false;
++        if (player.AllowsRespawnTimerSkip())
++        {
++            Main._framesWithRespawnSkipAvailable++;
++            float fade = Utils.Remap(Main._framesWithRespawnSkipAvailable, 0f, 60f, 0f, 1f);
++            float grow = Utils.Remap(Main._framesWithRespawnSkipAvailable, 0f, 30f, 0.5f, 0f);
++            grow *= grow;
++            y += Utils.Remap(fade, 0f, 1f, 70f, 20f) * fade;
++            _skip.Shown = true;
++            _skip.TextTop = y;
++            _skip.Fade = fade;
++            _skip.Grow = grow;
++            if (skipPressed)
++            {
++                player.releaseJump = false;
++                player.SkipRespawnTime();
++            }
++        }
++        else
++        {
++            Main._framesWithRespawnSkipAvailable = 0;
++        }
++        if (player.respawnTimer > 1)
++        {
++            y += 70f;
++            string text = Language.GetTextValue("Game.RespawnInSuffix", ((float)(int)(1f + (float)player.respawnTimer / 60f)).ToString());
++            Place(_countdown, FontAssets.DeathText.Value, text, y, color, 0.7f);
++        }
++    }
++
++    /// <summary>Centres a line horizontally, y below the middle of the screen.</summary>
++    private static void Place(UIPlacedText line, DynamicSpriteFont font, string text, float y, Color color, float scale)
++    {
++        line.Font = font;
++        line.Text = text;
++        line.Color = color;
++        line.Scale = scale;
++        float width = font.MeasureString(text).X;
++        line.Position = new Vector2((float)(Main.screenWidth / 2) - width * scale / 2f, (float)(Main.screenHeight / 2) + y);
++    }
++}
