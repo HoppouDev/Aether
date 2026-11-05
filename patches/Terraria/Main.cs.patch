@@ -63,6 +63,15 @@
                  {
                      Control.FromHandle(Window.Handle).WindowState = FormWindowState.Maximized;
                  }
+@@ -4934,7 +4934,7 @@
+         }
+     }
+ 
+-    private static void ErasePlayer(int i)
++    internal static void ErasePlayer(int i)
+     {
+         try
+         {
 @@ -4958,7 +4958,7 @@
          }
      }

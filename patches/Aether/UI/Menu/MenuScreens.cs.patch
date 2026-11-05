@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/Aether/UI/Menu/MenuScreens.cs
-@@ -0,0 +1,171 @@
+@@ -0,0 +1,176 @@
 +using System;
 +using System.Collections.Generic;
 +using Microsoft.Xna.Framework;
@@ -40,6 +40,11 @@
 +        [31] = () => new UIServerPasswordMenu(hosting: false),
 +        [30] = () => new UIServerPasswordMenu(hosting: true),
 +        [9] = () => new UIDeleteWorldMenu(),
++        [1] = () => new UIRedirectMenu(Main.OpenCharacterSelectUI, "the character list (UICharacterSelect)"),
++        [6] = () => new UIRedirectMenu(Main.OpenWorldSelectUI, "the world list (UIWorldSelect)"),
++        [5] = () => new UIDeletePlayerMenu(),
++        [40] = () => new UIDiscardCharacterMenu(),
++        [3000] = () => new UICreditsMenu(),
 +        [889] = () => new UIHostSettingsMenu(),
 +        [MenuPreview.GalleryMode] = () => new UIScreenGallery(),
 +        [112] = () => new UIGeneralSettings(),

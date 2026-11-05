@@ -14,7 +14,7 @@
 +
 +    private const float ColumnWidth = 260f;
 +
-+    private const float RowSpacing = 26f;
++    private const float RowSpacing = 22f;
 +
 +    private const float GridTop = 230f;
 +
@@ -40,7 +40,7 @@
 +                MenuPreview.Open(mode);
 +            })
 +            {
-+                TextScale = 0.45f,
++                TextScale = 0.42f,
 +                HAlign = 0.5f
 +            };
 +            item.Left.Set((column - (Columns - 1) / 2f) * ColumnWidth, 0f);
