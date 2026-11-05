@@ -1,0 +1,121 @@
+--- /dev/null
++++ b/Aether/UI/Game/UIChestSlots.cs
+@@ -0,0 +1,118 @@
++using System;
++using Microsoft.Xna.Framework;
++using Terraria;
++using Terraria.GameInput;
++using Terraria.UI;
++
++namespace Aether.UI.Game;
++
++/// <summary>
++/// The open chest's (or piggy bank's, safe's, ...) 10×4 slot grid (ChestUI.DrawSlots), scrolled by
++/// ChestUI.StartingRowForDrawing for containers with more than 40 slots.
++/// </summary>
++public class UIChestSlots : UIGameScreen
++{
++    public static readonly UIChestSlots Instance = new UIChestSlots();
++
++    private const int Columns = 10;
++
++    private const int Rows = 4;
++
++    private const float Scale = 0.755f;
++
++    private readonly UIGameItemSlot[] _slots = new UIGameItemSlot[Columns * Rows];
++
++    private Chest _chest;
++
++    private int _context;
++
++    private int _invBottom = -1;
++
++    /// <summary>Called by ChestUI.DrawSlots in place of its body; false: draw the legacy slots.</summary>
++    public static bool Draw()
++    {
++        InGamePreview.Update();
++        if (!UIInventorySlots.Enabled)
++        {
++            return false;
++        }
++        GameScreens.Draw(Instance, Main.spriteBatch);
++        return true;
++    }
++
++    public override void OnInitialize()
++    {
++        for (int i = 0; i < Columns; i++)
++        {
++            for (int j = 0; j < Rows; j++)
++            {
++                UIGameItemSlot slot = new UIGameItemSlot(() => _chest.item, 0, 0);
++                slot.IsShown = () => slot.Slot < _chest.item.Length;
++                _slots[i + j * Columns] = slot;
++                Append(slot);
++            }
++        }
++    }
++
++    private void Resolve(Player player)
++    {
++        switch (player.chest)
++        {
++        case -2:
++            _context = 4;
++            _chest = player.bank;
++            break;
++        case -3:
++            _context = 4;
++            _chest = player.bank2;
++            break;
++        case -4:
++            _context = 4;
++            _chest = player.bank3;
++            break;
++        case -5:
++            _context = 32;
++            _chest = player.bank4;
++            break;
++        default:
++            _context = 3;
++            _chest = Main.chest[player.chest];
++            break;
++        }
++    }
++
++    public override void UpdateState()
++    {
++        Player player = Main.LocalPlayer;
++        Resolve(player);
++        Main.inventoryScale = Scale;
++        int invBottom = Main.instance.invBottom;
++        Rectangle area = (ChestUI.LastChestDisplayRectangle = new Rectangle(73, invBottom, (int)((float)(Columns * 56) * Scale), (int)((float)(Rows * 56) * Scale)));
++        if (area.Contains(Main.mouseX, Main.mouseY) && !PlayerInput.IgnoreMouseInterface)
++        {
++            player.mouseInterface = true;
++        }
++        int highestRow = (int)Math.Max(0.0, Math.Ceiling((float)_chest.maxItems / (float)Columns) - 4.0);
++        ChestUI.StartingRowForDrawing = Utils.Clamp(ChestUI.StartingRowForDrawing, 0, highestRow);
++        ChestUI.LastHighestChestRow = highestRow;
++        ItemSlot.PrepareForChest(_chest);
++        for (int i = 0; i < Columns; i++)
++        {
++            for (int j = 0; j < Rows; j++)
++            {
++                UIGameItemSlot slot = _slots[i + j * Columns];
++                slot.Slot = i + j * Columns + ChestUI.StartingRowForDrawing * Columns;
++                slot.Context = _context;
++                if (invBottom != _invBottom)
++                {
++                    slot.Place(new Vector2((int)(73f + (float)(i * 56) * Scale), (int)((float)invBottom + (float)(j * 56) * Scale)), Scale);
++                }
++            }
++        }
++        if (invBottom != _invBottom)
++        {
++            _invBottom = invBottom;
++            Recalculate();
++        }
++    }
++}

@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/Aether/UI/Game/UIInventorySlots.cs
-@@ -0,0 +1,142 @@
+@@ -0,0 +1,143 @@
 +using Microsoft.Xna.Framework;
 +using Terraria;
 +using Terraria.GameInput;
@@ -42,6 +42,7 @@
 +
 +    private static bool Draw(UIGameScreen screen)
 +    {
++        InGamePreview.Update();
 +        if (!Enabled)
 +        {
 +            return false;

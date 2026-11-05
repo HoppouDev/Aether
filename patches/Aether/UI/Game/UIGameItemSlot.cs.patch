@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/Aether/UI/Game/UIGameItemSlot.cs
-@@ -0,0 +1,95 @@
+@@ -0,0 +1,119 @@
 +using System;
 +using Microsoft.Xna.Framework;
 +using Microsoft.Xna.Framework.Graphics;
@@ -21,9 +21,14 @@
 +{
 +    private readonly Func<Item[]> _items;
 +
-+    private readonly int _slot;
++    /// <summary>The slot's index in its array (a scrolled chest changes it).</summary>
++    public int Slot;
 +
-+    private readonly int _context;
++    /// <summary>The ItemSlot context (what kind of slot this is: inventory, chest, bank, armour, ...).</summary>
++    public int Context;
++
++    /// <summary>When set and false, the slot isn't there (no hit test, nothing drawn).</summary>
++    public Func<bool> IsShown;
 +
 +    private readonly Func<Item> _getItem;
 +
@@ -36,12 +41,18 @@
 +    /// <summary>Runs just before Handle (e.g. to clear stale per-slot flags); returns allowInteract.</summary>
 +    public Func<bool> BeforeHandle;
 +
++    /// <summary>Runs before drawing (e.g. Main.inventoryBack for a locked slot's dimmed background).</summary>
++    public Action BeforeDraw;
++
++    /// <summary>Hit-test like Rectangle.Contains (right and bottom edges excluded), as some legacy loops do.</summary>
++    public bool ExcludeFarEdges;
++
 +    /// <summary>A slot of an item array (Player.inventory, a chest, ...).</summary>
 +    public UIGameItemSlot(Func<Item[]> items, int slot, int context)
 +    {
 +        _items = items;
-+        _slot = slot;
-+        _context = context;
++        Slot = slot;
++        Context = context;
 +    }
 +
 +    /// <summary>A single item field (Player.trashItem, ...).</summary>
@@ -49,7 +60,7 @@
 +    {
 +        _getItem = getItem;
 +        _setItem = setItem;
-+        _context = context;
++        Context = context;
 +    }
 +
 +    /// <summary>Puts the slot's top-left corner at topLeft (relative to its parent), at scale.</summary>
@@ -65,7 +76,15 @@
 +    // The legacy hit test includes the slot's right and bottom edges.
 +    public override bool ContainsPoint(Vector2 point)
 +    {
++        if (IsShown != null && !IsShown())
++        {
++            return false;
++        }
 +        CalculatedStyle dimensions = GetDimensions();
++        if (ExcludeFarEdges)
++        {
++            return new Rectangle((int)dimensions.X, (int)dimensions.Y, (int)dimensions.Width, (int)dimensions.Height).Contains(point.ToPoint());
++        }
 +        if (point.X >= dimensions.X && point.X <= dimensions.X + dimensions.Width && point.Y >= dimensions.Y)
 +        {
 +            return point.Y <= dimensions.Y + dimensions.Height;
@@ -75,9 +94,13 @@
 +
 +    protected override void DrawSelf(SpriteBatch spriteBatch)
 +    {
++        if (IsShown != null && !IsShown())
++        {
++            return;
++        }
 +        Main.inventoryScale = _scale;
 +        Item[] items = _items?.Invoke() ?? _single;
-+        int slot = (_items != null) ? _slot : 0;
++        int slot = (_items != null) ? Slot : 0;
 +        if (_getItem != null)
 +        {
 +            _single[0] = _getItem();
@@ -86,10 +109,11 @@
 +        {
 +            Main.player[Main.myPlayer].mouseInterface = true;
 +            bool allowInteract = BeforeHandle == null || BeforeHandle();
-+            ItemSlot.Handle(items, _context, slot, allowInteract);
++            ItemSlot.Handle(items, Context, slot, allowInteract);
 +        }
++        BeforeDraw?.Invoke();
 +        CalculatedStyle dimensions = GetDimensions();
-+        ItemSlot.Draw(spriteBatch, items, _context, slot, new Vector2(dimensions.X, dimensions.Y));
++        ItemSlot.Draw(spriteBatch, items, Context, slot, new Vector2(dimensions.X, dimensions.Y));
 +        if (_setItem != null)
 +        {
 +            _setItem(_single[0]);

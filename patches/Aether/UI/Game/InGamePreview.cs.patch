@@ -1,0 +1,59 @@
+--- /dev/null
++++ b/Aether/UI/Game/InGamePreview.cs
+@@ -0,0 +1,56 @@
++using System;
++using Microsoft.Xna.Framework.Input;
++using Terraria;
++using Terraria.Audio;
++
++namespace Aether.UI.Game;
++
++/// <summary>
++/// Test controls for the migrated in-game UI, only when the game was started with
++/// <c>-aetherscreens</c> (`./aether screens`): Ctrl+Shift+L switches every migrated piece between its
++/// retained and legacy versions (for comparing them), Ctrl+Shift+B opens the player's piggy bank (a
++/// container to test with, wherever you are).
++/// </summary>
++public static class InGamePreview
++{
++    private static TimeSpan _lastFrame = TimeSpan.MinValue;
++
++    private static bool _legacyKeyWasDown;
++
++    private static bool _bankKeyWasDown;
++
++    public static bool IsEnabled => Program.LaunchParameters.ContainsKey("-aetherscreens");
++
++    /// <summary>Called by the migrated pieces' draw hooks (whether or not they're showing legacy).</summary>
++    public static void Update()
++    {
++        TimeSpan frame = Main._drawInterfaceGameTime.TotalGameTime;
++        if (frame == _lastFrame || !IsEnabled)
++        {
++            return;
++        }
++        _lastFrame = frame;
++        bool chord = (Main.keyState.IsKeyDown(Keys.LeftControl) || Main.keyState.IsKeyDown(Keys.RightControl)) && (Main.keyState.IsKeyDown(Keys.LeftShift) || Main.keyState.IsKeyDown(Keys.RightShift));
++        bool legacyKey = chord && Main.keyState.IsKeyDown(Keys.L);
++        bool bankKey = chord && Main.keyState.IsKeyDown(Keys.B);
++        if (legacyKey && !_legacyKeyWasDown)
++        {
++            UIInventorySlots.Enabled = !UIInventorySlots.Enabled;
++            UIIngameOptions.ShowLegacy = !UIInventorySlots.Enabled;
++            SoundEngine.PlaySound(12);
++            Main.NewText("Aether: " + (UIInventorySlots.Enabled ? "retained" : "legacy") + " in-game UI");
++        }
++        if (bankKey && !_bankKeyWasDown)
++        {
++            Player player = Main.LocalPlayer;
++            // The bank stays open while chestX/Y is in reach and solid: use the ground underfoot.
++            player.chestX = (int)(player.Center.X / 16f);
++            player.chestY = (int)(player.Bottom.Y / 16f);
++            player.chest = -2;
++            Main.playerInventory = true;
++            SoundEngine.PlaySound(10);
++        }
++        _legacyKeyWasDown = legacyKey;
++        _bankKeyWasDown = bankKey;
++    }
++}

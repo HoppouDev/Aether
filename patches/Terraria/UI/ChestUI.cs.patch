@@ -1,0 +1,13 @@
+--- a/Terraria/UI/ChestUI.cs
++++ b/Terraria/UI/ChestUI.cs
+@@ -323,6 +323,10 @@
+ 
+     private static void DrawSlots(SpriteBatch spriteBatch)
+     {
++        if (Aether.UI.Game.UIChestSlots.Draw())
++        {
++            return;
++        }
+         int num = 10;
+         int num2 = 4;
+         Player player = Main.player[Main.myPlayer];
