@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/Aether/UI/Menu/UIConnectingMenu.cs
-@@ -0,0 +1,78 @@
+@@ -0,0 +1,77 @@
 +using Microsoft.Xna.Framework;
 +using Microsoft.Xna.Framework.Graphics;
 +using Terraria;
@@ -33,7 +33,7 @@
 +        _extraLines = -1;
 +    }
 +
-+    public override void Update(GameTime gameTime)
++    public override void UpdateState()
 +    {
 +        Main.gameTips.Update();
 +        int extraLines = Main.statusText.Split('\n').Length - 1;
@@ -46,7 +46,6 @@
 +            _status.Recalculate();
 +            _cancel.Recalculate();
 +        }
-+        base.Update(gameTime);
 +        if (Netplay.IsHostAndPlay && Main.tServer != null && Main.tServer.HasExited)
 +        {
 +            Main.statusText = Language.GetTextValue("Error.ServerStartFailed");

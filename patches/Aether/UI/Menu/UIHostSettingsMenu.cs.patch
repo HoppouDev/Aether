@@ -1,0 +1,68 @@
+--- /dev/null
++++ b/Aether/UI/Menu/UIHostSettingsMenu.cs
+@@ -0,0 +1,65 @@
++using Terraria;
++using Terraria.Audio;
++using Terraria.Net;
++
++namespace Aether.UI.Menu;
++
++/// <summary>
++/// Host &amp; Play's Steam options (menuMode 889): lobby on/off, and if on, who may join; then on to
++/// the server password (30).
++/// </summary>
++public class UIHostSettingsMenu : UIMenuScreen
++{
++    public UIHostSettingsMenu()
++    {
++        ItemsTop = 200f;
++        ItemSpacing = 60f;
++    }
++
++    private static bool Has(ServerMode mode)
++    {
++        return (Main.MenuServerMode & mode) != 0;
++    }
++
++    protected override void BuildItems()
++    {
++        AddLabel(() => Lang.menu[135].Value);
++        AddToggle(() => Lang.menu[Has(ServerMode.Lobby) ? 137 : 136].Value, delegate
++        {
++            Main.MenuServerMode ^= ServerMode.Lobby;
++        }, 1f, 30f);
++        // Without a lobby these two are blank and inert.
++        AddToggle(() => Has(ServerMode.Lobby) ? Lang.menu[Has(ServerMode.FriendsCanJoin) ? 139 : 138].Value : "", delegate
++        {
++            Main.MenuServerMode ^= ServerMode.FriendsCanJoin;
++        }, 1f, 30f).IsDisabled = () => !Has(ServerMode.Lobby);
++        AddToggle(() => Has(ServerMode.Lobby) ? Lang.menu[Has(ServerMode.FriendsCanJoin) ? (Has(ServerMode.FriendsOfFriends) ? 143 : 142) : (Has(ServerMode.FriendsOfFriends) ? 141 : 140)].Value : "", delegate
++        {
++            Main.MenuServerMode ^= ServerMode.FriendsOfFriends;
++        }, 1f, 30f).IsDisabled = () => !Has(ServerMode.Lobby);
++        AddItem(() => Lang.menu[144].Value, delegate
++        {
++            Main.clrInput();
++            Netplay.ServerPassword = "";
++            Main.GetInputText("");
++            Main.autoPass = false;
++            Main.menuMode = 30;
++            SoundEngine.PlaySound(10);
++        }, 1f, 70f);
++        AddItem(() => Lang.menu[5].Value, GoBack, 1f, 70f);
++    }
++
++    public override void UpdateState()
++    {
++        if (!Has(ServerMode.Lobby))
++        {
++            Main.MenuServerMode = ServerMode.None;
++        }
++    }
++
++    public override void GoBack()
++    {
++        Main.menuMode = 6;
++        SoundEngine.PlaySound(11);
++    }
++}

@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/Aether/UI/Menu/UICursorColorMenu.cs
-@@ -0,0 +1,55 @@
+@@ -0,0 +1,54 @@
 +using Microsoft.Xna.Framework;
 +using Terraria;
 +using Terraria.Audio;
@@ -35,9 +35,8 @@
 +        Append(_bars);
 +    }
 +
-+    public override void Update(GameTime gameTime)
++    public override void UpdateState()
 +    {
-+        base.Update(gameTime);
 +        if (_border)
 +        {
 +            Main.MouseBorderColor = Main.selColor;

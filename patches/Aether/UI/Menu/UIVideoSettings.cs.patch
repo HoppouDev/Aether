@@ -1,8 +1,7 @@
 --- /dev/null
 +++ b/Aether/UI/Menu/UIVideoSettings.cs
-@@ -0,0 +1,72 @@
+@@ -0,0 +1,70 @@
 +using System;
-+using Microsoft.Xna.Framework;
 +using Terraria;
 +using Terraria.Audio;
 +using Terraria.GameContent;
@@ -60,10 +59,9 @@
 +        AddItem(() => Lang.menu[5].Value, GoBack, 1f, 8f);
 +    }
 +
-+    public override void Update(GameTime gameTime)
++    public override void UpdateState()
 +    {
 +        Main.bgScroll = (int)Math.Round((1f - Main.caveParallax) * 500f);
-+        base.Update(gameTime);
 +    }
 +
 +    public override void GoBack()

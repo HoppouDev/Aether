@@ -63,6 +63,15 @@
                  {
                      Control.FromHandle(Window.Handle).WindowState = FormWindowState.Maximized;
                  }
+@@ -4958,7 +4958,7 @@
+         }
+     }
+ 
+-    private static void EraseWorld(int i)
++    internal static void EraseWorld(int i)
+     {
+         try
+         {
 @@ -6847,7 +6847,7 @@
          NetworkInitializer.Load();
          ChatInitializer.Load();
@@ -134,6 +143,24 @@
      {
          SoundEngine.PlaySound(11);
          menuMode = 0;
+@@ -53066,7 +53069,7 @@
+         Netplay.ServerPassword = "";
+     }
+ 
+-    private void OnSubmitServerPassword(string passwordCandidate)
++    internal void OnSubmitServerPassword(string passwordCandidate)
+     {
+         Netplay.ServerPassword = passwordCandidate;
+         HostAndPlay();
+@@ -53129,7 +53132,7 @@
+         menuMode = 10;
+     }
+ 
+-    private static void ExitServerPasswordMenu()
++    internal static void ExitServerPasswordMenu()
+     {
+         if (SocialAPI.Network != null)
+         {
 @@ -53142,7 +53145,7 @@
          Netplay.ServerPassword = "";
      }

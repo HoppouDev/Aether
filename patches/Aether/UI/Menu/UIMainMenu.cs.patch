@@ -1,7 +1,6 @@
 --- /dev/null
 +++ b/Aether/UI/Menu/UIMainMenu.cs
-@@ -0,0 +1,92 @@
-+using Microsoft.Xna.Framework;
+@@ -0,0 +1,90 @@
 +using Terraria;
 +using Terraria.Audio;
 +using Terraria.GameContent.Events;
@@ -76,7 +75,7 @@
 +        });
 +    }
 +
-+    public override void Update(GameTime gameTime)
++    public override void UpdateState()
 +    {
 +        // DrawMenu resets this state every frame the main menu is shown.
 +        Main._blockFancyUIWhileLoading = false;
@@ -90,6 +89,5 @@
 +        Main.menuServer = false;
 +        Main.netMode = 0;
 +        Main.ClearVisualPostProcessEffects();
-+        base.Update(gameTime);
 +    }
 +}

@@ -1,7 +1,6 @@
 --- /dev/null
 +++ b/Aether/UI/Menu/UIMultiplayerMenu.cs
-@@ -0,0 +1,53 @@
-+using Microsoft.Xna.Framework;
+@@ -0,0 +1,51 @@
 +using Terraria;
 +using Terraria.Audio;
 +using Terraria.Social;
@@ -42,10 +41,9 @@
 +        AddItem(Lang.menu[5].Value, GoBack);
 +    }
 +
-+    public override void Update(GameTime gameTime)
++    public override void UpdateState()
 +    {
 +        Main.menuServer = false;
-+        base.Update(gameTime);
 +    }
 +
 +    public override void GoBack()

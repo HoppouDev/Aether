@@ -1,0 +1,39 @@
+--- /dev/null
++++ b/Aether/UI/Menu/UIDeleteWorldMenu.cs
+@@ -0,0 +1,36 @@
++using Terraria;
++using Terraria.Audio;
++
++namespace Aether.UI.Menu;
++
++/// <summary>Confirms deleting the world picked in the world list (menuMode 9).</summary>
++public class UIDeleteWorldMenu : UIMenuScreen
++{
++    protected override void BuildItems()
++    {
++        AddLabel(() => Lang.menu[46].Value + " " + WorldName() + "?");
++        AddItem(() => Lang.menu[104].Value, delegate
++        {
++            Main.EraseWorld(Main.selectedWorld);
++            SoundEngine.PlaySound(10);
++            Main.menuMode = 6;
++        });
++        AddItem(() => Lang.menu[105].Value, GoBack);
++    }
++
++    // Always set by the world list; the fallback is for previews.
++    private static string WorldName()
++    {
++        if (Main.selectedWorld >= 0 && Main.selectedWorld < Main.WorldList.Count)
++        {
++            return Main.WorldList[Main.selectedWorld].Name;
++        }
++        return "World";
++    }
++
++    public override void GoBack()
++    {
++        SoundEngine.PlaySound(11);
++        Main.menuMode = 6;
++    }
++}

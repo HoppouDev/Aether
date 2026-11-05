@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/Aether/UI/Menu/UIStatusMenu.cs
-@@ -0,0 +1,42 @@
+@@ -0,0 +1,41 @@
 +using Microsoft.Xna.Framework;
 +using Microsoft.Xna.Framework.Graphics;
 +using Terraria;
@@ -26,13 +26,12 @@
 +        AddLabel(() => Main.statusText);
 +    }
 +
-+    public override void Update(GameTime gameTime)
++    public override void UpdateState()
 +    {
 +        if (_showTips)
 +        {
 +            Main.gameTips.Update();
 +        }
-+        base.Update(gameTime);
 +    }
 +
 +    protected override void DrawSelf(SpriteBatch spriteBatch)

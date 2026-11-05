@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/Aether/UI/Menu/UIMenuScreen.cs
-@@ -0,0 +1,123 @@
+@@ -0,0 +1,132 @@
 +using System;
 +using Terraria;
 +using Terraria.Audio;
@@ -23,6 +23,15 @@
 +    private int _itemCount;
 +
 +    protected abstract void BuildItems();
++
++    /// <summary>
++    /// The legacy branch's per-frame work (state it resets, typing, Enter, redirects), run by MenuScreens
++    /// each frame before input is handled, as DrawMenu does it before acting on a click. Code here must
++    /// not go in Update: UserInterface handles clicks before updating the state, so it would undo them.
++    /// </summary>
++    public virtual void UpdateState()
++    {
++    }
 +
 +    /// <summary>The gamepad's back button.</summary>
 +    public virtual void GoBack()

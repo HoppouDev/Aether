@@ -1,7 +1,6 @@
 --- /dev/null
 +++ b/Aether/UI/Menu/UIParallaxSettings.cs
-@@ -0,0 +1,46 @@
-+using Microsoft.Xna.Framework;
+@@ -0,0 +1,44 @@
 +using Terraria;
 +using Terraria.Audio;
 +
@@ -35,10 +34,9 @@
 +        Append(slider);
 +    }
 +
-+    public override void Update(GameTime gameTime)
++    public override void UpdateState()
 +    {
 +        Main.caveParallax = 1f - Main.bgScroll / 500f;
-+        base.Update(gameTime);
 +    }
 +
 +    public override void GoBack()

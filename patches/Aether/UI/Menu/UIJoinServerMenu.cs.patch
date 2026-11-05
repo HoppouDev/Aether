@@ -1,7 +1,6 @@
 --- /dev/null
 +++ b/Aether/UI/Menu/UIJoinServerMenu.cs
-@@ -0,0 +1,104 @@
-+using Microsoft.Xna.Framework;
+@@ -0,0 +1,102 @@
 +using Terraria;
 +using Terraria.Audio;
 +using Terraria.GameContent.UI.States;
@@ -74,7 +73,7 @@
 +        Main.statusText = Language.GetTextValue("Net.ConnectingTo", Main.getIP);
 +    }
 +
-+    public override void Update(GameTime gameTime)
++    public override void UpdateState()
 +    {
 +        if (PlayerInput.SettingsForUI.ShowGamepadHints != _builtForGamepad)
 +        {
@@ -89,7 +88,6 @@
 +            }
 +            BlinkCursor();
 +        }
-+        base.Update(gameTime);
 +        if (!_builtForGamepad && Main.menuMode == 13 && Main.inputTextEnter)
 +        {
 +            Act("Enter", delegate

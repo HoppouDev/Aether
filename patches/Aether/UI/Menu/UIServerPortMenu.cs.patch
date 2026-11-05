@@ -1,8 +1,7 @@
 --- /dev/null
 +++ b/Aether/UI/Menu/UIServerPortMenu.cs
-@@ -0,0 +1,73 @@
+@@ -0,0 +1,71 @@
 +using System;
-+using Microsoft.Xna.Framework;
 +using Terraria;
 +using Terraria.Audio;
 +using Terraria.GameContent.UI.States;
@@ -39,7 +38,7 @@
 +        }
 +    }
 +
-+    public override void Update(GameTime gameTime)
++    public override void UpdateState()
 +    {
 +        // In a preview, show the keyboard version of the screen rather than leaving it.
 +        if (PlayerInput.SettingsForUI.ShowGamepadHints && !MenuPreview.IsPreviewing)
@@ -49,7 +48,6 @@
 +        }
 +        Main.getPort = ReadTextInput(Main.getPort);
 +        BlinkCursor();
-+        base.Update(gameTime);
 +        if (Main.menuMode == 131 && Main.inputTextEnter && IsValidPort(Main.getPort))
 +        {
 +            Act("Enter", delegate
