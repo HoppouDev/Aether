@@ -1,0 +1,11 @@
+--- a/Terraria/GameContent/UI/Elements/UITextBox.cs
++++ b/Terraria/GameContent/UI/Elements/UITextBox.cs
+@@ -96,7 +96,7 @@
+             textDrawPosition.X += Font.MeasureString(compositionString).X * TextScale;
+             DrawText(spriteBatch, compositionString, TextDrawPosition + new Vector2(TextSize.X, 0f), Main.imeCompositionStringColor);
+         }
+-        _frameCount++;
++        _frameCount += Aether.Graphics.VisualAnimationTime.WholeTicks;
+         if ((_frameCount %= 40) <= 20)
+         {
+             textDrawPosition.X += Font.MeasureString(Text.Substring(0, _cursor)).X * TextScale;

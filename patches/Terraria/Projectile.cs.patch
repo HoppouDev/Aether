@@ -1,0 +1,10 @@
+--- a/Terraria/Projectile.cs
++++ b/Terraria/Projectile.cs
+@@ -699,6 +699,7 @@
+ 
+     public void SetDefaults(int Type)
+     {
++        Aether.Graphics.EntityMotion.EntityVisuals.Invalidate(this);
+         ownerHitCheckDistance = 1000f;
+         counterweight = false;
+         sentry = false;

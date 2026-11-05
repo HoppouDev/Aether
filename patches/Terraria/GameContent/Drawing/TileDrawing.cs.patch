@@ -1,0 +1,443 @@
+--- a/Terraria/GameContent/Drawing/TileDrawing.cs
++++ b/Terraria/GameContent/Drawing/TileDrawing.cs
+@@ -105,12 +105,20 @@
+ 
+     private double _treeWindCounter;
+ 
++    private double _treeWindStep;
++
+     private double _grassWindCounter;
+ 
++    private double _grassWindStep;
++
+     private double _sunflowerWindCounter;
+ 
++    private double _sunflowerWindStep;
++
+     private double _vineWindCounter;
+ 
++    private double _vineWindStep;
++
+     private WindGrid _windGrid = new WindGrid();
+ 
+     private bool _shouldShowInvisibleBlocks;
+@@ -374,10 +382,14 @@
+         {
+             double num = Math.Abs(Main.WindForVisuals);
+             num = Utils.GetLerpValue(0.08f, 1.2f, (float)num, clamped: true);
+-            _treeWindCounter += 1.0 / 240.0 + 1.0 / 240.0 * num * 2.0;
+-            _grassWindCounter += 1.0 / 180.0 + 1.0 / 180.0 * num * 4.0;
+-            _sunflowerWindCounter += 1.0 / 420.0 + 1.0 / 420.0 * num * 5.0;
+-            _vineWindCounter += 1.0 / 120.0 + 1.0 / 120.0 * num * 0.4000000059604645;
++            _treeWindStep = 1.0 / 240.0 + 1.0 / 240.0 * num * 2.0;
++            _treeWindCounter += _treeWindStep;
++            _grassWindStep = 1.0 / 180.0 + 1.0 / 180.0 * num * 4.0;
++            _grassWindCounter += _grassWindStep;
++            _sunflowerWindStep = 1.0 / 420.0 + 1.0 / 420.0 * num * 5.0;
++            _sunflowerWindCounter += _sunflowerWindStep;
++            _vineWindStep = 1.0 / 120.0 + 1.0 / 120.0 * num * 0.4000000059604645;
++            _vineWindCounter += _vineWindStep;
+             UpdateLeafFrequency();
+             EnsureWindGridSize();
+             _windGrid.Update();
+@@ -499,6 +511,9 @@
+             _mediumQualityLightingRequirement.B = byte.MaxValue;
+         }
+         GetScreenDrawArea(!Main.drawToScreen, out var drawOffSet, out var firstTileX, out var lastTileX, out var firstTileY, out var lastTileY);
++        using var terrainLayer = Aether.Graphics.Terrain.TerrainRendererHost.MeasureLayer(solidLayer ? Aether.Graphics.Terrain.TerrainLayer.SolidTiles : Aether.Graphics.Terrain.TerrainLayer.NonSolidTiles);
++        Aether.Graphics.Terrain.TerrainRendererHost.BeginTilePass(solidLayer, firstTileX, lastTileX, firstTileY, lastTileY, _highQualityLightingRequirement, _mediumQualityLightingRequirement);
++        _tryCachedPlain = solidLayer && Aether.Graphics.Terrain.TerrainRendererHost.CanPreparePlainTiles();
+         drawBlackHelper = new DrawBlackHelper(Layer_Tiles, drawOffSet);
+         byte b = (byte)(100f + 150f * Main.martianLight);
+         _martianGlow = new Color(b, b, b, 0);
+@@ -726,7 +741,8 @@
+                         }
+                         break;
+                     }
+-                    DrawSingleTile(unscaledPosition, drawOffSet, j, i);
++                    if (!_tryCachedPlain || !TryDrawPreparedPlainTile(unscaledPosition, drawOffSet, j, i, tile))
++                        DrawSingleTile(unscaledPosition, drawOffSet, j, i);
+                 }
+             }
+         }
+@@ -869,97 +885,76 @@
+         return Utils.Remap(t, 0.7f, 1f, toMin, 1f);
+     }
+ 
+-    private void DrawSingleTile(Vector2 screenPosition, Vector2 screenOffset, int tileX, int tileY)
++    private Color ApplyTileSensesAndParticles(int tileX, int tileY, Tile tileCache, ushort typeCache, short tileFrameX, short tileFrameY, Color tileLight)
+     {
+-        TileDrawInfo tileDrawInfo = new TileDrawInfo();
+-        tileDrawInfo.tileCache = Main.tile[tileX, tileY];
+-        tileDrawInfo.typeCache = tileDrawInfo.tileCache.type;
+-        tileDrawInfo.tileFrameX = tileDrawInfo.tileCache.frameX;
+-        tileDrawInfo.tileFrameY = tileDrawInfo.tileCache.frameY;
+-        tileDrawInfo.tileLight = Lighting.GetColor(tileX, tileY);
+-        if (tileDrawInfo.tileCache.liquid > 0 && tileDrawInfo.tileCache.type == 518)
+-        {
+-            return;
+-        }
+-        GetTileDrawData(tileX, tileY, tileDrawInfo.tileCache, tileDrawInfo.typeCache, ref tileDrawInfo.tileFrameX, ref tileDrawInfo.tileFrameY, out tileDrawInfo.tileWidth, out tileDrawInfo.tileHeight, out tileDrawInfo.tileTop, out tileDrawInfo.halfBrickHeight, out tileDrawInfo.addFrX, out tileDrawInfo.addFrY, out tileDrawInfo.tileSpriteEffect, out tileDrawInfo.glowTexture, out tileDrawInfo.glowSourceRect, out tileDrawInfo.glowColor);
+-        if (tileDrawInfo.tileTop < 0)
+-        {
+-            Main.tileBatch.SetLayer(Layer_OverTiles, 0);
+-        }
+-        else if (tileDrawInfo.tileTop + tileDrawInfo.tileHeight <= 16)
++        if (_perspectivePlayer.dangerSense && IsTileDangerous(_perspectivePlayer, tileX, tileY, tileCache, typeCache))
+         {
+-            Main.tileBatch.SetLayer(Layer_Tiles, 0);
+-        }
+-        else
+-        {
+-            Main.tileBatch.SetLayer(Layer_BehindTiles, 0);
+-        }
+-        tileDrawInfo.drawTexture = GetTileDrawTexture(tileDrawInfo.tileCache, tileX, tileY);
+-        Texture2D highlightTexture = null;
+-        Rectangle empty = Rectangle.Empty;
+-        Color highlightColor = Color.Transparent;
+-        if (TileID.Sets.HasOutlines[tileDrawInfo.typeCache])
+-        {
+-            GetTileOutlineInfo(tileX, tileY, tileDrawInfo.typeCache, ref tileDrawInfo.tileLight, ref highlightTexture, ref highlightColor);
+-        }
+-        if (_perspectivePlayer.dangerSense && IsTileDangerous(_perspectivePlayer, tileX, tileY, tileDrawInfo.tileCache, tileDrawInfo.typeCache))
+-        {
+-            if (tileDrawInfo.tileLight.R < byte.MaxValue)
++            if (tileLight.R < byte.MaxValue)
+             {
+-                tileDrawInfo.tileLight.R = byte.MaxValue;
++                tileLight.R = byte.MaxValue;
+             }
+-            if (tileDrawInfo.tileLight.G < 50)
++
++            if (tileLight.G < 50)
+             {
+-                tileDrawInfo.tileLight.G = 50;
++                tileLight.G = 50;
+             }
+-            if (tileDrawInfo.tileLight.B < 50)
++
++            if (tileLight.B < 50)
+             {
+-                tileDrawInfo.tileLight.B = 50;
++                tileLight.B = 50;
+             }
++
+             if (_isActiveAndNotPaused && _rand.Next(30) == 0)
+             {
+-                int num = Dust.NewDust(new Vector2(tileX * 16, tileY * 16), 16, 16, 60, 0f, 0f, 100, default, 0.3f);
++                int num = Dust.NewDust(new Vector2(tileX * 16, tileY * 16), 16, 16, 60, 0f, 0f, 100, default(Color), 0.3f);
+                 _dust[num].fadeIn = 1f;
+                 _dust[num].velocity *= 0.1f;
+                 _dust[num].noLight = true;
+                 _dust[num].noGravity = true;
+             }
+         }
+-        if (_perspectivePlayer.findTreasure && Main.IsTileSpelunkable(tileDrawInfo.typeCache, tileDrawInfo.tileFrameX, tileDrawInfo.tileFrameY))
++
++        if (_perspectivePlayer.findTreasure && Main.IsTileSpelunkable(typeCache, tileFrameX, tileFrameY))
+         {
+-            if (tileDrawInfo.tileLight.R < 200)
++            if (tileLight.R < 200)
+             {
+-                tileDrawInfo.tileLight.R = 200;
++                tileLight.R = 200;
+             }
+-            if (tileDrawInfo.tileLight.G < 170)
++
++            if (tileLight.G < 170)
+             {
+-                tileDrawInfo.tileLight.G = 170;
++                tileLight.G = 170;
+             }
++
+             if (_isActiveAndNotPaused && _rand.Next(60) == 0)
+             {
+-                int num2 = Dust.NewDust(new Vector2(tileX * 16, tileY * 16), 16, 16, 204, 0f, 0f, 150, default, 0.3f);
++                int num2 = Dust.NewDust(new Vector2(tileX * 16, tileY * 16), 16, 16, 204, 0f, 0f, 150, default(Color), 0.3f);
+                 _dust[num2].fadeIn = 1f;
+                 _dust[num2].velocity *= 0.1f;
+                 _dust[num2].noLight = true;
+             }
+         }
++
+         if (_perspectivePlayer.biomeSight)
+         {
+             Color sightColor = Color.White;
+-            if (Main.IsTileBiomeSightable(tileDrawInfo.typeCache, tileDrawInfo.tileFrameX, tileDrawInfo.tileFrameY, ref sightColor))
++            if (Main.IsTileBiomeSightable(typeCache, tileFrameX, tileFrameY, ref sightColor))
+             {
+-                if (tileDrawInfo.tileLight.R < sightColor.R)
++                if (tileLight.R < sightColor.R)
+                 {
+-                    tileDrawInfo.tileLight.R = sightColor.R;
++                    tileLight.R = sightColor.R;
+                 }
+-                if (tileDrawInfo.tileLight.G < sightColor.G)
++
++                if (tileLight.G < sightColor.G)
+                 {
+-                    tileDrawInfo.tileLight.G = sightColor.G;
++                    tileLight.G = sightColor.G;
+                 }
+-                if (tileDrawInfo.tileLight.B < sightColor.B)
++
++                if (tileLight.B < sightColor.B)
+                 {
+-                    tileDrawInfo.tileLight.B = sightColor.B;
++                    tileLight.B = sightColor.B;
+                 }
++
+                 if (_isActiveAndNotPaused && _rand.Next(480) == 0)
+                 {
+                     Color newColor = sightColor;
+@@ -971,11 +966,83 @@
+                 }
+             }
+         }
++
+         if (_isActiveAndNotPaused && (!Lighting.UpdateEveryFrame || new FastRandom(Main.TileFrameSeed).WithModifier(tileX, tileY).Next(4) == 0))
+         {
+-            DrawTiles_EmitParticles(tileY, tileX, tileDrawInfo.tileCache, tileDrawInfo.typeCache, tileDrawInfo.tileFrameX, tileDrawInfo.tileFrameY, tileDrawInfo.tileLight);
++            DrawTiles_EmitParticles(tileY, tileX, tileCache, typeCache, tileFrameX, tileFrameY, tileLight);
++        }
++
++        tileLight = DrawTiles_GetLightOverride(tileY, tileX, tileCache, typeCache, tileFrameX, tileFrameY, tileLight);
++        return tileLight;
++    }
++
++    private bool TryDrawPreparedPlainTile(Vector2 screenPosition, Vector2 screenOffset, int x, int y, Tile tile)
++    {
++        if (!Aether.Graphics.Terrain.ChunkFastDraw.IsPlain(tile.type, tile.sTileHeader, tile.bTileHeader3)) return false;
++        ushort type = tile.type;
++        short frameX = tile.frameX, frameY = tile.frameY;
++        Color light = Lighting.GetColor(x, y);
++        if (!Aether.Graphics.Terrain.TerrainRendererHost.TryPreparePlainTile(x, y, tile, light,
++            screenOffset - new Vector2((int)screenPosition.X, (int)screenPosition.Y), out var texture)) return false;
++        light = ApplyTileSensesAndParticles(x, y, tile, type, frameX, frameY, light);
++        bool visible = IsVisible(tile);
++        bool draw = visible && (light.R >= 1 || light.G >= 1 || light.B >= 1 || TileID.Sets.IgnoreDrawLightConditions[type] ||
++            (tile.wall > 0 && (tile.wall == 318 || tile.fullbrightWall())));
++        if (!draw)
++        {
++            if (visible && TileDrawingBase.DrawOwnBlacks) drawBlackHelper.DrawBlack(x, y);
++            return true;
+         }
+-        tileDrawInfo.tileLight = DrawTiles_GetLightOverride(tileY, tileX, tileDrawInfo.tileCache, tileDrawInfo.typeCache, tileDrawInfo.tileFrameX, tileDrawInfo.tileFrameY, tileDrawInfo.tileLight);
++        Color final = GetFinalLight(tile, type, light, Color.White);
++        if (Aether.Graphics.Terrain.TerrainRendererHost.TryQueuePreparedPlainTile(x, y, tile, type, light, final)) return true;
++        // A prepared binding can be invalidated while required effects execute.
++        // Replay pure drawing only: the effects above must never run twice.
++        TileDrawInfo fallback = new TileDrawInfo(false);
++        fallback.tileCache = tile; fallback.typeCache = type; fallback.tileFrameX = frameX; fallback.tileFrameY = frameY;
++        fallback.tileWidth = fallback.tileHeight = 16; fallback.drawTexture = texture;
++        fallback.tileLight = light; fallback.finalColor = final; fallback.glowColor = Color.Transparent;
++        DrawBasicTile(screenPosition, screenOffset, x, y, ref fallback, new Rectangle(frameX, frameY, 16, 16),
++            new Vector2(x * 16 - (int)screenPosition.X, y * 16 - (int)screenPosition.Y) + screenOffset);
++        return true;
++    }
++
++    private bool _tryCachedPlain;
++    private readonly Vector3[] _terrainColorSlices = new Vector3[9];
++
++    private void DrawSingleTile(Vector2 screenPosition, Vector2 screenOffset, int tileX, int tileY)
++    {
++        TileDrawInfo tileDrawInfo = new TileDrawInfo(!_tryCachedPlain);
++        tileDrawInfo.tileCache = Main.tile[tileX, tileY];
++        tileDrawInfo.typeCache = tileDrawInfo.tileCache.type;
++        tileDrawInfo.tileFrameX = tileDrawInfo.tileCache.frameX;
++        tileDrawInfo.tileFrameY = tileDrawInfo.tileCache.frameY;
++        tileDrawInfo.tileLight = Lighting.GetColor(tileX, tileY);
++        if (tileDrawInfo.tileCache.liquid > 0 && tileDrawInfo.tileCache.type == 518)
++        {
++            return;
++        }
++        GetTileDrawData(tileX, tileY, tileDrawInfo.tileCache, tileDrawInfo.typeCache, ref tileDrawInfo.tileFrameX, ref tileDrawInfo.tileFrameY, out tileDrawInfo.tileWidth, out tileDrawInfo.tileHeight, out tileDrawInfo.tileTop, out tileDrawInfo.halfBrickHeight, out tileDrawInfo.addFrX, out tileDrawInfo.addFrY, out tileDrawInfo.tileSpriteEffect, out tileDrawInfo.glowTexture, out tileDrawInfo.glowSourceRect, out tileDrawInfo.glowColor);
++        if (tileDrawInfo.tileTop < 0)
++        {
++            Main.tileBatch.SetLayer(Layer_OverTiles, 0);
++        }
++        else if (tileDrawInfo.tileTop + tileDrawInfo.tileHeight <= 16)
++        {
++            Main.tileBatch.SetLayer(Layer_Tiles, 0);
++        }
++        else
++        {
++            Main.tileBatch.SetLayer(Layer_BehindTiles, 0);
++        }
++        tileDrawInfo.drawTexture = GetTileDrawTexture(tileDrawInfo.tileCache, tileX, tileY);
++        Texture2D highlightTexture = null;
++        Rectangle empty = Rectangle.Empty;
++        Color highlightColor = Color.Transparent;
++        if (TileID.Sets.HasOutlines[tileDrawInfo.typeCache])
++        {
++            GetTileOutlineInfo(tileX, tileY, tileDrawInfo.typeCache, ref tileDrawInfo.tileLight, ref highlightTexture, ref highlightColor);
++        }
++        tileDrawInfo.tileLight = ApplyTileSensesAndParticles(tileX, tileY, tileDrawInfo.tileCache, tileDrawInfo.typeCache, tileDrawInfo.tileFrameX, tileDrawInfo.tileFrameY, tileDrawInfo.tileLight);
+         bool flag = false;
+         if (tileDrawInfo.glowTexture != null || Main.tileGlowMask[tileDrawInfo.typeCache] != -1 || Main.tileFlame[tileDrawInfo.typeCache])
+         {
+@@ -1191,7 +1258,7 @@
+         }
+         else
+         {
+-            DrawBasicTile(screenPosition, screenOffset, tileX, tileY, tileDrawInfo, rectangle, vector);
++            DrawBasicTile(screenPosition, screenOffset, tileX, tileY, ref tileDrawInfo, rectangle, vector);
+         }
+         if (Main.tileGlowMask[tileDrawInfo.tileCache.type] != -1)
+         {
+@@ -1524,8 +1591,10 @@
+         return TextureAssets.CageTop[key.CageStyle].Value;
+     }
+ 
+-    private void DrawBasicTile(Vector2 screenPosition, Vector2 screenOffset, int tileX, int tileY, TileDrawInfo drawData, Rectangle normalTileRect, Vector2 normalTilePosition)
++    private void DrawBasicTile(Vector2 screenPosition, Vector2 screenOffset, int tileX, int tileY, ref TileDrawInfo drawData, Rectangle normalTileRect, Vector2 normalTilePosition)
+     {
++        if (Aether.Graphics.Terrain.TerrainRendererHost.TryQueueTile(tileX, tileY, ref drawData, normalTileRect, normalTilePosition))
++            return;
+         bool flag = !TileID.Sets.DontDrawTileSliced[drawData.tileCache.type];
+         bool flag2 = !TileID.Sets.DontDrawTileSlopes[drawData.tileCache.type];
+         if (drawData.typeCache == 380 || TileID.Sets.Platforms[drawData.typeCache])
+@@ -3548,7 +3617,7 @@
+         Vector2 position = default;
+         if (drawData.tileLight.R > _highQualityLightingRequirement.R || drawData.tileLight.G > _highQualityLightingRequirement.G || drawData.tileLight.B > _highQualityLightingRequirement.B)
+         {
+-            Vector3[] slices = drawData.colorSlices;
++            Vector3[] slices = drawData.colorSlices ?? _terrainColorSlices;
+             Lighting.GetColor9Slice(tileX, tileY, ref slices);
+             Vector3 vector = drawData.tileLight.ToVector3();
+             Vector3 tint = drawData.colorTint.ToVector3();
+@@ -3631,7 +3700,7 @@
+         }
+         else if (drawData.tileLight.R > _mediumQualityLightingRequirement.R || drawData.tileLight.G > _mediumQualityLightingRequirement.G || drawData.tileLight.B > _mediumQualityLightingRequirement.B)
+         {
+-            Vector3[] slices2 = drawData.colorSlices;
++            Vector3[] slices2 = drawData.colorSlices ?? _terrainColorSlices;
+             Lighting.GetColor4Slice(tileX, tileY, ref slices2);
+             Vector3 vector2 = drawData.tileLight.ToVector3();
+             Vector3 tint2 = drawData.colorTint.ToVector3();
+@@ -6697,7 +6766,7 @@
+         if (Main.sectionManager.AnyUnfinishedSections)
+         {
+             TimeLogger.StartTimestamp fromTimestamp = TimeLogger.Start();
+-            WorldGen.SectionTileFrameWithCheck(firstTileX, firstTileY, lastTileX, lastTileY);
++            Aether.Graphics.SectionFramingScheduler.ProcessVisibleArea(firstTileX, firstTileY, lastTileX, lastTileY);
+             TimeLogger.SectionFraming.AddTime(fromTimestamp);
+         }
+         if (Main.sectionManager.AnyNeedRefresh)
+@@ -7824,14 +7893,15 @@
+         _gore[num2].velocity *= 0f;
+     }
+ 
+-    private float GetWindCycle(int x, int y, double windCounter)
++    private float GetWindCycle(int x, int y, double windCounter, double windStep)
+     {
+         if (!Main.SettingsEnabled_TilesSwayInWind)
+         {
+             return 0f;
+         }
+         float num = (float)x * 0.5f + (float)(y / 100) * 0.5f;
+-        float num2 = (float)Math.Cos(windCounter * 6.2831854820251465 + (double)num) * 0.5f;
++        double visualPhase = windCounter + windStep * Aether.Graphics.VisualAnimationTime.WorldFraction;
++        float num2 = (float)Math.Cos(visualPhase * 6.2831854820251465 + (double)num) * 0.5f;
+         if (Main.remixWorld)
+         {
+             if (!((double)y > Main.worldSurface))
+@@ -8301,7 +8371,7 @@
+                         float num15 = 0f;
+                         if (!flag)
+                         {
+-                            num15 = GetWindCycle(x, y, _treeWindCounter);
++                            num15 = GetWindCycle(x, y, _treeWindCounter, _treeWindStep);
+                         }
+                         position3.X += num15 * 2f;
+                         position3.Y += Math.Abs(num15) * 2f;
+@@ -8353,7 +8423,7 @@
+                         float num12 = 0f;
+                         if (!flag)
+                         {
+-                            num12 = GetWindCycle(x, y, _treeWindCounter);
++                            num12 = GetWindCycle(x, y, _treeWindCounter, _treeWindStep);
+                         }
+                         if (num12 > 0f)
+                         {
+@@ -8408,7 +8478,7 @@
+                         float num8 = 0f;
+                         if (!flag)
+                         {
+-                            num8 = GetWindCycle(x, y, _treeWindCounter);
++                            num8 = GetWindCycle(x, y, _treeWindCounter, _treeWindStep);
+                         }
+                         if (num8 < 0f)
+                         {
+@@ -8466,7 +8536,7 @@
+                     float num21 = 0f;
+                     if (!flag)
+                     {
+-                        num21 = GetWindCycle(x, y, _treeWindCounter);
++                        num21 = GetWindCycle(x, y, _treeWindCounter, _treeWindStep);
+                     }
+                     position4.X += num21 * 2f;
+                     position4.Y += Math.Abs(num21) * 2f;
+@@ -8538,7 +8608,7 @@
+                 Main.instance.LoadTiles(type);
+             }
+             Vector2 position = new Vector2(x * 16 - (int)unscaledPosition.X + 8, y * 16 - (int)unscaledPosition.Y + 16) + zero;
+-            float num3 = GetWindCycle(x, y, _grassWindCounter);
++            float num3 = GetWindCycle(x, y, _grassWindCounter, _grassWindStep);
+             if (!WallID.Sets.AllowsWind[tile.wall])
+             {
+                 num3 = 0f;
+@@ -8596,7 +8666,7 @@
+                 Main.instance.LoadTiles(type);
+             }
+             Vector2 position = new Vector2(x * 16 - (int)unscaledPosition.X, y * 16 - (int)unscaledPosition.Y) + zero;
+-            float num3 = GetWindCycle(x, y, _grassWindCounter);
++            float num3 = GetWindCycle(x, y, _grassWindCounter, _grassWindStep);
+             if (!WallID.Sets.AllowsWind[tile.wall])
+             {
+                 num3 = 0f;
+@@ -8901,7 +8971,7 @@
+         {
+             Point p = _specialPositions[num][i];
+             VoidLensHelper voidLensHelper = new VoidLensHelper(p.ToWorldCoordinates(), 1f);
+-            if (!Main.gamePaused)
++            if (!Main.gamePaused && FocusHelper.AllowTileDrawingToEmitEffects)
+             {
+                 voidLensHelper.Update();
+             }
+@@ -9106,7 +9176,7 @@
+ 
+     private void DrawMultiTileGrassInWind(Vector2 screenPosition, Vector2 offSet, int topLeftX, int topLeftY, int sizeX, int sizeY)
+     {
+-        float windCycle = GetWindCycle(topLeftX, topLeftY, _sunflowerWindCounter);
++        float windCycle = GetWindCycle(topLeftX, topLeftY, _sunflowerWindCounter, _sunflowerWindStep);
+         Vector2 vector = new Vector2((float)(topLeftX * 16 - (int)screenPosition.X) + (float)sizeX * 16f * 0.5f, topLeftY * 16 - (int)screenPosition.Y + 16 * sizeY) + offSet;
+         float num = 0.07f;
+         int type = Main.tile[topLeftX, topLeftY].type;
+@@ -9230,7 +9300,7 @@
+         float amount = Math.Abs(Main.WindForVisuals) / 1.2f;
+         amount = MathHelper.Lerp(0.2f, 1f, amount);
+         float num3 = -0.08f * amount;
+-        float windCycle = GetWindCycle(x, startY, _vineWindCounter);
++        float windCycle = GetWindCycle(x, startY, _vineWindCounter, _vineWindStep);
+         float num4 = 0f;
+         float num5 = 0f;
+         for (int i = startY; i < Main.maxTilesY - 10; i++)
+@@ -9333,7 +9403,7 @@
+         float amount = Math.Abs(Main.WindForVisuals) / 1.2f;
+         amount = MathHelper.Lerp(0.2f, 1f, amount);
+         float num3 = -0.08f * amount;
+-        float windCycle = GetWindCycle(x, startY, _vineWindCounter);
++        float windCycle = GetWindCycle(x, startY, _vineWindCounter, _vineWindStep);
+         float num4 = 0f;
+         float num5 = 0f;
+         for (int num6 = startY; num6 > 10; num6--)
+@@ -9433,7 +9503,7 @@
+ 
+     private void DrawMultiTileVinesInWind(Vector2 screenPosition, Vector2 offSet, int topLeftX, int topLeftY, int sizeX, int sizeY)
+     {
+-        float windCycle = GetWindCycle(topLeftX, topLeftY, _sunflowerWindCounter);
++        float windCycle = GetWindCycle(topLeftX, topLeftY, _sunflowerWindCounter, _sunflowerWindStep);
+         float num = windCycle;
+         int totalPushTime = 60;
+         float pushForcePerFrame = 1.26f;

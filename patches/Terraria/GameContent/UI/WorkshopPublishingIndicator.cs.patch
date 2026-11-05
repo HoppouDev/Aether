@@ -1,0 +1,37 @@
+--- a/Terraria/GameContent/UI/WorkshopPublishingIndicator.cs
++++ b/Terraria/GameContent/UI/WorkshopPublishingIndicator.cs
+@@ -38,7 +38,7 @@
+         AWorkshopProgressReporter progressReporter = workshop.ProgressReporter;
+         bool hasOngoingTasks = progressReporter.HasOngoingTasks;
+         bool flag = _displayUpPercent == 1f;
+-        _displayUpPercent = MathHelper.Clamp(_displayUpPercent + (float)hasOngoingTasks.ToDirectionInt() / 60f, 0f, 1f);
++        _displayUpPercent = MathHelper.Clamp(_displayUpPercent + (float)hasOngoingTasks.ToDirectionInt() / 60f * Aether.Graphics.VisualAnimationTime.FrameScale, 0f, 1f);
+         bool flag2 = _displayUpPercent == 1f;
+         if (flag && !flag2)
+         {
+@@ -54,9 +54,14 @@
+         }
+         Texture2D value = _indicatorTexture.Value;
+         int num = 6;
+-        _frameCounter++;
+         int num2 = 5;
+-        int num3 = _frameCounter / num2 % num;
++        int cycle = num * num2;
++        int nextFrame = _frameCounter + Aether.Graphics.VisualAnimationTime.WholeTicks;
++        int soundFrame = 3 * num2;
++        bool crossedSoundFrame = (nextFrame + cycle - soundFrame) / cycle >
++            (_frameCounter + cycle - soundFrame) / cycle;
++        _frameCounter = nextFrame % cycle;
++        int num3 = _frameCounter / num2;
+         Vector2 vector = Main.ScreenSize.ToVector2() + new Vector2(-40f, 40f);
+         Vector2 value2 = vector + new Vector2(0f, -80f);
+         Vector2 position = Vector2.Lerp(vector, value2, _displayUpPercent);
+@@ -71,7 +76,7 @@
+             Vector2 origin2 = value3.MeasureString(text) * num4 * new Vector2(0.5f, 1f);
+             Utils.DrawBorderStringFourWay(spriteBatch, value3, text, position.X, position.Y - 10f, Color.White, Color.Black, origin2, num4);
+         }
+-        if (num3 == 3 && _frameCounter % num2 == 0)
++        if (crossedSoundFrame)
+         {
+             if (_shouldPlayEndingSound)
+             {

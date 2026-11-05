@@ -1,0 +1,17 @@
+--- /dev/null
++++ b/Aether/Graphics/Terrain/ChunkComputeMode.cs
+@@ -0,0 +1,14 @@
++using Terraria;
++using System.Threading;
++using Microsoft.Xna.Framework;
++using System;
++
++namespace Aether.Graphics.Terrain;
++
++// Process-fixed experiment selection, captured on the owner when its queue is
++// constructed. Workers receive only that immutable boolean, never game globals.
++public static class ChunkComputeMode
++{
++    public const int RecordVersion = 1;
++    public static bool Requested => GraphicsSettings.ComputeTerrain;
++}

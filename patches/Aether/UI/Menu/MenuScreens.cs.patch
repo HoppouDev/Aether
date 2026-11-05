@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/Aether/UI/Menu/MenuScreens.cs
-@@ -0,0 +1,192 @@
+@@ -0,0 +1,193 @@
 +using System;
 +using System.Collections.Generic;
 +using Microsoft.Xna.Framework;
@@ -50,6 +50,7 @@
 +        [112] = () => new UIGeneralSettings(),
 +        [1112] = () => new UIInterfaceSettings(),
 +        [1111] = () => new UIVideoSettings(),
++        [UIAetherGraphicsSettings.Mode] = () => new UIAetherGraphicsSettings(),
 +        [2008] = () => new UIEffectsSettings(),
 +        [111] = () => new UIResolutionSettings(),
 +        [28] = () => new UIParallaxSettings(),

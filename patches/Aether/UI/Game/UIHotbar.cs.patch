@@ -55,12 +55,12 @@
 +            {
 +                if (Main.hotbarScale[i] < 1f)
 +                {
-+                    Main.hotbarScale[i] += 0.05f;
++                    Main.hotbarScale[i] = System.Math.Min(1f, Main.hotbarScale[i] + 0.05f * Aether.Graphics.VisualAnimationTime.FrameScale);
 +                }
 +            }
 +            else if ((double)Main.hotbarScale[i] > 0.75)
 +            {
-+                Main.hotbarScale[i] -= 0.05f;
++                Main.hotbarScale[i] = System.Math.Max(0.75f, Main.hotbarScale[i] - 0.05f * Aether.Graphics.VisualAnimationTime.FrameScale);
 +            }
 +            float scale = Main.hotbarScale[i];
 +            UIHotbarSlot slot = _slots[i];

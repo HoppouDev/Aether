@@ -28,6 +28,7 @@ from pathlib import Path
 from . import paths
 from .pinning import load_base_json
 from .steam import platform_pin
+from .terrain import stage_linux_backend
 from .util import (
     AetherError,
     link_or_copy,
@@ -247,6 +248,7 @@ def prepare_linux(game_dir: Path, exe: Path, run_dir: Path, copy: bool = False) 
         place(lib, lib64 / lib.name, copy)
     replace_natives(natives, lib64)
     copy_client(exe, run_dir)
+    stage_linux_backend(run_dir)
 
 
 def prepare_macos(

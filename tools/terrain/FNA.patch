@@ -1,0 +1,42 @@
+--- a/src/Graphics/GraphicsDevice.cs
++++ b/src/Graphics/GraphicsDevice.cs
+@@ -17,6 +17,8 @@
+ {
+ 	public class GraphicsDevice : IDisposable
+ 	{
++		public IntPtr TerrainDeviceHandleEXT { get { return GLDevice; } }
++
+ 		#region Internal Constants
+
+ 		// Per XNA4 General Spec
+--- a/src/Graphics/Texture.cs
++++ b/src/Graphics/Texture.cs
+@@ -63,6 +63,8 @@
+ 		#region Internal FNA3D Variables
+
+ 		internal IntPtr texture;
++		public IntPtr TerrainTextureHandleEXT { get { return texture; } }
++
+
+ 		#endregion
+
+--- a/src/Graphics/SpriteBatch.cs
++++ b/src/Graphics/SpriteBatch.cs
+@@ -24,6 +24,8 @@
+ 	 */
+ 	public class SpriteBatch : GraphicsResource
+ 	{
++		public Vector2 DrawOffsetEXT { get; set; }
++
+ 		#region Private Constant Values
+
+ 		// As defined by the HiDef profile spec
+@@ -1105,6 +1107,8 @@
+ 			float depth,
+ 			int effects
+ 		) {
++			destinationX += DrawOffsetEXT.X;
++			destinationY += DrawOffsetEXT.Y;
+ 			if (numSprites >= vertexInfo.Length)
+ 			{
+ 				if (vertexInfo.Length >= MAX_ARRAYSIZE)

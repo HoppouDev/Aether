@@ -67,7 +67,7 @@
 +        bool hovered = Main.mouseX > x && Main.mouseX < x + texture.Width && Main.mouseY > y && Main.mouseY < y + texture.Height && !PlayerInput.IgnoreMouseInterface;
 +        if (hovered)
 +        {
-+            Main.buffAlpha[BuffSlot] += 0.1f;
++            Main.buffAlpha[BuffSlot] += 0.1f * Aether.Graphics.VisualAnimationTime.FrameScale;
 +            bool cancel = Main.mouseRight && Main.mouseRightRelease;
 +            if (PlayerInput.UsingGamepad)
 +            {
@@ -88,7 +88,7 @@
 +        }
 +        else
 +        {
-+            Main.buffAlpha[BuffSlot] -= 0.05f;
++            Main.buffAlpha[BuffSlot] -= 0.05f * Aether.Graphics.VisualAnimationTime.FrameScale;
 +        }
 +        Main.buffAlpha[BuffSlot] = MathHelper.Clamp(Main.buffAlpha[BuffSlot], 0.4f, 1f);
 +        return hovered && !(PlayerInput.UsingGamepad && !Main.playerInventory);

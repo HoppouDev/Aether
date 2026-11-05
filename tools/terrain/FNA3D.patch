@@ -1,0 +1,47 @@
+--- a/src/FNA3D_Driver_SDL.c
++++ b/src/FNA3D_Driver_SDL.c
+@@ -520,6 +520,8 @@
+ {
+ 	SDL_GPUDevice *device;
+ 	SDL_GPUCommandBuffer *renderCommandBuffer;
++	uint32_t terrainMarkerCount, terrainMarkerOverflow;
++	char terrainMarkers[16][96];
+ 	SDL_GPUCommandBuffer *uploadCommandBuffer;
+
+ 	SDL_GPUCopyPass *copyPass;
+@@ -975,6 +977,8 @@
+ 	/* commandLock should be acquired by this point */
+
+ 	renderer->renderCommandBuffer = SDL_AcquireGPUCommandBuffer(renderer->device);
++	for (uint32_t i = 0; i < renderer->terrainMarkerCount; i += 1)
++		SDL_PushGPUDebugGroup(renderer->renderCommandBuffer, renderer->terrainMarkers[i]);
+
+ 	/* Reset state */
+ 	renderer->needNewRenderPass = 1;
+@@ -1024,6 +1028,8 @@
+ 	SDLGPU_INTERNAL_ResetUploadCommandBufferState(renderer);
+
+ 	SDLGPU_INTERNAL_EndRenderPass(renderer);
++	for (uint32_t i = 0; i < renderer->terrainMarkerCount; i += 1)
++		SDL_PopGPUDebugGroup(renderer->renderCommandBuffer);
+ 	SDL_SubmitGPUCommandBuffer(renderer->renderCommandBuffer);
+ 	SDLGPU_INTERNAL_ResetRenderCommandBufferState(renderer);
+ }
+@@ -1039,6 +1045,8 @@
+
+ 	SDLGPU_INTERNAL_EndRenderPass(renderer);
+
++	for (uint32_t i = 0; i < renderer->terrainMarkerCount; i += 1)
++		SDL_PopGPUDebugGroup(renderer->renderCommandBuffer);
+ 	fences[1] = SDL_SubmitGPUCommandBufferAndAcquireFence(
+ 		renderer->renderCommandBuffer
+ 	);
+@@ -4679,6 +4687,8 @@
+ 	SDLGPU_CreateDevice
+ };
+
++#include "TerrainGpu.inl"
++
+ #else
+
+ extern int this_tu_is_empty;

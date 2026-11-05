@@ -1,0 +1,104 @@
+--- a/Terraria/Graphics/TileBatch.cs
++++ b/Terraria/Graphics/TileBatch.cs
+@@ -148,6 +148,50 @@
+ 
+     private int _drawCalls;
+ 
++    private readonly record struct OrderedTerrainDraw(int Offset, Func<int> Draw);
++
++    private readonly Dictionary<ulong,List<Func<int>>> _terrainDraws = new();
++    private readonly Dictionary<ulong,List<OrderedTerrainDraw>> _orderedTerrainDraws = new();
++    private RasterizerState _terrainRasterizer;
++    public Matrix TerrainTransform { get; private set; }
++    public void QueueTerrainDraw(Texture2D texture, Func<int> draw)
++    {
++        // A finite degenerate sprite registers the original material and layer.
++        Draw(texture,new Vector2(-32768,-32768),new Rectangle(0,0,1,1),Color.Transparent,Vector2.Zero,0f,SpriteEffects.None);
++        ulong key = _batches[_currentBatchIndex].SortKey;
++        if (!_terrainDraws.TryGetValue(key,out var commands)) _terrainDraws[key] = commands = new();
++        commands.Add(draw);
++    }
++    public void QueueOrderedTerrainDraw(Texture2D texture, Func<int> draw)
++    {
++        if (draw == null) throw new ArgumentNullException(nameof(draw));
++        if (!_layeredSortingEnabled) throw new InvalidOperationException("Ordered terrain drawing requires a layered batch");
++        // Keep a finite degenerate sprite in the normal material stream. The
++        // callback replaces its position in that stream, before later sprites.
++        Draw(texture,new Vector2(-32768,-32768),new Rectangle(0,0,1,1),Color.Transparent,Vector2.Zero,0f,SpriteEffects.None);
++        ulong key = _batches[_currentBatchIndex].SortKey;
++        if (!_orderedTerrainDraws.TryGetValue(key,out var commands)) _orderedTerrainDraws[key] = commands = new();
++        commands.Add(new OrderedTerrainDraw(_batches[_currentBatchIndex].Length, draw));
++    }
++    public bool IsOrderedTerrainTail(Texture2D texture, Func<int> draw)
++    {
++        if (!_layeredSortingEnabled || _currentBatchKey.Texture != texture ||
++            (_nextLayerStack.HasValue && _nextLayerStack.Value != _currentBatchKey.LayerStack) ||
++            !_orderedTerrainDraws.TryGetValue(_batches[_currentBatchIndex].SortKey,out var commands) || commands.Count == 0) return false;
++        var last = commands[commands.Count-1];
++        if (last.Offset != _batches[_currentBatchIndex].Length || !ReferenceEquals(last.Draw,draw)) return false;
++        _nextLayerStack = null;
++        return true;
++    }
++    public void RebindAfterTerrainFallback()
++    {
++        _spriteBatch.Begin(SpriteSortMode.Immediate,BlendState.AlphaBlend,SamplerState.PointClamp,DepthStencilState.None,_terrainRasterizer,null,TerrainTransform);
++        _spriteBatch.End();
++        _graphicsDevice.SetVertexBuffer(_vertexBuffer);
++        _graphicsDevice.Indices = _indexBuffer;
++        _graphicsDevice.SamplerStates[0] = SamplerState.PointClamp;
++    }
++
+     public TileBatch(GraphicsDevice graphicsDevice)
+     {
+         _graphicsDevice = graphicsDevice;
+@@ -214,6 +258,8 @@
+ 
+     public void Begin(RasterizerState rasterizer, Matrix transformation)
+     {
++        TerrainTransform = transformation;
++        _terrainRasterizer = rasterizer;
+         _spriteBatch.Begin(SpriteSortMode.Deferred, null, null, null, rasterizer, null, transformation);
+         _spriteBatch.End();
+         if (_queuedSpriteCount > 0)
+@@ -681,6 +727,9 @@
+             Texture2D value = _passTextures[layerBatch.Texture];
+             _graphicsDevice.Textures[0] = value;
+             int num = layerBatch.Length;
++            int batchLength = num, commandIndex = 0;
++            List<OrderedTerrainDraw> orderedCommands = null;
++            if (_orderedTerrainDraws.Count != 0) _orderedTerrainDraws.TryGetValue(layerBatch.SortKey,out orderedCommands);
+             int num2 = i;
+             int batchOffset = 0;
+             DataSlice currentSlice = default;
+@@ -707,14 +756,29 @@
+                     }
+                     _vertexBuffer.SetData(_vertices, 0, vbCount * 4, SetDataOptions.Discard);
+                 }
++
+                 int num3 = Math.Min(num, vbCount - _vertexBufferPosition);
+-                _graphicsDevice.DrawIndexedPrimitives(PrimitiveType.TriangleList, _vertexBufferPosition * 4, 0, num3 * 4, 0, num3 * 2);
++                if (orderedCommands != null && commandIndex < orderedCommands.Count)
++                    num3 = Math.Min(num3, orderedCommands[commandIndex].Offset - (batchLength - num));
++                int drawCount = num3;
++                if (orderedCommands != null && commandIndex < orderedCommands.Count && orderedCommands[commandIndex].Offset == batchLength - num + num3) drawCount--;
++                if (drawCount > 0)
++                {
++                    _graphicsDevice.DrawIndexedPrimitives(PrimitiveType.TriangleList, _vertexBufferPosition * 4, 0, drawCount * 4, 0, drawCount * 2);
++                    _drawCalls++;
++                }
+                 _vertexBufferPosition += num3;
+                 num -= num3;
+-                _drawCalls++;
++                while (orderedCommands != null && commandIndex < orderedCommands.Count && orderedCommands[commandIndex].Offset == batchLength - num)
++                    _drawCalls += orderedCommands[commandIndex++].Draw();
+             }
+             while (num > 0);
++            if (_terrainDraws.TryGetValue(_batches[i].SortKey,out var terrainCommands))
++                foreach (var draw in terrainCommands) _drawCalls += draw();
+         }
++
++        _terrainDraws.Clear();
++        _orderedTerrainDraws.Clear();
+         _queuedSpriteCount = 0;
+         _batchDataCount = 0;
+         _batchCount = 0;

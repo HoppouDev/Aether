@@ -1,0 +1,11 @@
+--- a/Terraria/Lighting.cs
++++ b/Terraria/Lighting.cs
+@@ -22,7 +22,7 @@
+ 
+     private static readonly LegacyLighting LegacyEngine = new LegacyLighting(Main.Camera);
+ 
+-    private static ILightingEngine _activeEngine;
++    internal static ILightingEngine _activeEngine;
+ 
+     public static float GlobalBrightness { get; set; }
+ 

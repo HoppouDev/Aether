@@ -1,0 +1,10 @@
+--- a/Terraria/Framing.cs
++++ b/Terraria/Framing.cs
+@@ -325,6 +325,7 @@
+ 
+     public static void WallFrame(int i, int j, bool resetFrame = false)
+     {
++        Aether.Graphics.Terrain.TerrainSnapshotPump.InvalidateTile(Main.tile, i, j);
+         if (i <= 0 || j <= 0 || i >= Main.maxTilesX - 1 || j >= Main.maxTilesY - 1 || Main.tile[i, j] == null)
+         {
+             return;

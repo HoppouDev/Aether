@@ -1,0 +1,11 @@
+--- a/Terraria/GameContent/UI/Elements/UIHairStyleButton.cs
++++ b/Terraria/GameContent/UI/Elements/UIHairStyleButton.cs
+@@ -64,7 +64,7 @@
+         }
+         if (_framesToSkip > 0)
+         {
+-            _framesToSkip--;
++            _framesToSkip = System.Math.Max(0, _framesToSkip - Aether.Graphics.VisualAnimationTime.WholeTicks);
+             return;
+         }
+         int head = _player.head;

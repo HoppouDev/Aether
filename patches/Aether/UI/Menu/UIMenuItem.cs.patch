@@ -66,11 +66,11 @@
 +        UpdateSize();
 +        if (IsMouseHovering && IsInteractive)
 +        {
-+            _hoverScale = Math.Min(1f, _hoverScale + 0.02f);
++            _hoverScale = Math.Min(1f, _hoverScale + 0.02f * Aether.Graphics.VisualAnimationTime.FrameScale);
 +        }
 +        else if (_hoverScale > IdleScale)
 +        {
-+            _hoverScale = Math.Max(IdleScale, _hoverScale - 0.02f);
++            _hoverScale = Math.Max(IdleScale, _hoverScale - 0.02f * Aether.Graphics.VisualAnimationTime.FrameScale);
 +        }
 +    }
 +

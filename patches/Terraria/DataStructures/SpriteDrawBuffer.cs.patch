@@ -1,0 +1,23 @@
+--- a/Terraria/DataStructures/SpriteDrawBuffer.cs
++++ b/Terraria/DataStructures/SpriteDrawBuffer.cs
+@@ -7,6 +7,9 @@
+ 
+ public class SpriteDrawBuffer
+ {
++    // Translation is baked per sprite, preserving batching and draw order.
++    public Vector2 DrawOffset { get; set; }
++
+     private readonly GraphicsDevice graphicsDevice;
+ 
+     private readonly SpriteBatch spriteBatch;
+@@ -260,8 +263,8 @@
+         uploadedSpriteIndex = -1;
+         float num = origin.X / sourceRectangle.Z;
+         float num2 = origin.Y / sourceRectangle.W;
+-        float x = destinationRect.X;
+-        float y = destinationRect.Y;
++        float x = destinationRect.X + DrawOffset.X;
++        float y = destinationRect.Y + DrawOffset.Y;
+         float z = destinationRect.Z;
+         float w = destinationRect.W;
+         float num3 = num * z;

@@ -1,0 +1,31 @@
+--- a/Terraria/GameContent/Drawing/WallDrawing.cs
++++ b/Terraria/GameContent/Drawing/WallDrawing.cs
+@@ -72,6 +72,8 @@
+         int num3 = (int)((float)num * 0.35f);
+         int num4 = (int)((float)num * 0.3f);
+         TileDrawing.GetScreenDrawArea(!Main.drawToScreen, out var drawOffSet, out var firstTileX, out var lastTileX, out var firstTileY, out var lastTileY);
++        using var terrainLayer = Aether.Graphics.Terrain.TerrainRendererHost.MeasureLayer(Aether.Graphics.Terrain.TerrainLayer.Walls);
++        Aether.Graphics.Terrain.TerrainRendererHost.BeginWallPass(firstTileX, lastTileX, firstTileY, lastTileY);
+         VertexColors vertices = default;
+         Rectangle sourceRectangle = new Rectangle(0, 0, 32, 32);
+         int underworldLayer = Main.UnderworldLayer;
+@@ -148,7 +150,8 @@
+                             vertices = _glowPaintColors;
+                         }
+                     }
+-                    Main.tileBatch.Draw(wallDrawTexture, new Vector2(j * 16 - (int)screenPosition.X - 8, i * 16 - (int)screenPosition.Y - 8) + drawOffSet, sourceRectangle, vertices, Vector2.Zero);
++                    if (!Aether.Graphics.Terrain.TerrainRendererHost.TryQueueWall(j, i, tile, wallDrawTexture, sourceRectangle, new Vector2(j * 16 - (int)screenPosition.X - 8, i * 16 - (int)screenPosition.Y - 8) + drawOffSet, vertices))
++                        Main.tileBatch.Draw(wallDrawTexture, new Vector2(j * 16 - (int)screenPosition.X - 8, i * 16 - (int)screenPosition.Y - 8) + drawOffSet, sourceRectangle, vertices, Vector2.Zero);
+                     if (tile.wall == 347)
+                     {
+                         Texture2D value = TextureAssets.GlowMask[361].Value;
+@@ -167,7 +170,8 @@
+                     {
+                         color2 = Color.Lerp(color2, Color.White, 0.5f);
+                     }
+-                    Main.tileBatch.Draw(wallDrawTexture, new Vector2(j * 16 - (int)screenPosition.X - 8, i * 16 - (int)screenPosition.Y - 8) + drawOffSet, sourceRectangle, color2, Vector2.Zero);
++                    if (!Aether.Graphics.Terrain.TerrainRendererHost.TryQueueWall(j, i, tile, wallDrawTexture, sourceRectangle, new Vector2(j * 16 - (int)screenPosition.X - 8, i * 16 - (int)screenPosition.Y - 8) + drawOffSet, color2))
++                        Main.tileBatch.Draw(wallDrawTexture, new Vector2(j * 16 - (int)screenPosition.X - 8, i * 16 - (int)screenPosition.Y - 8) + drawOffSet, sourceRectangle, color2, Vector2.Zero);
+                     if (tile.wall == 347)
+                     {
+                         Texture2D value2 = TextureAssets.GlowMask[361].Value;

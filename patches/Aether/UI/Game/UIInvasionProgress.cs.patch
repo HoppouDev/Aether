@@ -192,15 +192,15 @@
 +        }
 +        if (!Main.gamePaused && Main.invasionProgressDisplayLeft > 0)
 +        {
-+            Main.invasionProgressDisplayLeft--;
++            Main.invasionProgressDisplayLeft = System.Math.Max(0, Main.invasionProgressDisplayLeft - Aether.Graphics.VisualAnimationTime.WholeTicks);
 +        }
 +        if (Main.invasionProgressDisplayLeft > 0)
 +        {
-+            Main.invasionProgressAlpha += 0.05f;
++            Main.invasionProgressAlpha += 0.05f * Aether.Graphics.VisualAnimationTime.FrameScale;
 +        }
 +        else
 +        {
-+            Main.invasionProgressAlpha -= 0.05f;
++            Main.invasionProgressAlpha -= 0.05f * Aether.Graphics.VisualAnimationTime.FrameScale;
 +        }
 +        if (Main.invasionProgressMode == 0)
 +        {

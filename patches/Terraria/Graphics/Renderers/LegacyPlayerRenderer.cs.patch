@@ -1,0 +1,54 @@
+--- a/Terraria/Graphics/Renderers/LegacyPlayerRenderer.cs
++++ b/Terraria/Graphics/Renderers/LegacyPlayerRenderer.cs
+@@ -131,6 +131,7 @@
+ 
+     public void DrawPlayer(Camera camera, Player drawPlayer, Vector2 position, float rotation, Vector2 rotationOrigin, float shadow = 0f, float scale = 1f)
+     {
++        using var visual = Aether.Graphics.EntityMotion.EntityVisuals.Enter(drawPlayer, camera.SpriteBatch);
+         if (drawPlayer.ShouldNotDraw)
+         {
+             return;
+@@ -260,6 +261,7 @@
+ 
+     private void DrawPlayerFull(Camera camera, Player drawPlayer)
+     {
++        using var visual = Aether.Graphics.EntityMotion.EntityVisuals.Enter(drawPlayer, camera.SpriteBatch);
+         SpriteBatch spriteBatch = camera.SpriteBatch;
+         SamplerState samplerState = camera.Sampler;
+         if (drawPlayer.mount.Active && drawPlayer.fullRotation != 0f)
+@@ -319,7 +321,7 @@
+                 _ = drawPlayer.position;
+                 if (!Main.gamePaused)
+                 {
+-                    drawPlayer.ghostFade += drawPlayer.ghostDir * 0.075f;
++                    drawPlayer.ghostFade += drawPlayer.ghostDir * 0.075f * Aether.Graphics.VisualAnimationTime.FrameScale;
+                 }
+                 if ((double)drawPlayer.ghostFade < 0.1)
+                 {
+@@ -364,7 +366,7 @@
+                 _ = drawPlayer.position;
+                 if (!Main.gamePaused)
+                 {
+-                    drawPlayer.ghostFade += drawPlayer.ghostDir * 0.025f;
++                    drawPlayer.ghostFade += drawPlayer.ghostDir * 0.025f * Aether.Graphics.VisualAnimationTime.FrameScale;
+                 }
+                 if ((double)drawPlayer.ghostFade < 0.1)
+                 {
+@@ -436,7 +438,7 @@
+             }
+             if (drawPlayer.shadowDodge)
+             {
+-                drawPlayer.shadowDodgeCount++;
++                drawPlayer.shadowDodgeCount += Aether.Graphics.VisualAnimationTime.FrameScale;
+                 if (drawPlayer.shadowDodgeCount > 30f)
+                 {
+                     drawPlayer.shadowDodgeCount = 30f;
+@@ -444,7 +446,7 @@
+             }
+             else
+             {
+-                drawPlayer.shadowDodgeCount--;
++                drawPlayer.shadowDodgeCount -= Aether.Graphics.VisualAnimationTime.FrameScale;
+                 if (drawPlayer.shadowDodgeCount < 0f)
+                 {
+                     drawPlayer.shadowDodgeCount = 0f;

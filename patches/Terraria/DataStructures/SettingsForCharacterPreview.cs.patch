@@ -1,0 +1,16 @@
+--- a/Terraria/DataStructures/SettingsForCharacterPreview.cs
++++ b/Terraria/DataStructures/SettingsForCharacterPreview.cs
+@@ -31,10 +31,10 @@
+                 {
+                     num3 = num2 * 2 - DelayPerFrame * 2;
+                 }
+-                if (++proj.frameCounter >= num3)
+-                {
++                if (num3 > 0)
++                    proj.frameCounter = (proj.frameCounter + Aether.Graphics.VisualAnimationTime.WholeTicks) % num3;
++                else
+                     proj.frameCounter = 0;
+-                }
+                 num = proj.frameCounter / DelayPerFrame;
+                 if (BounceLoop && num >= FrameCount)
+                 {

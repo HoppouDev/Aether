@@ -1,0 +1,22 @@
+#version 450
+layout(local_size_x=64,local_size_y=1,local_size_z=1) in;
+struct Record { vec2 position; vec2 uv; vec2 light; uint color; uint size; };
+layout(set=0,binding=0,std430) readonly buffer InputRecords { Record records[]; };
+layout(set=1,binding=0,std430) writeonly buffer OutputVertices { uint words[]; };
+layout(set=2,binding=0,std140) uniform Parameters { uint first; uint count; uint destination; uint reserved; } p;
+void main() {
+    uint index=gl_GlobalInvocationID.x;
+    if(index>=p.count)return;
+    Record r=records[p.first+index];
+    const vec2 corners[6]=vec2[6](vec2(0,0),vec2(1,0),vec2(1,1),vec2(0,0),vec2(1,1),vec2(0,1));
+    for(uint v=0;v<6;v++) {
+        vec2 offset=corners[v]*float(r.size);
+        vec2 position=r.position+offset,uv=r.uv+offset;
+        vec2 light=r.size==32u?r.light+corners[v]:r.light;
+        uint at=(p.destination+index*6+v)*8;
+        words[at]=floatBitsToUint(position.x);words[at+1]=floatBitsToUint(position.y);
+        words[at+2]=floatBitsToUint(uv.x);words[at+3]=floatBitsToUint(uv.y);
+        words[at+4]=floatBitsToUint(light.x);words[at+5]=floatBitsToUint(light.y);
+        words[at+6]=r.color;words[at+7]=0;
+    }
+}

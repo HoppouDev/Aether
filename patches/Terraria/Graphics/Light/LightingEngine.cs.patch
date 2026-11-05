@@ -1,0 +1,99 @@
+--- a/Terraria/Graphics/Light/LightingEngine.cs
++++ b/Terraria/Graphics/Light/LightingEngine.cs
+@@ -1,5 +1,6 @@
+ using System;
+ using System.Collections.Generic;
++using System.Threading.Tasks;
+ using Microsoft.Xna.Framework;
+ using ReLogic.Threading;
+ using Terraria.Graphics.Capture;
+@@ -48,6 +49,11 @@
+ 
+     private EngineState _state;
+ 
++    private Task? _blurTask;
++    private LightMap? _blurMap;
++    private bool _backgroundBlurFailed;
++
++
+     public void AddLight(int x, int y, Vector3 color)
+     {
+         _perFrameLights.Add(new PerFrameLight(new Point(x, y), color));
+@@ -56,7 +62,12 @@
+     public void Clear()
+     {
+         _activeLightMap.Clear();
+-        _workingLightMap.Clear();
++        // A worker owns its buffer until completion; never clear it underneath it.
++        if (_blurMap == _workingLightMap)
++            _workingLightMap = new LightMap();
++        else
++            _workingLightMap.Clear();
++        _state = EngineState.MinimapUpdate;
+         _perFrameLights.Clear();
+         _oldPerFrameLights.Clear();
+         _perFrameLightSwapUpdateCount = 0u;
+@@ -76,6 +87,40 @@
+     public void ProcessArea(Rectangle area)
+     {
+         TimeLogger.StartTimestamp fromTimestamp = TimeLogger.Start();
++        if (_blurTask is not null)
++        {
++            // Photo capture deliberately finishes lighting synchronously.
++            if (!_blurTask.IsCompleted && !CaptureManager.Instance.IsCapturing)
++            {
++                Main.renderCount = 0;
++                return;
++            }
++
++            bool current = ReferenceEquals(_blurMap, _workingLightMap);
++            try
++            {
++                _blurTask.Wait();
++            }
++            catch (Exception exception)
++            {
++                _backgroundBlurFailed = true;
++                Console.Error.WriteLine($"Background lighting failed; using synchronous lighting: {exception}");
++                if (current)
++                    _workingLightMap.Blur();
++            }
++            _blurTask = null;
++            _blurMap = null;
++            if (current)
++            {
++                Present();
++                Main.renderCount = 2;
++                TimeLogger.LightingByPass[(int)EngineState.Blur].AddTime(fromTimestamp);
++                IncrementState();
++                return;
++            }
++            // Clear/Rebuild detached the old buffer; discard its result.
++        }
++
+         switch (_state)
+         {
+         case EngineState.MinimapUpdate:
+@@ -98,6 +143,22 @@
+             Main.renderCount = 1;
+             break;
+         case EngineState.Blur:
++            if (!Main.gameMenu && !Main.dedServ && !CaptureManager.Instance.IsCapturing && !_backgroundBlurFailed && Aether.Graphics.GraphicsSettings.BackgroundLighting)
++            {
++                // Read world/player state on the main thread, then hand only
++                // the private light-map buffer to the worker.
++                UpdateLightDecay();
++                ApplyPerFrameLights();
++                LightMap buffer = _workingLightMap;
++                _blurMap = buffer;
++                _blurTask = Task.Factory.StartNew(() =>
++                {
++                    buffer.Blur();
++                }, System.Threading.CancellationToken.None, TaskCreationOptions.None, TaskScheduler.Default);
++                Main.renderCount = 0;
++                TimeLogger.LightingByPass[(int)_state].AddTime(fromTimestamp);
++                return;
++            }
+             ProcessBlur();
+             Present();
+             Main.renderCount = 2;

@@ -1,0 +1,21 @@
+--- a/Terraria/GameContent/UI/Elements/UICharacter.cs
++++ b/Terraria/GameContent/UI/Elements/UICharacter.cs
+@@ -77,7 +77,7 @@
+     {
+         if (_animated)
+         {
+-            _animationCounter++;
++            _animationCounter += Aether.Graphics.VisualAnimationTime.WholeTicks;
+         }
+         base.Update(gameTime);
+     }
+@@ -103,7 +103,8 @@
+         }
+         _player.ResetEffects();
+         _player.ResetVisibleAccessories();
+-        _player.UpdateMiscCounter();
++        for (int tick = 0; tick < Aether.Graphics.VisualAnimationTime.WholeTicks; tick++)
++            _player.UpdateMiscCounter();
+         _player.UpdateDyes();
+         if (PrepareAction != null)
+         {

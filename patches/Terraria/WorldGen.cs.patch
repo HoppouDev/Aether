@@ -1,0 +1,74 @@
+--- a/Terraria/WorldGen.cs
++++ b/Terraria/WorldGen.cs
+@@ -44379,6 +44379,7 @@
+ 
+     public static bool paintTile(int x, int y, byte color, bool broadCast = false, bool paintEffects = true)
+     {
++        Aether.Graphics.Terrain.TerrainSnapshotPump.InvalidateTile(Main.tile, x, y);
+         Tile tile = Main.tile[x, y];
+         if (tile == null || !tile.active())
+         {
+@@ -44403,6 +44404,7 @@
+ 
+     public static bool paintCoatTile(int x, int y, byte paintCoatId, bool broadcast = false, bool coatingEffects = true)
+     {
++        Aether.Graphics.Terrain.TerrainSnapshotPump.InvalidateTile(Main.tile, x, y);
+         Tile tile = Main.tile[x, y];
+         if (tile == null || !tile.active())
+         {
+@@ -44451,6 +44453,7 @@
+ 
+     public static bool paintCoatWall(int x, int y, byte paintCoatId, bool broadcast = false, bool coatingEffects = true)
+     {
++        Aether.Graphics.Terrain.TerrainSnapshotPump.InvalidateTile(Main.tile, x, y);
+         Tile tile = Main.tile[x, y];
+         if (tile == null || tile.wall == 0)
+         {
+@@ -44499,6 +44502,7 @@
+ 
+     public static bool paintWall(int x, int y, byte color, bool broadCast = false, bool paintEffects = true)
+     {
++        Aether.Graphics.Terrain.TerrainSnapshotPump.InvalidateTile(Main.tile, x, y);
+         Tile tile = Main.tile[x, y];
+         if (tile == null || tile.wall == 0)
+         {
+@@ -59758,6 +59762,7 @@
+ 
+     public static bool PlaceTile(int i, int j, int Type, bool mute = false, bool forced = false, int plr = -1, int style = 0)
+     {
++        Aether.Graphics.Terrain.TerrainSnapshotPump.InvalidateTile(Main.tile, i, j);
+         int num = Type;
+         if (isGeneratingOrLoadingWorld && Main.tile[i, j].active() && Main.tile[i, j].type == 488)
+         {
+@@ -60784,6 +60789,7 @@
+ 
+     public static void KillWall(int i, int j, bool fail = false)
+     {
++        Aether.Graphics.Terrain.TerrainSnapshotPump.InvalidateTile(Main.tile, i, j);
+         if (i < 0 || j < 0 || i >= Main.maxTilesX || j >= Main.maxTilesY)
+         {
+             return;
+@@ -63965,6 +63971,7 @@
+ 
+     public static void KillTile(int i, int j, bool fail = false, bool effectOnly = false, bool noItem = false)
+     {
++        Aether.Graphics.Terrain.TerrainSnapshotPump.InvalidateTile(Main.tile, i, j);
+         if (i < 0 || j < 0 || i >= Main.maxTilesX || j >= Main.maxTilesY)
+         {
+             return;
+@@ -75764,6 +75771,7 @@
+ 
+     public static void PlaceWall(int i, int j, int type, bool mute = false)
+     {
++        Aether.Graphics.Terrain.TerrainSnapshotPump.InvalidateTile(Main.tile, i, j);
+         if (i <= 1 || j <= 1 || i >= Main.maxTilesX - 2 || j >= Main.maxTilesY - 2)
+         {
+             return;
+@@ -81985,6 +81993,7 @@
+ 
+     public static void TileFrame(int i, int j, bool resetFrame = false, bool noBreak = false)
+     {
++        Aether.Graphics.Terrain.TerrainSnapshotPump.InvalidateTile(Main.tile, i, j);
+         if (i <= 5 || j <= 5 || i >= Main.maxTilesX - 5 || j >= Main.maxTilesY - 5 || Main.tile[i, j] == null)
+         {
+             return;

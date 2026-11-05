@@ -1,0 +1,40 @@
+--- /dev/null
++++ b/Aether/Graphics/GraphicsSettings.cs
+@@ -0,0 +1,37 @@
++using Terraria.IO;
++using Aether.Graphics.Terrain;
++
++namespace Aether.Graphics;
++
++internal static class GraphicsSettings
++{
++    internal static bool UncappedFps;
++    internal static bool BackgroundLighting = true;
++    internal static RendererMode TerrainMode;
++    internal static RendererQuality TerrainQuality;
++    internal static bool ComputeTerrain;
++    internal static bool FastTerrain;
++    internal static bool SmoothEntityMovement = true;
++
++    internal static void Load(Preferences configuration)
++    {
++        BackgroundLighting = configuration.Get("AetherBackgroundLighting", true);
++        TerrainMode = (RendererMode)GraphicsMath.Clamp(configuration.Get("AetherTerrainMode", 0), 0, 2);
++        TerrainQuality = (RendererQuality)GraphicsMath.Clamp(configuration.Get("AetherTerrainQuality", 0), 0, 1);
++        ComputeTerrain = configuration.Get("AetherComputeTerrain", false);
++        FastTerrain = configuration.Get("AetherFastTerrain", false);
++        UncappedFps = configuration.Get("AetherUncappedFps", false);
++        SmoothEntityMovement = configuration.Get("AetherSmoothEntityMovement", true);
++    }
++
++    internal static void Save(Preferences configuration)
++    {
++        configuration.Put("AetherBackgroundLighting", BackgroundLighting);
++        configuration.Put("AetherTerrainMode", (int)TerrainMode);
++        configuration.Put("AetherTerrainQuality", (int)TerrainQuality);
++        configuration.Put("AetherComputeTerrain", ComputeTerrain);
++        configuration.Put("AetherFastTerrain", FastTerrain);
++        configuration.Put("AetherUncappedFps", UncappedFps);
++        configuration.Put("AetherSmoothEntityMovement", SmoothEntityMovement);
++    }
++}

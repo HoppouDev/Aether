@@ -1,0 +1,60 @@
+--- /dev/null
++++ b/Aether/Graphics/Terrain/ChunkTracker.cs
+@@ -0,0 +1,57 @@
++using Terraria;
++using System.Threading;
++using Microsoft.Xna.Framework;
++using System;
++using System.Collections.Generic;
++
++namespace Aether.Graphics.Terrain;
++
++public sealed class ChunkTracker
++{
++    private readonly record struct ChunkState(long Revision, TerrainDirtyLayers Dirty);
++
++    private readonly int owner = Thread.CurrentThread.ManagedThreadId;
++    private readonly Dictionary<ChunkKey, ChunkState> chunks = new();
++    public long World { get; private set; }
++    public long Assets { get; private set; }
++    public long ChangeStamp { get; private set; }
++    private void CheckOwner()
++    {
++        if (Thread.CurrentThread.ManagedThreadId != owner) throw new InvalidOperationException("Chunk tracking belongs to the main thread");
++    }
++    public void Reset(long world, long assets)
++    {
++        CheckOwner(); World = world; Assets = assets; chunks.Clear(); ChangeStamp++;
++    }
++    public ChunkVersion Current(ChunkKey key)
++    {
++        CheckOwner(); return new(World, Assets, chunks.TryGetValue(key, out var state) ? state.Revision : 0);
++    }
++    public void Invalidate(ChunkKey key, TerrainDirtyLayers layers = TerrainDirtyLayers.All)
++    {
++        CheckOwner();
++        chunks.TryGetValue(key, out var state);
++        chunks[key] = new ChunkState(checked(state.Revision + 1), state.Dirty | layers);
++        ChangeStamp++;
++    }
++    public void InvalidateTile(int x, int y, TerrainDirtyLayers layers = TerrainDirtyLayers.All)
++    {
++        CheckOwner();
++        // One-tile dependencies, including corners, belong to every touching halo.
++        ChunkKey first = ChunkKey.FromTile(x - 1, y - 1), last = ChunkKey.FromTile(x + 1, y + 1);
++        for (int cx = first.X; cx <= last.X; cx++)
++            for (int cy = first.Y; cy <= last.Y; cy++) Invalidate(new(cx, cy), layers);
++    }
++    public bool IsCurrent(ChunkKey key, ChunkVersion version) => Current(key) == version;
++    public bool Publish(PreparedChunk result)
++    {
++        CheckOwner();
++        if (!IsCurrent(result.Key, result.Version)) return false;
++        chunks[result.Key] = new ChunkState(result.Version.Revision, TerrainDirtyLayers.None);
++        return true;
++    }
++    public TerrainDirtyLayers Dirty(ChunkKey key)
++    {
++        CheckOwner(); return chunks.TryGetValue(key, out var state) ? state.Dirty : TerrainDirtyLayers.All;
++    }
++}

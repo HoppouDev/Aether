@@ -1,0 +1,18 @@
+--- a/Terraria/Wiring.cs
++++ b/Terraria/Wiring.cs
+@@ -3277,6 +3277,7 @@
+ 
+     private static void DeActive(int i, int j)
+     {
++        Aether.Graphics.Terrain.TerrainSnapshotPump.InvalidateTile(Main.tile, i, j);
+         if (!Main.tile[i, j].active() || (Main.tile[i, j].type == 226 && (double)j > Main.worldSurface && !NPC.downedPlantBoss))
+         {
+             return;
+@@ -3307,6 +3308,7 @@
+ 
+     private static void ReActive(int i, int j)
+     {
++        Aether.Graphics.Terrain.TerrainSnapshotPump.InvalidateTile(Main.tile, i, j);
+         Main.tile[i, j].inActive(inActive: false);
+         WorldGen.SquareTileFrame(i, j, resetFrame: false);
+         if (Main.netMode != 1)

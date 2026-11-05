@@ -1,0 +1,124 @@
+--- /dev/null
++++ b/Aether/Graphics/Terrain/TerrainGpuDrawing.cs
+@@ -0,0 +1,121 @@
++using Terraria;
++using System.Threading;
++using System;
++using Microsoft.Xna.Framework;
++using Vector2 = Microsoft.Xna.Framework.Vector2;
++using Vector4 = Microsoft.Xna.Framework.Vector4;
++using System.Runtime.InteropServices;
++
++namespace Aether.Graphics.Terrain;
++
++public enum TerrainImageFormat : uint { Rgba8 = 1, Rgba32Float = 2 }
++[StructLayout(LayoutKind.Sequential)]
++public readonly record struct TerrainVertex(Vector2 Position, Vector2 TextureUV, Vector2 LightUV, uint Color, uint Reserved = 0);
++[StructLayout(LayoutKind.Sequential)]
++public struct TerrainDrawUniforms
++{
++    public Matrix Transform;
++    public Vector4 LightRect, Options, Tint, Reserved;
++    public static TerrainDrawUniforms Identity => new() { Transform = Matrix.Identity, Tint = Vector4.One };
++}
++public sealed class TerrainGpuImage : TerrainGpuResource
++{
++    public int Width { get; }
++    public int Height { get; }
++    public TerrainImageFormat Format { get; }
++    public bool RenderTarget { get; }
++    internal TerrainGpuImage(TerrainGpuContext owner, nint handle, int width, int height, TerrainImageFormat format, bool target, long bytes)
++        : base(owner, handle, bytes) { Width = width; Height = height; Format = format; RenderTarget = target; }
++    internal override void ReleaseNative() => Owner.ReleaseImageHandle(Handle);
++}
++public sealed class TerrainGpuPipeline : TerrainGpuResource
++{
++    internal TerrainGpuPipeline(TerrainGpuContext owner, nint handle, long bytes) : base(owner, handle, bytes) { }
++    internal override void ReleaseNative() => Owner.ReleasePipelineHandle(Handle);
++}
++public sealed partial class TerrainGpuContext
++{
++    [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate nint ImageCreate(nint device, uint width, uint height, uint format, uint target);
++    [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate int ImageUpload(nint device, nint image, uint x, uint y, uint width, uint height, nint bytes, uint size);
++    [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate void ResourceRelease(nint device, nint resource);
++    [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate nint PipelineCreate(nint device, nint vertex, nuint vertexSize, nint fragment, nuint fragmentSize);
++    [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate int DrawNative(nint device, nint pipeline, nint vertices, uint first, uint count, nint atlas, nint light, ref TerrainDrawUniforms uniforms, nint target, uint clear);
++    private ImageCreate? createImage;
++    private ImageUpload? uploadImage;
++    private ResourceRelease? releaseImage, releasePipeline;
++    private PipelineCreate? createPipeline;
++    private DrawNative? draw;
++    private void InitializeDrawApi()
++    {
++        if ((Capabilities & TerrainGpuCapabilities.Draw) == 0) return;
++        createImage = Load<ImageCreate>(library, "TA_TerrainCreateImage");
++        uploadImage = Load<ImageUpload>(library, "TA_TerrainUploadImage");
++        releaseImage = Load<ResourceRelease>(library, "TA_TerrainReleaseImage");
++        createPipeline = Load<PipelineCreate>(library, "TA_TerrainCreateDrawPipeline");
++        releasePipeline = Load<ResourceRelease>(library, "TA_TerrainReleaseDrawPipeline");
++        draw = Load<DrawNative>(library, "TA_TerrainDraw");
++    }
++    private void RequireDrawing()
++    { CheckOwner(); if (draw is null) throw new NotSupportedException("Terrain drawing bridge unavailable"); }
++    private void CheckLive(TerrainGpuResource resource)
++    {
++        if (!ReferenceEquals(resource.Owner, this) || resource.Retiring || resource.Handle == 0)
++            throw new ArgumentException("Resource is not live in this context");
++    }
++    private void ReserveCheck(long bytes)
++    { if (bytes <= 0 || bytes > MaxResidentBytes - resident) throw new InvalidOperationException("Terrain VRAM budget exceeded"); }
++    public TerrainGpuImage CreateImage(int width, int height, TerrainImageFormat format = TerrainImageFormat.Rgba8, bool renderTarget = false)
++    {
++        RequireDrawing();
++        if (width < 1 || height < 1 || width > 8192 || height > 8192 || format is not (TerrainImageFormat.Rgba8 or TerrainImageFormat.Rgba32Float))
++            throw new ArgumentOutOfRangeException(nameof(width));
++        // Graphics pipelines currently support RGBA8 color targets only.
++        if (renderTarget && format != TerrainImageFormat.Rgba8) throw new NotSupportedException("Terrain render targets require RGBA8");
++        long bytes = (long)width * height * (format == TerrainImageFormat.Rgba8 ? 4 : 16); ReserveCheck(bytes);
++        nint handle = createImage!(device, (uint)width, (uint)height, (uint)format, renderTarget ? 1u : 0u);
++        if (handle == 0) throw new InvalidOperationException(LastError);
++        var result = new TerrainGpuImage(this, handle, width, height, format, renderTarget, bytes);
++        buffers.Add(result); resident += bytes; return result;
++    }
++    public void Upload(TerrainGpuImage image, int x, int y, int width, int height, byte[] pixels)
++    {
++        RequireDrawing(); CheckLive(image);
++        if (x < 0 || y < 0 || width < 1 || height < 1 || width > image.Width - x || height > image.Height - y ||
++            pixels.LongLength != (long)width * height * (image.Format == TerrainImageFormat.Rgba8 ? 4 : 16))
++            throw new ArgumentOutOfRangeException(nameof(pixels));
++        var pin = GCHandle.Alloc(pixels, GCHandleType.Pinned);
++        try { if (uploadImage!(device, image.Handle, (uint)x, (uint)y, (uint)width, (uint)height, pin.AddrOfPinnedObject(), (uint)pixels.Length) == 0) throw new InvalidOperationException(LastError); }
++        finally { pin.Free(); }
++    }
++    public TerrainGpuPipeline CreateDrawPipeline(byte[] vertexSpirv, byte[] fragmentSpirv)
++    {
++        RequireDrawing(); ValidateShader(vertexSpirv); ValidateShader(fragmentSpirv);
++        // Conservative pipeline/code reservation, in addition to image/buffer bytes.
++        long bytes = 65536L + vertexSpirv.Length + fragmentSpirv.Length; ReserveCheck(bytes);
++        var vertex = GCHandle.Alloc(vertexSpirv, GCHandleType.Pinned); var fragment = GCHandle.Alloc(fragmentSpirv, GCHandleType.Pinned);
++        try
++        {
++            nint handle = createPipeline!(device, vertex.AddrOfPinnedObject(), (nuint)vertexSpirv.Length, fragment.AddrOfPinnedObject(), (nuint)fragmentSpirv.Length);
++            if (handle == 0) throw new InvalidOperationException(LastError);
++            var result = new TerrainGpuPipeline(this, handle, bytes); buffers.Add(result); resident += bytes; return result;
++        }
++        finally { vertex.Free(); fragment.Free(); }
++    }
++    private static void ValidateShader(byte[] code)
++    { if (code.Length < 20 || code.Length % 4 != 0 || BitConverter.ToUInt32(code, 0) != 0x07230203) throw new ArgumentException("Invalid SPIR-V"); }
++    public bool Draw(TerrainGpuPipeline pipeline, TerrainGpuBuffer vertices, int first, int count, TerrainGpuImage atlas, TerrainGpuImage light, in TerrainDrawUniforms uniforms, TerrainGpuImage? target = null, bool clear = false)
++    {
++        RequireDrawing(); CheckLive(pipeline); CheckLive(vertices); CheckLive(atlas); CheckLive(light);
++        if ((vertices.Usage & TerrainBufferUsage.Vertex) == 0 || first < 0 || count < 1 || count % 3 != 0 || (long)first + count > vertices.Size / 32) throw new ArgumentOutOfRangeException(nameof(count));
++        if (target is not null)
++        {
++            CheckLive(target);
++            if (!target.RenderTarget || ReferenceEquals(target, atlas) || ReferenceEquals(target, light)) throw new ArgumentException("Invalid terrain render target");
++        }
++        else if (clear) throw new ArgumentException("Only explicit offscreen targets may be cleared");
++        var data = uniforms;
++        return draw!(device, pipeline.Handle, vertices.Handle, (uint)first, (uint)count, atlas.Handle, light.Handle, ref data, target?.Handle ?? 0, clear ? 1u : 0u) != 0;
++    }
++    internal void ReleaseImageHandle(nint handle) => releaseImage!(device, handle);
++    internal void ReleasePipelineHandle(nint handle) => releasePipeline!(device, handle);
++}

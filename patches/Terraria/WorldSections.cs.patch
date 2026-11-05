@@ -1,0 +1,11 @@
+--- a/Terraria/WorldSections.cs
++++ b/Terraria/WorldSections.cs
+@@ -172,6 +172,8 @@
+ 
+     public void SetSectionLoaded(int x, int y)
+     {
++        Aether.Graphics.SectionFramingScheduler.InvalidateSection(this, x, y);
++        Aether.Graphics.Terrain.TerrainSnapshotPump.InvalidateSection(this, x, y);
+         if (x >= 0 && x < width && y >= 0 && y < height)
+         {
+             SetSectionLoaded(ref data[y * width + x]);

@@ -1,0 +1,10 @@
+--- a/Terraria/NPC.cs
++++ b/Terraria/NPC.cs
+@@ -8460,6 +8460,7 @@
+ 
+     public void SetDefaults(int Type, NPCSpawnParams spawnparams = default(NPCSpawnParams))
+     {
++        Aether.Graphics.EntityMotion.EntityVisuals.Invalidate(this);
+         if (Main.getGoodWorld && !IsABestiaryIconDummy && spawnparams.sizeScaleOverride.HasValue)
+         {
+             spawnparams.sizeScaleOverride = (spawnparams.sizeScaleOverride + spawnparams.sizeScaleOverride * spawnparams.sizeScaleOverride) / 2f;

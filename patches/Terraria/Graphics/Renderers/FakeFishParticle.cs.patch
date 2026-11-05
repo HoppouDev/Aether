@@ -1,0 +1,11 @@
+--- a/Terraria/Graphics/Renderers/FakeFishParticle.cs
++++ b/Terraria/Graphics/Renderers/FakeFishParticle.cs
+@@ -482,7 +482,7 @@
+                 num3 -= (float)Math.PI / 2f;
+             }
+         }
+-        Main.instance.DrawItem_GetBasics(_itemInstance, 0, out var texture, out var frame, out var glowmaskFrame);
++        Main.instance.DrawItem_GetBasics(_itemInstance, (int)(Main.GameUpdateCount % int.MaxValue), out var texture, out var frame, out var glowmaskFrame);
+         Color color = Color.Lerp(Color.White, Color.Black, 0.8f) * 0.7f;
+         if (_sonarStartTime > 0 && _sonarTimeleft <= _sonarStartTime && _sonarTimeleft > 0)
+         {

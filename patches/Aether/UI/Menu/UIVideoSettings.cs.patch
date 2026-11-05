@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/Aether/UI/Menu/UIVideoSettings.cs
-@@ -0,0 +1,70 @@
+@@ -0,0 +1,71 @@
 +using System;
 +using Terraria;
 +using Terraria.Audio;
@@ -56,6 +56,7 @@
 +            Main.SettingsEnabled_TilesSwayInWind = !Main.SettingsEnabled_TilesSwayInWind;
 +        }, Scale);
 +        AddLink(() => Language.GetTextValue("UI.Effects"), 2008, 11, Scale);
++        AddLink(() => Language.GetTextValue("AetherGraphics.Title"), UIAetherGraphicsSettings.Mode, 11, Scale);
 +        AddItem(() => Lang.menu[5].Value, GoBack, 1f, 8f);
 +    }
 +

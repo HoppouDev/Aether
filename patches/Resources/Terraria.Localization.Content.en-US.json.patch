@@ -1,0 +1,24 @@
+--- a/Resources/Terraria.Localization.Content.en-US.json
++++ b/Resources/Terraria.Localization.Content.en-US.json
+@@ -1,4 +1,21 @@
+ {
++    "AetherGraphics": {
++        "Title": "Aether Graphics",
++        "Renderer": "Terrain renderer: {0}",
++        "Quality": "Renderer quality: {0}",
++        "Compute": "Vulkan compute geometry: {0}",
++        "FastTerrain": "Fast cached terrain: {0}",
++        "Lighting": "Background lighting preparation: {0}",
++        "Motion": "Smooth entity movement: {0}",
++        "Uncapped": "Uncapped FPS: {0}",
++        "Legacy": "Legacy",
++        "Chunked": "Chunked (Vulkan)",
++        "Auto": "Auto (Legacy)",
++        "Standard": "Standard",
++        "Performance": "Performance",
++        "On": "On",
++        "Off": "Off"
++    },
+ 	"Error": {
+ 		"Error": "Error",
+ 		"LaunchFromSteam": "Please launch the game from your Steam client.",

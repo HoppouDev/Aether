@@ -1,0 +1,161 @@
+--- /dev/null
++++ b/Aether/Graphics/Terrain/ChunkPreparationQueue.cs
+@@ -0,0 +1,158 @@
++using Terraria;
++using System.Threading;
++using Microsoft.Xna.Framework;
++using System;
++using System.Collections.Generic;
++using System.Threading.Tasks;
++
++namespace Aether.Graphics.Terrain;
++
++// All queue/tracker mutation stays on its owner. Workers receive immutable data
++// and a cancellation token, and return immutable results only.
++public sealed class ChunkPreparationQueue : IDisposable
++{
++    private readonly record struct CompletedJob(PreparedChunk Result, long Bytes);
++
++    public const int MaximumWorkers = 2;
++    public const int MaximumPending = 128;
++    public const long MaximumBytes = ChunkMemoryBudget.Limit;
++    private readonly int owner = Thread.CurrentThread.ManagedThreadId;
++    private readonly ChunkTracker tracker;
++    private readonly ChunkMemoryBudget budget;
++    public bool UseCompute { get; set; }
++    private readonly List<Job> pending = new();
++    private readonly List<Job> running = new();
++    private readonly Queue<CompletedJob> ready = new();
++    private long reserved;
++    private bool disposed;
++    public int PendingCount => pending.Count;
++    public int RunningCount => running.Count;
++    public int ReadyCount => ready.Count;
++    public long ReservedBytes => reserved;
++    public long DiscardedResults { get; private set; }
++    public string LastFailure { get; private set; } = "";
++
++    public ChunkPreparationQueue(ChunkTracker tracker, ChunkMemoryBudget budget)
++    {
++        this.tracker = tracker;
++        this.budget = budget;
++    }
++    private void ReleaseBytes(long bytes) { reserved -= bytes; budget.Release(bytes); }
++    private void CheckOwner()
++    {
++        if (disposed) throw new ObjectDisposedException(GetType().Name);
++        if (Thread.CurrentThread.ManagedThreadId != owner) throw new InvalidOperationException("Chunk queues belong to the main thread");
++    }
++    public bool Enqueue(ChunkSnapshot snapshot, long priority)
++    {
++        CheckOwner();
++        if (!tracker.IsCurrent(snapshot.Key, snapshot.Version)) return false;
++        for (int i = 0; i < pending.Count; i++)
++        {
++            Job job = pending[i];
++            if (job.Snapshot.Key != snapshot.Key) continue;
++            if (job.Snapshot.Version == snapshot.Version) { job.Priority = Math.Min(priority, job.Priority); return true; }
++            ReleaseBytes(job.Bytes); job.Cancellation.Dispose(); pending.RemoveAt(i); break;
++        }
++        foreach (Job job in running)
++            if (job.Snapshot.Key == snapshot.Key)
++            {
++                if (job.Snapshot.Version == snapshot.Version) return true;
++                job.Cancellation.Cancel();
++            }
++        long bytes = snapshot.Bytes + ChunkGeometry.MaximumBytes + ChunkWallGeometry.MaximumBytes + 128L;
++        if (pending.Count >= MaximumPending || !budget.TryReserve(bytes)) return false;
++        pending.Add(new Job(snapshot, priority, bytes)); reserved += bytes;
++        return true;
++    }
++    public void Pump()
++    {
++        CheckOwner();
++        for (int i = running.Count - 1; i >= 0; i--)
++        {
++            Job job = running[i];
++            if (!job.Task!.IsCompleted) continue;
++            running.RemoveAt(i);
++            try
++            {
++                PreparedChunk result = job.Task.Result;
++                if (result.Key == job.Snapshot.Key && result.Version == job.Snapshot.Version && result.Fingerprint == job.Snapshot.Fingerprint && tracker.IsCurrent(result.Key, result.Version))
++                { ready.Enqueue(new CompletedJob(result, job.Bytes)); continue; }
++                DiscardedResults++;
++            }
++            catch (OperationCanceledException) { DiscardedResults++; }
++            catch (Exception exception) { LastFailure = exception.Message; DiscardedResults++; }
++            finally { job.Cancellation.Dispose(); }
++            ReleaseBytes(job.Bytes);
++        }
++        pending.Sort((a, b) => a.Priority.CompareTo(b.Priority));
++        while (running.Count < MaximumWorkers && pending.Count > 0)
++        {
++            Job job = pending[0]; pending.RemoveAt(0);
++            if (!tracker.IsCurrent(job.Snapshot.Key, job.Snapshot.Version))
++            { ReleaseBytes(job.Bytes); job.Cancellation.Dispose(); DiscardedResults++; continue; }
++            // Capture the delegate/input, not the queue or any game state.
++            var input = job.Snapshot;
++            var token = job.Cancellation.Token;
++            bool packed = UseCompute;
++            job.Task = Task.Factory.StartNew(() => Prepare(input, token, packed), token, TaskCreationOptions.None, TaskScheduler.Default);
++            running.Add(job);
++        }
++    }
++    public bool TryTake(out PreparedChunk? result)
++    {
++        CheckOwner();
++        while (ready.Count != 0)
++        {
++            CompletedJob item = ready.Dequeue();
++            ReleaseBytes(item.Bytes);
++            if (tracker.IsCurrent(item.Result.Key, item.Result.Version)) { result = item.Result; return true; }
++            DiscardedResults++;
++        }
++        result = null; return false;
++    }
++    public void CancelPending()
++    {
++        CheckOwner();
++        foreach (Job job in pending) { ReleaseBytes(job.Bytes); job.Cancellation.Dispose(); }
++        pending.Clear();
++        foreach (Job job in running) job.Cancellation.Cancel();
++        while (ready.Count != 0) ReleaseBytes(ready.Dequeue().Bytes);
++    }
++    private static PreparedChunk Prepare(ChunkSnapshot snapshot, CancellationToken token,bool packed)
++    {
++        int active = 0, walls = 0;
++        var tiles = snapshot.Tiles;
++        for (int x = 1; x <= ChunkKey.Size; x++)
++        {
++            token.ThrowIfCancellationRequested();
++            for (int y = 1; y <= ChunkKey.Size; y++)
++            {
++                var tile = tiles[x * ChunkSnapshot.Side + y];
++                if ((tile.Header & 0x60) == 0x20) active++;
++                if (tile.Wall != 0) walls++;
++            }
++        }
++        return new PreparedChunk(snapshot.Key, snapshot.Version, snapshot.Fingerprint, active, walls, ChunkGeometry.Build(snapshot, token,packed), ChunkWallGeometry.Build(snapshot, token,packed));
++    }
++    public void Dispose()
++    {
++        if (disposed) return;
++        CheckOwner(); CancelPending(); disposed = true;
++        // Observe failures even if a world closes before the next Pump. Jobs hold
++        // only their private snapshots; no graphics resource needs worker cleanup.
++        var completionBudget = budget;
++        foreach (Job job in running)
++            _ = job.Task!.ContinueWith(task => { _ = task.Exception; job.Cancellation.Dispose(); completionBudget.Release(job.Bytes); }, TaskScheduler.Default);
++        reserved = 0;
++        running.Clear();
++    }
++    private sealed class Job(ChunkSnapshot snapshot, long priority, long bytes)
++    {
++        public readonly ChunkSnapshot Snapshot = snapshot;
++        public long Priority = priority;
++        public readonly long Bytes = bytes;
++        public readonly CancellationTokenSource Cancellation = new();
++        public Task<PreparedChunk>? Task;
++    }
++}

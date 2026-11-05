@@ -1,0 +1,55 @@
+--- a/Terraria/Graphics/SpriteViewMatrix.cs
++++ b/Terraria/Graphics/SpriteViewMatrix.cs
+@@ -6,6 +6,22 @@
+ public class SpriteViewMatrix
+ {
+     private Vector2 _zoom = Vector2.One;
++    private Vector2 _renderOffset;
++
++    public Vector2 EntityOffset { get; set; }
++
++    public Vector2 RenderOffset
++    {
++        get => _renderOffset;
++        set
++        {
++            if (_renderOffset != value)
++            {
++                _renderOffset = value;
++                _needsRebuild = true;
++            }
++        }
++    }
+ 
+     private Vector2 _translation = Vector2.Zero;
+ 
+@@ -91,7 +107,8 @@
+             {
+                 Rebuild();
+             }
+-            return _normalizedTransformationMatrix;
++            return EntityOffset == Vector2.Zero ? _normalizedTransformationMatrix :
++                Matrix.CreateTranslation(EntityOffset.X, EntityOffset.Y, 0f) * _normalizedTransformationMatrix;
+         }
+     }
+ 
+@@ -151,13 +168,15 @@
+         Vector2 translation = Utils.Round(vector3 - vector3 / vector2);
+         Matrix matrix = Matrix.CreateOrthographicOffCenter(0f, vector.X, vector.Y, 0f, 0f, 1f);
+         _translation = translation;
+-        _zoomMatrix = Matrix.CreateTranslation(0f - translation.X, 0f - translation.Y, 0f) * Matrix.CreateScale(vector2.X, vector2.Y, 1f);
+-        _effectMatrix = identity;
+-        _transformationMatrix = identity * _zoomMatrix;
++        Matrix baseZoom = Matrix.CreateTranslation(0f - translation.X, 0f - translation.Y, 0f) * Matrix.CreateScale(vector2.X, vector2.Y, 1f);
++        Matrix visualOffset = Matrix.CreateTranslation(_renderOffset.X, _renderOffset.Y, 0f);
++        _zoomMatrix = visualOffset * baseZoom;
++        _effectMatrix = visualOffset * identity;
++        _transformationMatrix = visualOffset * identity * baseZoom;
+         Matrix matrix2 = Matrix.CreateTranslation(1f / 256f, 1f / 256f, 0f);
+         _transformationMatrix *= matrix2;
+         Matrix matrix3 = Matrix.CreateTranslation(-0.5f, -0.5f, 0f);
+-        _normalizedTransformationMatrix = Matrix.Invert(identity) * _zoomMatrix * matrix2 * matrix3 * matrix;
++        _normalizedTransformationMatrix = visualOffset * Matrix.Invert(identity) * baseZoom * matrix2 * matrix3 * matrix;
+         _needsRebuild = false;
+     }
+ 

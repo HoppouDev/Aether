@@ -1,0 +1,17 @@
+--- a/Terraria/DataStructures/TileDrawInfo.cs
++++ b/Terraria/DataStructures/TileDrawInfo.cs
+@@ -37,7 +37,13 @@
+ 
+     public Color glowColor;
+ 
+-    public Vector3[] colorSlices = new Vector3[9];
++    public Vector3[] colorSlices;
++
++    public TileDrawInfo(bool allocateSlices = true)
++    {
++        if (allocateSlices)
++            colorSlices = new Vector3[9];
++    }
+ 
+     public Color finalColor;
+ 

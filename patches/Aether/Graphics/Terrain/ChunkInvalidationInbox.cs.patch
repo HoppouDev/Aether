@@ -1,0 +1,61 @@
+--- /dev/null
++++ b/Aether/Graphics/Terrain/ChunkInvalidationInbox.cs
+@@ -0,0 +1,58 @@
++using Terraria;
++using System.Threading;
++using Microsoft.Xna.Framework;
++using System;
++using System.Collections.Generic;
++
++namespace Aether.Graphics.Terrain;
++
++// Notifications may originate during packet processing. No tracker/worker/GPU
++// state is touched here. Overflow requests a complete epoch reset, never a lost edit.
++public sealed class ChunkInvalidationInbox
++{
++    public const int Capacity = 4096;
++    private readonly object sync = new();
++    private readonly Dictionary<ChunkKey, TerrainDirtyLayers> pending = new();
++    private object? boundWorld;
++    private bool overflow;
++    private volatile bool hasPending;
++    public bool HasPending => hasPending;
++    public void Bind(object? world)
++    {
++        lock (sync)
++        {
++            pending.Clear(); overflow = false; hasPending = false; boundWorld = world;
++        }
++    }
++    public void InvalidateTile(object world, int x, int y, TerrainDirtyLayers layers = TerrainDirtyLayers.All)
++    {
++        ChunkKey first = ChunkKey.FromTile(x - 1, y - 1), last = ChunkKey.FromTile(x + 1, y + 1);
++        lock (sync)
++        {
++            if (overflow || !ReferenceEquals(world, boundWorld)) return;
++            for (int cx = first.X; cx <= last.X; cx++)
++                for (int cy = first.Y; cy <= last.Y; cy++)
++                {
++                    var key = new ChunkKey(cx, cy);
++                    if (!pending.TryGetValue(key, out var previous) && pending.Count == Capacity)
++                    { pending.Clear(); overflow = true; hasPending = true; return; }
++                    pending[key] = previous | layers; hasPending = true;
++                }
++        }
++    }
++    // Called only on the tracker owner. False means individual notifications were
++    // replaced by a whole-world reset; callers must advance their world epoch.
++    public bool Drain(object world, Action<ChunkKey, TerrainDirtyLayers> invalidate)
++    {
++        lock (sync)
++        {
++            if (!ReferenceEquals(world, boundWorld)) return true;
++            bool complete = !overflow;
++            if (complete)
++                foreach (var change in pending)
++                    invalidate(change.Key, change.Value);
++            pending.Clear(); overflow = false; hasPending = false;
++            return complete;
++        }
++    }
++}

@@ -1,0 +1,40 @@
+--- /dev/null
++++ b/Aether/Graphics/Terrain/ChunkAssetBinding.cs
+@@ -0,0 +1,37 @@
++using Terraria;
++using System.Threading;
++using Microsoft.Xna.Framework;
++using System;
++
++namespace Aether.Graphics.Terrain;
++
++// Bind/Matches belong to the renderer owner. Asset notifications only advance
++// an atomic epoch; they never touch chunks, graphics resources, or live tiles.
++public sealed class ChunkAssetBinding<TController, TEvent> where TController : class
++{
++    private readonly Action<TController, Action<TEvent>> subscribe, unsubscribe;
++    private readonly Action<TEvent> changed;
++    private TController? controller;
++    private long revision;
++
++    public ChunkAssetBinding(Action<TController, Action<TEvent>> subscribe, Action<TController, Action<TEvent>> unsubscribe)
++    {
++        this.subscribe = subscribe;
++        this.unsubscribe = unsubscribe;
++        changed = _ => Interlocked.Increment(ref revision);
++    }
++
++    public long Revision => Interlocked.Read(ref revision);
++
++    public void Bind(TController? next)
++    {
++        if (ReferenceEquals(controller, next)) return;
++        if (controller is not null) unsubscribe(controller, changed);
++        controller = next;
++        Interlocked.Increment(ref revision);
++        if (controller is not null) subscribe(controller, changed);
++    }
++
++    public bool Matches(TController? current, long expectedRevision) =>
++        ReferenceEquals(controller, current) && Revision == expectedRevision;
++}

@@ -1,0 +1,51 @@
+--- /dev/null
++++ b/Aether/Graphics/Terrain/ChunkSectionInbox.cs
+@@ -0,0 +1,48 @@
++using Terraria;
++using System.Threading;
++using Microsoft.Xna.Framework;
++using System;
++using System.Collections.Generic;
++
++namespace Aether.Graphics.Terrain;
++
++// Producers coalesce section replacements; only the main-thread adapter consumes.
++// The common empty probe is one volatile read, not ConcurrentDictionary.IsEmpty's
++// acquisition of every dictionary lock. Overflow requires a whole-world reset.
++public sealed class ChunkSectionInbox<TOwner> where TOwner : class
++{
++    public const int Capacity = 4096;
++    private readonly object sync = new();
++    private readonly Dictionary<ChunkKey, TOwner> pending = new();
++    private volatile bool hasPending;
++    private bool overflow;
++    public bool HasPending => hasPending;
++    public void Invalidate(TOwner owner, int x, int y)
++    {
++        lock (sync)
++        {
++            if (overflow) return;
++            if (!pending.ContainsKey(new ChunkKey(x, y)) && pending.Count == Capacity)
++            { pending.Clear(); overflow = true; hasPending = true; return; }
++            pending[new ChunkKey(x, y)] = owner;
++            hasPending = true;
++        }
++    }
++    public bool Drain(Action<int, int, TOwner> invalidate)
++    {
++        if (!hasPending) return true;
++        lock (sync)
++        {
++            bool complete = !overflow;
++            if (complete)
++                foreach (var entry in pending)
++                    invalidate(entry.Key.X, entry.Key.Y, entry.Value);
++            pending.Clear(); overflow = false; hasPending = false;
++            return complete;
++        }
++    }
++    public void Clear()
++    {
++        lock (sync) { pending.Clear(); overflow = false; hasPending = false; }
++    }
++}
