@@ -1,0 +1,80 @@
+--- a/Terraria/GameContent/UI/Minimap/MinimapFrame.cs
++++ b/Terraria/GameContent/UI/Minimap/MinimapFrame.cs
+@@ -11,13 +11,13 @@
+ 
+ public class MinimapFrame : IConfigKeyHolder
+ {
+-    private class Button
++    internal class Button
+     {
+         public bool IsHighlighted;
+ 
+-        private readonly Vector2 _position;
++        internal readonly Vector2 _position;
+ 
+-        private readonly Asset<Texture2D> _hoverTexture;
++        internal readonly Asset<Texture2D> _hoverTexture;
+ 
+         private readonly Action _onMouseDown;
+ 
+@@ -62,15 +62,15 @@
+ 
+     private const float ZOOM_IN_MULTIPLIER = 1.025f;
+ 
+-    private readonly Asset<Texture2D> _frameTexture;
++    internal readonly Asset<Texture2D> _frameTexture;
+ 
+     private readonly Vector2 _frameOffset;
+ 
+-    private Button _resetButton;
++    internal Button _resetButton;
+ 
+-    private Button _zoomInButton;
++    internal Button _zoomInButton;
+ 
+-    private Button _zoomOutButton;
++    internal Button _zoomOutButton;
+ 
+     public string ConfigKey { get; set; }
+ 
+@@ -78,7 +78,7 @@
+ 
+     public Vector2 MinimapPosition { get; set; }
+ 
+-    private Vector2 FramePosition
++    internal Vector2 FramePosition
+     {
+         get
+         {
+@@ -137,6 +137,10 @@
+ 
+     public void Update()
+     {
++        if (Aether.UI.Game.UIMinimapFrame.Draw(this))
++        {
++            return;
++        }
+         ValidateState();
+         Button button = null;
+         if (_zoomInButton.IsHighlighted)
+@@ -178,12 +182,20 @@
+ 
+     public void DrawBackground(SpriteBatch spriteBatch)
+     {
++        if (Aether.UI.Game.UIMinimapFrame.Handles)
++        {
++            return;
++        }
+         ValidateState();
+         spriteBatch.Draw(TextureAssets.MagicPixel.Value, new Rectangle((int)MinimapPosition.X - 6, (int)MinimapPosition.Y - 6, 244, 244), Color.Black * Main.mapMinimapAlpha);
+     }
+ 
+     public void DrawForeground(SpriteBatch spriteBatch)
+     {
++        if (Aether.UI.Game.UIMinimapFrame.DrawForeground(this, spriteBatch))
++        {
++            return;
++        }
+         ValidateState();
+         spriteBatch.Draw(_frameTexture.Value, FramePosition, Color.White);
+         _zoomInButton.Draw(spriteBatch, FramePosition);
