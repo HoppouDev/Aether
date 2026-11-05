@@ -293,7 +293,18 @@
          int num = 10;
          Player player = Main.player[myPlayer];
          if (!demonHeartSlotAvailable)
-@@ -43008,7 +43025,7 @@
+@@ -42895,6 +42912,10 @@
+ 
+     private void DrawNPCHousesInUI(int inventoryTop)
+     {
++        if (Aether.UI.Game.UIHousingPage.Draw(inventoryTop))
++        {
++            return;
++        }
+         if (mouseX > screenWidth - 64 - 28 && mouseX < (int)((float)(screenWidth - 64 - 28) + 56f * inventoryScale) && mouseY > inventoryTop && mouseY < (int)((float)inventoryTop + 448f * inventoryScale) && !PlayerInput.IgnoreMouseInterface)
+         {
+             player[myPlayer].mouseInterface = true;
+@@ -43008,7 +43029,7 @@
          PlayerInput.UpdateHousingCursor();
      }
  
@@ -302,7 +313,7 @@
      {
          Vector2 vector = new Vector2(inventoryX - 10 - 47 - 47 - 14, (float)inventoryY + (float)TextureAssets.InventoryBack.Height() * 0.5f);
          Texture2D value = TextureAssets.Extra[58].Value;
-@@ -43268,6 +43285,10 @@
+@@ -43268,6 +43289,10 @@
              inventoryScale = 0.755f;
              num += 5;
          }
@@ -313,7 +324,7 @@
          new Microsoft.Xna.Framework.Color(150, 150, 150, 150);
          if (mouseX >= num && (float)mouseX <= (float)num + (float)TextureAssets.InventoryBack.Width() * inventoryScale && mouseY >= num2 && (float)mouseY <= (float)num2 + (float)TextureAssets.InventoryBack.Height() * inventoryScale && !PlayerInput.IgnoreMouseInterface)
          {
-@@ -43279,6 +43300,10 @@
+@@ -43279,6 +43304,10 @@
  
      private static void DrawEmoteBubblesButton(int pivotTopLeftX, int pivotTopLeftY)
      {
@@ -324,7 +335,7 @@
          inventoryScale = 0.85f;
          int num = (int)((float)(450 + pivotTopLeftX) - 56f * inventoryScale);
          int num2 = 258 + pivotTopLeftY;
-@@ -43333,6 +43358,10 @@
+@@ -43333,6 +43362,10 @@
  
      private static void DrawBestiaryIcon(int pivotTopLeftX, int pivotTopLeftY)
      {
@@ -335,7 +346,7 @@
          inventoryScale = 0.85f;
          int num = (int)((float)(450 + pivotTopLeftX) - 56f * inventoryScale * 2f);
          int num2 = 258 + pivotTopLeftY;
-@@ -43389,6 +43418,10 @@
+@@ -43389,6 +43422,10 @@
  
      private void DrawHotbarLockIcon(int pivotTopLeftX, int pivotTopLeftY, bool pushSideToolsUp)
      {
@@ -346,7 +357,7 @@
          int num = 21 + pivotTopLeftY;
          _ = player[myPlayer];
          if (pushSideToolsUp)
-@@ -43564,6 +43597,10 @@
+@@ -43564,6 +43601,10 @@
  
      private static void DrawPVPIcons()
      {
@@ -357,7 +368,7 @@
          if (EquipPage != 1)
          {
              hidePVPAndTeamIcons = false;
-@@ -43697,6 +43734,10 @@
+@@ -43697,6 +43738,10 @@
  
      private static int DrawPageIcons(int yPos)
      {
@@ -368,7 +379,7 @@
          int num = -1;
          Vector2 vector = new Vector2(screenWidth - 162, yPos);
          vector.X += 82f;
-@@ -44118,6 +44159,10 @@
+@@ -44118,6 +44163,10 @@
  
      public void DrawInterface_Resources_Buffs()
      {
@@ -379,7 +390,7 @@
          PipsUseGrid = false;
          int num = -1;
          int num2 = 11;
-@@ -44512,6 +44557,10 @@
+@@ -44512,6 +44561,10 @@
          {
              return;
          }
@@ -390,7 +401,7 @@
          string text = Lang.inter[37].Value;
          if (player[myPlayer].inventory[player[myPlayer].selectedItem].Name != null && player[myPlayer].inventory[player[myPlayer].selectedItem].Name != "")
          {
-@@ -49281,7 +49330,7 @@
+@@ -49281,7 +49334,7 @@
          menuMode = 5000;
      }
  
@@ -399,7 +410,7 @@
      {
          return () =>
          {
-@@ -49574,7 +49623,10 @@
+@@ -49574,7 +49627,10 @@
              GamepadMainMenuHandler.CanRun = true;
          }
          DrawInterface_13_AchievementCompletePopups();
@@ -411,7 +422,7 @@
          {
              array9[0] = Lang.menu[102].Value;
              num2 = 200;
-@@ -52202,7 +52254,7 @@
+@@ -52202,7 +52258,7 @@
          selectedMenu2 = -1;
          focusMenu = -1;
          bool flag7 = mouseLeft && !PlayerInput.UsingGamepad;
@@ -420,7 +431,7 @@
          {
              grabColorSlider = 0;
              hBar = -1f;
-@@ -53046,19 +53098,19 @@
+@@ -53046,19 +53102,19 @@
          FrameSkipMode = (FrameSkipMode)frameSkipMode;
      }
  
@@ -443,7 +454,7 @@
      {
          SoundEngine.PlaySound(11);
          menuMode = 0;
-@@ -53066,7 +53118,7 @@
+@@ -53066,7 +53122,7 @@
          Netplay.ServerPassword = "";
      }
  
@@ -452,7 +463,7 @@
      {
          Netplay.ServerPassword = passwordCandidate;
          HostAndPlay();
-@@ -53129,7 +53181,7 @@
+@@ -53129,7 +53185,7 @@
          menuMode = 10;
      }
  
@@ -461,7 +472,7 @@
      {
          if (SocialAPI.Network != null)
          {
-@@ -53142,7 +53194,7 @@
+@@ -53142,7 +53198,7 @@
          Netplay.ServerPassword = "";
      }
  
@@ -470,7 +481,7 @@
      {
          if (string.IsNullOrWhiteSpace(text))
          {
-@@ -53156,7 +53208,7 @@
+@@ -53156,7 +53212,7 @@
          return true;
      }
  
@@ -479,7 +490,7 @@
      {
          Netplay.ListenPort = ushort.Parse(candidatePort);
          autoPass = false;
-@@ -53414,10 +53466,10 @@
+@@ -53414,10 +53470,10 @@
          }
      }
  
@@ -492,7 +503,7 @@
          {
              result = true;
          }
-@@ -67754,7 +67806,7 @@
+@@ -67754,7 +67810,7 @@
      {
          bool flag = false;
          Form form = null;
@@ -501,7 +512,7 @@
          {
              form = Control.FromHandle(instance.Window.Handle);
              screenMaximized = form.WindowState == FormWindowState.Maximized;
-@@ -67785,7 +67837,7 @@
+@@ -67785,7 +67841,7 @@
                      TryPickingDefaultUIScale(800f);
                  }
              }
@@ -510,7 +521,7 @@
              {
                  form.MinimumSize = new Size(0, 0);
                  if (!fullscreen && !flag3)
-@@ -67824,7 +67876,7 @@
+@@ -67824,7 +67880,7 @@
          else
          {
              PlayerInput.RawMouseScale = Vector2.One;
@@ -519,7 +530,7 @@
              {
                  form.MinimumSize = new Size(minScreenW, minScreenH);
                  if (flag)
-@@ -67839,7 +67891,7 @@
+@@ -67839,7 +67895,7 @@
              num4 = graphics.GraphicsDevice.Viewport.Height;
              flag2 = graphics.PreferredBackBufferWidth != graphics.GraphicsDevice.Viewport.Width || graphics.PreferredBackBufferHeight != graphics.GraphicsDevice.Viewport.Height;
          }
@@ -528,7 +539,7 @@
          {
              if (form.ClientSize.Width < graphics.PreferredBackBufferWidth)
              {
-@@ -67884,7 +67936,7 @@
+@@ -67884,7 +67940,7 @@
              PendingResolutionWidth = screenWidth;
              PendingResolutionHeight = screenHeight;
              PlayerInput.CacheOriginalScreenDimensions();
