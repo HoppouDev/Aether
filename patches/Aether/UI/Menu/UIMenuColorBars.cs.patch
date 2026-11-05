@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/Aether/UI/Menu/UIMenuColorBars.cs
-@@ -0,0 +1,161 @@
+@@ -0,0 +1,171 @@
 +using Microsoft.Xna.Framework;
 +using Microsoft.Xna.Framework.Graphics;
 +using Terraria;
@@ -36,6 +36,9 @@
 +    private int _focused;
 +
 +    private int Rows => _withAlpha ? 4 : 3;
++
++    /// <summary>In game: the first of the bars' gamepad link points (the title menu links them itself).</summary>
++    public int LinkPointBase = -1;
 +
 +    public UIMenuColorBars(bool withAlpha, float minLuminosity)
 +    {
@@ -158,7 +161,14 @@
 +                spriteBatch.Draw(TextureAssets.ColorHighlight.Value, position, Main.OurFavoriteColor);
 +            }
 +            spriteBatch.Draw(TextureAssets.ColorSlider.Value, new Vector2(position.X + (TextureAssets.Hue.Width() - 2) * values[row] - TextureAssets.ColorSlider.Width() / 2, position.Y - TextureAssets.ColorSlider.Height() / 2 + TextureAssets.Hue.Height() / 2), Color.White);
-+            MenuScreens.AddGamepadPoint(position + TextureAssets.ColorBar.Value.Size() / 2f);
++            if (LinkPointBase >= 0)
++            {
++                UILinkPointNavigator.SetPosition(LinkPointBase + row, position + TextureAssets.ColorBar.Value.Size() / 2f);
++            }
++            else
++            {
++                MenuScreens.AddGamepadPoint(position + TextureAssets.ColorBar.Value.Size() / 2f);
++            }
 +        }
 +    }
 +}

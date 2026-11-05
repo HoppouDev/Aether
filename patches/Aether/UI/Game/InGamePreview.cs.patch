@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/Aether/UI/Game/InGamePreview.cs
-@@ -0,0 +1,143 @@
+@@ -0,0 +1,152 @@
 +using System;
 +using Microsoft.Xna.Framework.Input;
 +using Terraria;
@@ -16,7 +16,8 @@
 +/// container to test with, wherever you are), and Ctrl+Shift+G / Ctrl+Shift+S talk to the nearest
 +/// town NPC and open the Guide's crafting slot / a shop (the Merchant's stock), and Ctrl+Shift+U gives a few
 +/// timed buffs (Well Fed, Ironskin, Regeneration, Swiftness) and Ctrl+Shift+I crafting materials (wood,
-+/// gel, stone), and Ctrl+Shift+N brings the nearest town NPC over and talks to it.
++/// gel, stone), Ctrl+Shift+N brings the nearest town NPC over and talks to it, and Ctrl+Shift+H does
++/// that and opens the stylist's hair window.
 +/// </summary>
 +public static class InGamePreview
 +{
@@ -35,6 +36,8 @@
 +    private static bool _itemKeyWasDown;
 +
 +    private static bool _talkKeyWasDown;
++
++    private static bool _hairKeyWasDown;
 +
 +    public static bool IsEnabled => Program.LaunchParameters.ContainsKey("-aetherscreens");
 +
@@ -113,7 +116,8 @@
 +        }
 +        _itemKeyWasDown = itemKey;
 +        bool talkKey = chord && Main.keyState.IsKeyDown(Keys.N);
-+        if (talkKey && !_talkKeyWasDown)
++        bool hairKey = chord && Main.keyState.IsKeyDown(Keys.H);
++        if ((talkKey && !_talkKeyWasDown) || (hairKey && !_hairKeyWasDown))
 +        {
 +            TalkToNearestTownNPC();
 +            if (Main.LocalPlayer.talkNPC >= 0)
@@ -125,9 +129,14 @@
 +                Main.playerInventory = false;
 +                Main.npcChatText = Main.npc[Main.LocalPlayer.talkNPC].GetChat();
 +                SoundEngine.PlaySound(24);
++                if (hairKey)
++                {
++                    Main.OpenHairWindow();
++                }
 +            }
 +        }
 +        _talkKeyWasDown = talkKey;
++        _hairKeyWasDown = hairKey;
 +        _guideKeyWasDown = guideKey;
 +        _shopKeyWasDown = shopKey;
 +        if (bankKey && !_bankKeyWasDown)

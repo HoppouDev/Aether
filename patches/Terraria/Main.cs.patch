@@ -54,7 +54,7 @@
  
      public static bool HoveringOverAnNPC;
  
-@@ -2524,9 +2524,9 @@
+@@ -2524,15 +2524,15 @@
  
      public static bool mouseText;
  
@@ -65,6 +65,14 @@
 +    internal static int rare;
  
      public static int hairStart;
+ 
+-    private static int oldHairStyle;
++    internal static int oldHairStyle;
+ 
+-    private static Microsoft.Xna.Framework.Color oldHairColor;
++    internal static Microsoft.Xna.Framework.Color oldHairColor;
+ 
+     public static int selClothes;
  
 @@ -2556,7 +2556,7 @@
  
@@ -445,7 +453,18 @@
          string text = Lang.inter[37].Value;
          if (player[myPlayer].inventory[player[myPlayer].selectedItem].Name != null && player[myPlayer].inventory[player[myPlayer].selectedItem].Name != "")
          {
-@@ -46544,6 +46599,10 @@
+@@ -44638,6 +44693,10 @@
+             CancelHairWindow();
+             return;
+         }
++        if (Aether.UI.Game.UIStylistWindow.Draw())
++        {
++            return;
++        }
+         Hairstyles.UpdateUnlocks();
+         int count = Hairstyles.AvailableHairstyles.Count;
+         int num = screenHeight / 2 + 60;
+@@ -46544,6 +46603,10 @@
  
      public static void DrawSettingButton(ref bool mouseOver, ref float scale, int posX, int posY, string text, string textSizeMatcher, Action clickAction)
      {
@@ -456,7 +475,7 @@
          Vector2 vector = FontAssets.MouseText.Value.MeasureString(textSizeMatcher);
          Vector2 vector2 = FontAssets.MouseText.Value.MeasureString(text);
          Vector2 vector3 = FontAssets.DeathText.Value.MeasureString(text);
-@@ -49281,7 +49340,7 @@
+@@ -49281,7 +49344,7 @@
          menuMode = 5000;
      }
  
@@ -465,7 +484,7 @@
      {
          return () =>
          {
-@@ -49574,7 +49633,10 @@
+@@ -49574,7 +49637,10 @@
              GamepadMainMenuHandler.CanRun = true;
          }
          DrawInterface_13_AchievementCompletePopups();
@@ -477,7 +496,7 @@
          {
              array9[0] = Lang.menu[102].Value;
              num2 = 200;
-@@ -52202,7 +52264,7 @@
+@@ -52202,7 +52268,7 @@
          selectedMenu2 = -1;
          focusMenu = -1;
          bool flag7 = mouseLeft && !PlayerInput.UsingGamepad;
@@ -486,7 +505,7 @@
          {
              grabColorSlider = 0;
              hBar = -1f;
-@@ -53046,19 +53108,19 @@
+@@ -53046,19 +53112,19 @@
          FrameSkipMode = (FrameSkipMode)frameSkipMode;
      }
  
@@ -509,7 +528,7 @@
      {
          SoundEngine.PlaySound(11);
          menuMode = 0;
-@@ -53066,7 +53128,7 @@
+@@ -53066,7 +53132,7 @@
          Netplay.ServerPassword = "";
      }
  
@@ -518,7 +537,7 @@
      {
          Netplay.ServerPassword = passwordCandidate;
          HostAndPlay();
-@@ -53129,7 +53191,7 @@
+@@ -53129,7 +53195,7 @@
          menuMode = 10;
      }
  
@@ -527,7 +546,7 @@
      {
          if (SocialAPI.Network != null)
          {
-@@ -53142,7 +53204,7 @@
+@@ -53142,7 +53208,7 @@
          Netplay.ServerPassword = "";
      }
  
@@ -536,7 +555,7 @@
      {
          if (string.IsNullOrWhiteSpace(text))
          {
-@@ -53156,7 +53218,7 @@
+@@ -53156,7 +53222,7 @@
          return true;
      }
  
@@ -545,7 +564,7 @@
      {
          Netplay.ListenPort = ushort.Parse(candidatePort);
          autoPass = false;
-@@ -53414,10 +53476,10 @@
+@@ -53414,10 +53480,10 @@
          }
      }
  
@@ -558,7 +577,7 @@
          {
              result = true;
          }
-@@ -67754,7 +67816,7 @@
+@@ -67754,7 +67820,7 @@
      {
          bool flag = false;
          Form form = null;
@@ -567,7 +586,7 @@
          {
              form = Control.FromHandle(instance.Window.Handle);
              screenMaximized = form.WindowState == FormWindowState.Maximized;
-@@ -67785,7 +67847,7 @@
+@@ -67785,7 +67851,7 @@
                      TryPickingDefaultUIScale(800f);
                  }
              }
@@ -576,7 +595,7 @@
              {
                  form.MinimumSize = new Size(0, 0);
                  if (!fullscreen && !flag3)
-@@ -67824,7 +67886,7 @@
+@@ -67824,7 +67890,7 @@
          else
          {
              PlayerInput.RawMouseScale = Vector2.One;
@@ -585,7 +604,7 @@
              {
                  form.MinimumSize = new Size(minScreenW, minScreenH);
                  if (flag)
-@@ -67839,7 +67901,7 @@
+@@ -67839,7 +67905,7 @@
              num4 = graphics.GraphicsDevice.Viewport.Height;
              flag2 = graphics.PreferredBackBufferWidth != graphics.GraphicsDevice.Viewport.Width || graphics.PreferredBackBufferHeight != graphics.GraphicsDevice.Viewport.Height;
          }
@@ -594,7 +613,7 @@
          {
              if (form.ClientSize.Width < graphics.PreferredBackBufferWidth)
              {
-@@ -67884,7 +67946,7 @@
+@@ -67884,7 +67950,7 @@
              PendingResolutionWidth = screenWidth;
              PendingResolutionHeight = screenHeight;
              PlayerInput.CacheOriginalScreenDimensions();
