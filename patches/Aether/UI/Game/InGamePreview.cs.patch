@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/Aether/UI/Game/InGamePreview.cs
-@@ -0,0 +1,101 @@
+@@ -0,0 +1,113 @@
 +using System;
 +using Microsoft.Xna.Framework.Input;
 +using Terraria;
@@ -13,7 +13,8 @@
 +/// <c>-aetherscreens</c> (`./aether screens`): Ctrl+Shift+L switches every migrated piece between its
 +/// retained and legacy versions (for comparing them), Ctrl+Shift+B opens the player's piggy bank (a
 +/// container to test with, wherever you are), and Ctrl+Shift+G / Ctrl+Shift+S talk to the nearest
-+/// town NPC and open the Guide's crafting slot / a shop (the Merchant's stock).
++/// town NPC and open the Guide's crafting slot / a shop (the Merchant's stock), and Ctrl+Shift+U gives a few
++/// timed buffs (Well Fed, Ironskin, Regeneration, Swiftness).
 +/// </summary>
 +public static class InGamePreview
 +{
@@ -26,6 +27,8 @@
 +    private static bool _guideKeyWasDown;
 +
 +    private static bool _shopKeyWasDown;
++
++    private static bool _buffKeyWasDown;
 +
 +    public static bool IsEnabled => Program.LaunchParameters.ContainsKey("-aetherscreens");
 +
@@ -86,6 +89,15 @@
 +                Main.instance.OpenShop(1);
 +            }
 +        }
++        bool buffKey = chord && Main.keyState.IsKeyDown(Keys.U);
++        if (buffKey && !_buffKeyWasDown)
++        {
++            foreach (int buff in new int[4] { 26, 5, 2, 3 })
++            {
++                Main.LocalPlayer.AddBuff(buff, 60 * 60 * 5);
++            }
++        }
++        _buffKeyWasDown = buffKey;
 +        _guideKeyWasDown = guideKey;
 +        _shopKeyWasDown = shopKey;
 +        if (bankKey && !_bankKeyWasDown)
