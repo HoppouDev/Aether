@@ -71,7 +71,7 @@
 +    {
 +        CalculatedStyle dimensions = GetDimensions();
 +        Vector2 center = dimensions.Center();
-+        GamepadMainMenuHandler.MenuItemPositions.Add(center);
++        MenuScreens.AddGamepadPoint(center);
 +        // DrawValueBar takes the bar's right edge and vertical centre.
 +        IngameOptions.valuePosition = new Vector2(dimensions.X + dimensions.Width, center.Y);
 +        IngameOptions.DrawValueBar(spriteBatch, 1f, _getValue(), _dragging ? 1 : 0);

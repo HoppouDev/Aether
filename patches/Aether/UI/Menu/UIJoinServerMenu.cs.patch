@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/Aether/UI/Menu/UIJoinServerMenu.cs
-@@ -0,0 +1,101 @@
+@@ -0,0 +1,104 @@
 +using Microsoft.Xna.Framework;
 +using Terraria;
 +using Terraria.Audio;
@@ -92,7 +92,10 @@
 +        base.Update(gameTime);
 +        if (!_builtForGamepad && Main.menuMode == 13 && Main.inputTextEnter)
 +        {
-+            Main.OnSubmitServerIP(Main.getIP);
++            Act("Enter", delegate
++            {
++                Main.OnSubmitServerIP(Main.getIP);
++            });
 +        }
 +    }
 +

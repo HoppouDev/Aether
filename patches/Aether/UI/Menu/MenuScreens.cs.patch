@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/Aether/UI/Menu/MenuScreens.cs
-@@ -0,0 +1,102 @@
+@@ -0,0 +1,164 @@
 +using System;
 +using System.Collections.Generic;
 +using Microsoft.Xna.Framework;
@@ -28,6 +28,17 @@
 +        [12] = () => new UIMultiplayerMenu(),
 +        [13] = () => new UIJoinServerMenu(),
 +        [131] = () => new UIServerPortMenu(),
++        [10] = () => new UIStatusMenu(showTips: true),
++        [100] = () => new UIStatusMenu(showTips: false),
++        [14] = () => new UIConnectingMenu(),
++        [15] = () => new UIConnectionErrorMenu(),
++        [882] = () => new UISteamJoinMenu(),
++        [200] = () => new UIWorldLoadFailedMenu(hasBackup: true),
++        [201] = () => new UIWorldLoadFailedMenu(hasBackup: false),
++        [1000000] = () => new UIRejectedMenu(custom: false),
++        [1000001] = () => new UIRejectedMenu(custom: true),
++        [31] = () => new UIServerPasswordMenu(),
++        [MenuPreview.GalleryMode] = () => new UIScreenGallery(),
 +        [112] = () => new UIGeneralSettings(),
 +        [1112] = () => new UIInterfaceSettings(),
 +        [1111] = () => new UIVideoSettings(),
@@ -52,14 +63,36 @@
 +        return Factories.ContainsKey(menuMode);
 +    }
 +
++    public static IEnumerable<int> Modes => Factories.Keys;
++
++    // UILinksInitializer gives the title menu's gamepad page link points 2000 to 2019 only.
++    private const int GamepadPoints = 20;
++
++    /// <summary>Makes a point reachable with the gamepad (GamepadMainMenuHandler links them in draw order).</summary>
++    public static void AddGamepadPoint(Vector2 position)
++    {
++        if (GamepadMainMenuHandler.MenuItemPositions.Count < GamepadPoints)
++        {
++            GamepadMainMenuHandler.MenuItemPositions.Add(position);
++        }
++    }
++
++    /// <summary>The screen class shown for menuMode (for the gallery and preview overlay).</summary>
++    public static string Describe(int menuMode)
++    {
++        return GetScreen(menuMode)?.GetType().Name ?? "legacy";
++    }
++
 +    /// <summary>Updates and draws the screen for the current <c>menuMode</c>; false if it's still legacy.</summary>
 +    public static bool Draw(SpriteBatch spriteBatch, GameTime gameTime)
 +    {
++        MenuPreview.Update();
 +        int mode = Main.menuMode;
-+        UIMenuScreen screen = GetScreen(mode);
-+        if (screen == null || !screen.IsAvailable)
++        UIMenuScreen screen = GetScreen(ShownMode(mode));
++        if (screen == null || (MenuPreview.ShowLegacy && MenuPreview.IsPreviewing))
 +        {
 +            _ui?.SetState(null);
++            MenuPreview.DrawOverlay(spriteBatch);
 +            return false;
 +        }
 +        // Vanilla code opens its own screens with UserInterface.ActiveInstance (meaning Main.MenuUI),
@@ -78,14 +111,43 @@
 +        if (backPressed && Main.menuMode == mode)
 +        {
 +            UILinkPointNavigator.Shortcuts.BackButtonLock = true;
-+            screen.GoBack();
++            if (MenuPreview.IsPreviewing)
++            {
++                MenuPreview.ReturnToGallery();
++            }
++            else
++            {
++                screen.GoBack();
++            }
 +        }
 +        if (Main.menuMode == mode)
 +        {
 +            _ui.Draw(spriteBatch, gameTime);
++            MenuPreview.DrawOverlay(spriteBatch);
 +        }
 +        previous.Use();
 +        return true;
++    }
++
++    /// <summary>
++    /// The mode whose screen DrawMenu actually shows: its chain checks a few states before
++    /// <c>menuMode</c> itself, so e.g. any mode shows the connection status while <c>netMode</c> is 1.
++    /// </summary>
++    public static int ShownMode(int menuMode)
++    {
++        if (menuMode == 1212 || menuMode == 1213 || menuMode == 31)
++        {
++            return menuMode;
++        }
++        if (Main.netMode == 1 && menuMode != 888)
++        {
++            return 14;
++        }
++        if (menuMode == 0 && Netplay.ClientLoopThreadRunning)
++        {
++            return 10;
++        }
++        return menuMode;
 +    }
 +
 +    private static UIMenuScreen GetScreen(int mode)

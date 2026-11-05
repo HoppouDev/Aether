@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/Aether/UI/Menu/UIMenuItem.cs
-@@ -0,0 +1,151 @@
+@@ -0,0 +1,153 @@
 +using System;
 +using Microsoft.Xna.Framework;
 +using Microsoft.Xna.Framework.Graphics;
@@ -9,7 +9,6 @@
 +using Terraria.Audio;
 +using Terraria.GameContent;
 +using Terraria.UI;
-+using Terraria.UI.Gamepad;
 +
 +namespace Aether.UI.Menu;
 +
@@ -31,6 +30,9 @@
 +
 +    /// <summary>Text size relative to a regular menu item (DrawMenu's per-item scale).</summary>
 +    public float TextScale = 1f;
++
++    /// <summary>Extra scale applied only when drawing (DrawMenu shrinks some status texts without moving them).</summary>
++    public float DrawScale = 1f;
 +
 +    public bool IsLabel;
 +
@@ -99,7 +101,7 @@
 +        base.LeftClick(evt);
 +        if (IsInteractive)
 +        {
-+            _onClick();
++            MenuPreview.Act(_shownText, _onClick);
 +        }
 +    }
 +
@@ -117,7 +119,7 @@
 +        bool interactive = IsInteractive;
 +        if (interactive)
 +        {
-+            GamepadMainMenuHandler.MenuItemPositions.Add(center);
++            MenuScreens.AddGamepadPoint(center);
 +        }
 +        // DrawMenu's colours: the menu tint brightened, faded in with the hover scale, gold when hovered.
 +        byte tint = (byte)((255 + Main.tileColor.R * 2) / 3);
@@ -148,7 +150,7 @@
 +                3 => new Vector2(0f, 2f),
 +                _ => Vector2.Zero
 +            };
-+            spriteBatch.DrawString(font, _shownText, center + offset, new Color((byte)r, (byte)g, (byte)b, (byte)alpha), 0f, origin, _hoverScale * TextScale, SpriteEffects.None, 0f);
++            spriteBatch.DrawString(font, _shownText, center + offset, new Color((byte)r, (byte)g, (byte)b, (byte)alpha), 0f, origin, _hoverScale * TextScale * DrawScale, SpriteEffects.None, 0f);
 +        }
 +    }
 +}

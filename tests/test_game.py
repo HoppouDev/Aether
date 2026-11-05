@@ -476,3 +476,28 @@ def test_build_platform_dir_needs_one_non_linux_target(repo, monkeypatch):
     )
     assert result.exit_code != 0
     assert isinstance(result.exception, AetherError)
+
+
+@pytest.mark.parametrize(
+    ("argv", "expected"),
+    [
+        (["screens", "--no-build"], ["-aetherscreens"]),
+        (["screens", "15", "--no-build", "--", "-x"], ["-aetherscreens", "15", "-x"]),
+    ],
+)
+def test_screens_opens_the_gallery(repo, tmp_path, monkeypatch, argv, expected):
+    from typer.testing import CliRunner
+
+    from aether import cli
+
+    exe = tmp_path / "Terraria.exe"
+    exe.write_bytes(b"client")
+    seen = {}
+    monkeypatch.setattr(cli, "latest_build", lambda: exe)
+    monkeypatch.setattr(cli, "build_client", lambda *args: pytest.fail("built"))
+    monkeypatch.setattr(
+        cli, "launch_build", lambda exe, *rest: seen.update(exe=exe, args=rest[-1])
+    )
+    result = CliRunner().invoke(cli.app, argv)
+    assert result.exit_code == 0, result.output
+    assert seen == {"exe": exe, "args": expected}

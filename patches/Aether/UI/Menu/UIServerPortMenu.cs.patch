@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/Aether/UI/Menu/UIServerPortMenu.cs
-@@ -0,0 +1,64 @@
+@@ -0,0 +1,73 @@
 +using System;
 +using Microsoft.Xna.Framework;
 +using Terraria;
@@ -41,13 +41,10 @@
 +
 +    public override void Update(GameTime gameTime)
 +    {
-+        if (PlayerInput.SettingsForUI.ShowGamepadHints)
++        // In a preview, show the keyboard version of the screen rather than leaving it.
++        if (PlayerInput.SettingsForUI.ShowGamepadHints && !MenuPreview.IsPreviewing)
 +        {
-+            UIVirtualKeyboard uIVirtualKeyboard = new UIVirtualKeyboard(Lang.menu[90].Value, Main.getPort, Main.OnSubmitServerPort, Main.CreateGoToMenuEvent(13), 0, allowEmpty: true);
-+            uIVirtualKeyboard.CustomTextValidationForUpdate = Main.IsGoodPortAddress;
-+            uIVirtualKeyboard.CustomTextValidationForSubmit = Main.IsGoodPortAddress;
-+            Main.MenuUI.SetState(uIVirtualKeyboard);
-+            Main.menuMode = 888;
++            OpenVirtualKeyboard();
 +            return;
 +        }
 +        Main.getPort = ReadTextInput(Main.getPort);
@@ -55,8 +52,20 @@
 +        base.Update(gameTime);
 +        if (Main.menuMode == 131 && Main.inputTextEnter && IsValidPort(Main.getPort))
 +        {
-+            Main.OnSubmitServerPort(Main.getPort);
++            Act("Enter", delegate
++            {
++                Main.OnSubmitServerPort(Main.getPort);
++            });
 +        }
++    }
++
++    private static void OpenVirtualKeyboard()
++    {
++        UIVirtualKeyboard uIVirtualKeyboard = new UIVirtualKeyboard(Lang.menu[90].Value, Main.getPort, Main.OnSubmitServerPort, Main.CreateGoToMenuEvent(13), 0, allowEmpty: true);
++        uIVirtualKeyboard.CustomTextValidationForUpdate = Main.IsGoodPortAddress;
++        uIVirtualKeyboard.CustomTextValidationForSubmit = Main.IsGoodPortAddress;
++        Main.MenuUI.SetState(uIVirtualKeyboard);
++        Main.menuMode = 888;
 +    }
 +
 +    public override void GoBack()

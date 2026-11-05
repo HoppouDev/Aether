@@ -332,6 +332,38 @@ def run_game(
     launch_build(exe, game_dir, platform_dir, save_dir, real_saves, list(ctx.args))
 
 
+@app.command("screens", context_settings=GAME_ARGS)
+def screens(
+    ctx: typer.Context,
+    mode: Annotated[
+        int | None,
+        typer.Argument(
+            help="A menuMode to open directly (default: the gallery of all migrated screens)."
+        ),
+    ] = None,
+    game_dir: GameDirOption = None,
+    platform_dir: PlatformDirOption = None,
+    release: ReleaseOption = False,
+    no_build: Annotated[
+        bool, typer.Option("--no-build", help="Use the most recent build as is.")
+    ] = False,
+    save_dir: SaveDirOption = None,
+    real_saves: RealSavesOption = False,
+) -> None:
+    """Build the client and open its title-menu screen gallery (`-aetherscreens`).
+
+    Each migrated retained-mode screen can be previewed on its own, with sample state and inert
+    clicks; Esc goes back to the gallery and Tab switches to the legacy version of the screen.
+    """
+    exe = (
+        latest_build()
+        if no_build
+        else build_client("Release" if release else "Debug", host_platform())
+    )
+    args = ["-aetherscreens", *([str(mode)] if mode is not None else []), *ctx.args]
+    launch_build(exe, game_dir, platform_dir, save_dir, real_saves, args)
+
+
 @app.command()
 def diff(
     check: Annotated[

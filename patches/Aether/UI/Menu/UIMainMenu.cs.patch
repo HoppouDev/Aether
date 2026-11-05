@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/Aether/UI/Menu/UIMainMenu.cs
-@@ -0,0 +1,95 @@
+@@ -0,0 +1,92 @@
 +using Microsoft.Xna.Framework;
 +using Terraria;
 +using Terraria.Audio;
@@ -20,9 +20,6 @@
 +        ItemsTop = 220f;
 +        ItemSpacing = 52f;
 +    }
-+
-+    // While a client connection runs, mode 0 is DrawMenu's connection status screen.
-+    public override bool IsAvailable => !Netplay.ClientLoopThreadRunning;
 +
 +    protected override void BuildItems()
 +    {

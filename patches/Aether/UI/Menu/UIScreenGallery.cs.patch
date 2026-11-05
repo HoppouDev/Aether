@@ -1,0 +1,64 @@
+--- /dev/null
++++ b/Aether/UI/Menu/UIScreenGallery.cs
+@@ -0,0 +1,61 @@
++using System.Linq;
++using Terraria;
++using Terraria.Audio;
++
++namespace Aether.UI.Menu;
++
++/// <summary>Lists every migrated title-menu screen; picking one previews it (see <see cref="MenuPreview" />).</summary>
++public class UIScreenGallery : UIMenuScreen
++{
++    private const int Columns = 3;
++
++    private const float ColumnWidth = 260f;
++
++    private const float RowSpacing = 26f;
++
++    private const float GridTop = 230f;
++
++    public UIScreenGallery()
++    {
++        ItemsTop = 180f;
++        ItemSpacing = 0f;
++    }
++
++    protected override void BuildItems()
++    {
++        AddLabel(() => "Aether screen gallery", 0.8f);
++        int[] modes = MenuScreens.Modes.Where((int mode) => mode != MenuPreview.GalleryMode).OrderBy((int mode) => mode).ToArray();
++        int rows = (modes.Length + Columns - 1) / Columns;
++        for (int i = 0; i < modes.Length; i++)
++        {
++            int mode = modes[i];
++            int column = i / rows;
++            string label = mode + "  " + MenuScreens.Describe(mode);
++            UIMenuItem item = new UIMenuItem(() => label, delegate
++            {
++                SoundEngine.PlaySound(10);
++                MenuPreview.Open(mode);
++            })
++            {
++                TextScale = 0.45f,
++                HAlign = 0.5f
++            };
++            item.Left.Set((column - (Columns - 1) / 2f) * ColumnWidth, 0f);
++            item.Top.Set(GridTop + RowSpacing * (i % rows), 0f);
++            Append(item);
++        }
++        UIMenuItem back = new UIMenuItem(() => Lang.menu[5].Value, GoBack)
++        {
++            TextScale = 0.8f,
++            HAlign = 0.5f
++        };
++        back.Top.Set(GridTop + RowSpacing * rows + 30f, 0f);
++        Append(back);
++    }
++
++    public override void GoBack()
++    {
++        SoundEngine.PlaySound(11);
++        Main.menuMode = 0;
++    }
++}

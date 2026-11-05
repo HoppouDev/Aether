@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/Aether/UI/Menu/UIMenuScreen.cs
-@@ -0,0 +1,117 @@
+@@ -0,0 +1,123 @@
 +using System;
 +using Terraria;
 +using Terraria.Audio;
@@ -21,9 +21,6 @@
 +    protected float ItemSpacing = 80f;
 +
 +    private int _itemCount;
-+
-+    /// <summary>False hands this mode back to the legacy menu for now (e.g. a status screen that shares it).</summary>
-+    public virtual bool IsAvailable => true;
 +
 +    protected abstract void BuildItems();
 +
@@ -87,6 +84,15 @@
 +        UIMenuItem uIMenuItem = AddItem(text, null, scale, offset);
 +        uIMenuItem.IsLabel = true;
 +        return uIMenuItem;
++    }
++
++    /// <summary>
++    /// Does something the screen starts by itself (Enter in a text field, a redirect to the virtual
++    /// keyboard) rather than through an item click; in a preview it's only reported (see MenuPreview).
++    /// </summary>
++    protected static void Act(string what, Action action)
++    {
++        MenuPreview.Act(what, action);
 +    }
 +
 +    /// <summary>Applies this frame's typing to text, like DrawMenu's text fields.</summary>

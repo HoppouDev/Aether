@@ -18,6 +18,15 @@
  
      public static bool drawBackGore;
  
+@@ -967,7 +967,7 @@
+ 
+     public static GenerationProgress AutogenProgress = new GenerationProgress();
+ 
+-    private static Process tServer;
++    internal static Process tServer;
+ 
+     private static Stopwatch saveTime = new Stopwatch();
+ 
 @@ -2614,7 +2614,7 @@
  
      public static bool blockMouse;
@@ -102,6 +111,29 @@
          {
              grabColorSlider = 0;
              hBar = -1f;
+@@ -53046,19 +53049,19 @@
+         FrameSkipMode = (FrameSkipMode)frameSkipMode;
+     }
+ 
+-    private static void OnSubmitServerPasswordFromRequest(string passwordCandidate)
++    internal static void OnSubmitServerPasswordFromRequest(string passwordCandidate)
+     {
+         Netplay.ServerPassword = passwordCandidate;
+         OnSubmitServerPasswordFromRequest();
+     }
+ 
+-    private static void OnSubmitServerPasswordFromRequest()
++    internal static void OnSubmitServerPasswordFromRequest()
+     {
+         NetMessage.SendData(38);
+         menuMode = 14;
+     }
+ 
+-    private static void CanceledGivingServerPassword()
++    internal static void CanceledGivingServerPassword()
+     {
+         SoundEngine.PlaySound(11);
+         menuMode = 0;
 @@ -53142,7 +53145,7 @@
          Netplay.ServerPassword = "";
      }

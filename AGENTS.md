@@ -16,6 +16,7 @@ Notes on the game's modules live in `AGENTS.md` files under `src/Terraria/`; rea
 ./aether run       # build the client and play it (saves go to .aether/saves/)
 ./aether build     # just build (bin/<Debug|Release>/net40/Terraria.exe); --target lin64|win64|mac|all: also package dist/<target>/
 ./aether launch    # just play the most recent build (Debug or Release), no build
+./aether screens   # build and open the gallery of Aether's retained-mode title-menu screens (MODE: just that one)
 ./aether update    # move the base to the newest Terraria on Steam and re-apply the patches (--check: just look)
 ```
 
