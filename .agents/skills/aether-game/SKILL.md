@@ -32,7 +32,9 @@ The window doesn't need focus and can sit behind other windows, and the user's r
 | `release_all` | Release every button, key, stick and trigger. |
 | `game_send` | Run raw commands in order in one call, optionally screenshotting at the end (`screenshot_scale`). It stops at the first error. |
 
-Every tool returns once its input has finished; a 400 ms drag returns after 400 ms.
+Every tool returns once its input has finished (a 400 ms drag after 400 ms).
+If the game stops updating for 10 s (it froze, or it crashed and is showing an error dialog), tools fail with "the game stopped updating".
+Then `game_screenshot` can't help: call `game_quit` and `game_launch` again, and check the log path that `game_launch` reported.
 
 ## Workflow
 

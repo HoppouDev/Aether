@@ -96,4 +96,5 @@ Started with `-aethercontrol [PORT]` (`./aether run|launch|screens --control POR
   Each command is an iterator that yields once per update, so smooth moves, drags, stick and trigger glides and waits span updates, and the reply comes when the command has finished.
   Screenshots read the back buffer in `Main.OnPostDraw`, optionally cropped and box-filtered.
   The command list is its doc comment.
+  If the main thread stops updating for 10 s (a hang, or a crash showing its error dialog), waiting commands fail instead of blocking, and are skipped if it recovers.
 - Clients: `./aether control` (`tools/aether/control.py`) and the `aether-game` MCP server (`tools/aether/mcp_server.py`, FastMCP, registered in `.mcp.json`); `.agents/skills/aether-game/SKILL.md` is the guide for agents.
