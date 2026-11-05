@@ -1,0 +1,90 @@
+--- /dev/null
++++ b/Aether/UI/Game/UIOptionsText.cs
+@@ -0,0 +1,87 @@
++using System;
++using Microsoft.Xna.Framework;
++using Microsoft.Xna.Framework.Graphics;
++using Terraria;
++using Terraria.Audio;
++using Terraria.GameContent;
++using Terraria.UI;
++
++namespace Aether.UI.Game;
++
++/// <summary>
++/// One line of the in-game settings' right column, drawn like IngameOptions.DrawRightSide: outlined
++/// MouseText centred on a point, grey, white when hovered. Headers are white and inert.
++/// </summary>
++public class UIOptionsText : UIElement
++{
++    private readonly Func<string> _text;
++
++    private readonly Action _onClick;
++
++    private readonly float _scale;
++
++    private readonly Vector2 _center;
++
++    private string _shownText;
++
++    public bool IsHeader;
++
++    /// <summary>Lit while something else (the slider row it labels) is focused.</summary>
++    public Func<bool> AlsoLit;
++
++    public UIOptionsText(Func<string> text, Action onClick, Vector2 center, float scale)
++    {
++        _text = text;
++        _onClick = onClick;
++        _center = center;
++        _scale = scale;
++    }
++
++    private void UpdateSize()
++    {
++        string text = _text() ?? "";
++        if (text == _shownText)
++        {
++            return;
++        }
++        _shownText = text;
++        Vector2 size = FontAssets.MouseText.Value.MeasureString(text) * _scale;
++        Left.Set(_center.X - size.X / 2f - Parent.GetInnerDimensions().X, 0f);
++        Top.Set(_center.Y - size.Y / 2f - Parent.GetInnerDimensions().Y, 0f);
++        Width.Set(size.X, 0f);
++        Height.Set(size.Y, 0f);
++        Recalculate();
++    }
++
++    public override void Update(GameTime gameTime)
++    {
++        base.Update(gameTime);
++        UpdateSize();
++    }
++
++    public override void MouseOver(UIMouseEvent evt)
++    {
++        base.MouseOver(evt);
++        if (!IsHeader)
++        {
++            SoundEngine.PlaySound(12);
++        }
++    }
++
++    public override void LeftClick(UIMouseEvent evt)
++    {
++        base.LeftClick(evt);
++        if (!IsHeader && _onClick != null)
++        {
++            SoundEngine.PlaySound(12);
++            _onClick();
++        }
++    }
++
++    protected override void DrawSelf(SpriteBatch spriteBatch)
++    {
++        UpdateSize();
++        bool lit = IsHeader || IsMouseHovering || (AlsoLit != null && AlsoLit());
++        Utils.DrawBorderStringMeasured(spriteBatch, _shownText, _center, lit ? Color.White : Color.Gray, _scale, 0.5f, 0.5f);
++    }
++}

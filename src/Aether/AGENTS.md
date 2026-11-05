@@ -38,3 +38,18 @@ Those screens are being moved, one `menuMode` at a time, to retained-mode `UISta
   The rest of `DrawMenu`'s chain can't be reached in vanilla, so it stays legacy: the old key binding screens (27, 272727), world list (8), world creation chain (16 size, -7 difficulty, -71 evil, 7 name, 5000 seed; vanilla creates worlds in `UIWorldCreation`) and character creation (2, 3, 17 to 24, 222), which only link to each other.
   `DrawMenu` itself still draws the backdrop, logo, version number, social links, achievement popups and cursor around the screens; the in-game UI is all still immediate-mode.
   Tested by hand with mouse and keyboard (including joining a password-protected local server, losing the connection, and loading a truncated world with and without a backup), and every screen in the gallery; gamepad navigation is untested.
+
+## Retained-mode in-game UI (`UI/Game/`)
+
+The in-game UI is drawn by `Main.DrawInterface` as an ordered list of named layers (see [../Terraria/UI/AGENTS.md](../Terraria/UI/AGENTS.md)), most of them immediate-mode code in `Main.cs` and helpers like `IngameOptions` and `ItemSlot`.
+Pieces move to retained mode one at a time, each through a small hook at the top of the legacy method that draws it:
+
+- `GameScreens.Draw(screen, spriteBatch)` updates and draws a `UIGameScreen` in Aether's own `UserInterface`, handing `UserInterface.ActiveInstance` back afterwards as the title menu does (vanilla uses it for `Main.InGameUI`).
+  Call it from the legacy method, which already runs inside the layer's UI-zoom `SpriteBatch` (`Main.screenWidth` and the mouse are in UI coordinates there), so positions match the legacy code's.
+  Per-frame legacy work goes in `UIGameScreen.UpdateState()`, which runs before input, for the same reason as the menu screens.
+- Keep the legacy method's state and side effects where other code reads them: e.g. `IngameOptions.category`, `IngameOptions._GUIHover` (used by `IngameOptions.MouseOver`), `player.mouseInterface` over the window, and the gamepad link points and `UILinkPointNavigator.Shortcuts` counts the legacy code set (vanilla's gamepad pages for that UI read them).
+- Migrated: the settings window (`IngameOptions.Draw` → `UIIngameOptions`, with `IngameOptions.Open` resetting it), including its per-language layouts, sliders (`UIMenuSlider` with the legacy bar scale and HSL ramps) and the UI-scale slider that only applies on release.
+  `UIIngameOptions.ShowLegacy` switches back to the legacy window, for comparison.
+  Window resizes (fullscreen, resolution) go through `Main.QueueMainThreadAction` instead of happening mid-draw.
+  Checked against the legacy window pixel for pixel, and by hand with mouse and keyboard; gamepad use is untested.
+- Still legacy: everything else (inventory, hotbar, chests, crafting, NPC chat, map, resource bars, mouse text, …).

@@ -1,0 +1,30 @@
+--- a/Terraria/IngameOptions.cs
++++ b/Terraria/IngameOptions.cs
+@@ -53,7 +53,7 @@
+ 
+     public static bool noSound;
+ 
+-    private static Rectangle _GUIHover;
++    internal static Rectangle _GUIHover;
+ 
+     public static int category;
+ 
+@@ -89,6 +89,7 @@
+         inBar = false;
+         notBar = false;
+         noSound = false;
++        Aether.UI.Game.UIIngameOptions.Opened();
+     }
+ 
+     public static void Close()
+@@ -112,6 +113,10 @@
+ 
+     public static void Draw(Main mainInstance, SpriteBatch sb)
+     {
++        if (Aether.UI.Game.UIIngameOptions.DrawWindow(sb))
++        {
++            return;
++        }
+         _canConsumeHover = true;
+         for (int i = 0; i < skipRightSlot.Length; i++)
+         {

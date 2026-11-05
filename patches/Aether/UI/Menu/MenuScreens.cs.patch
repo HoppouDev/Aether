@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/Aether/UI/Menu/MenuScreens.cs
-@@ -0,0 +1,176 @@
+@@ -0,0 +1,177 @@
 +using System;
 +using System.Collections.Generic;
 +using Microsoft.Xna.Framework;
@@ -79,7 +79,8 @@
 +    /// <summary>Makes a point reachable with the gamepad (GamepadMainMenuHandler links them in draw order).</summary>
 +    public static void AddGamepadPoint(Vector2 position)
 +    {
-+        if (GamepadMainMenuHandler.MenuItemPositions.Count < GamepadPoints)
++        // In game, elements shared with the title menu (sliders) link their own points instead.
++        if (Main.gameMenu && GamepadMainMenuHandler.MenuItemPositions.Count < GamepadPoints)
 +        {
 +            GamepadMainMenuHandler.MenuItemPositions.Add(position);
 +        }

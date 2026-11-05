@@ -1,0 +1,40 @@
+--- /dev/null
++++ b/Aether/UI/Game/UIOptionsSliderRow.cs
+@@ -0,0 +1,37 @@
++using Aether.UI.Menu;
++using Terraria.UI;
++
++namespace Aether.UI.Game;
++
++/// <summary>
++/// A slider row of the in-game settings: its label and bar, plus the strip around them, which (as in
++/// IngameOptions) focuses the slider too, so the gamepad cursor on the row's label point works it.
++/// </summary>
++public class UIOptionsSliderRow : UIElement
++{
++    /// <summary>What the row adjusts, for the screen's own bookkeeping (25/252: cursor/border colour).</summary>
++    public readonly int Tag;
++
++    public UIMenuSlider Slider;
++
++    public bool IsFocused
++    {
++        get
++        {
++            if (!IsMouseHovering)
++            {
++                if (Slider != null)
++                {
++                    return Slider.IsDragging;
++                }
++                return false;
++            }
++            return true;
++        }
++    }
++
++    public UIOptionsSliderRow(int tag)
++    {
++        Tag = tag;
++    }
++}

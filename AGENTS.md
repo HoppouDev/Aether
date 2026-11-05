@@ -135,7 +135,7 @@ dotnet build -c Debug
 | `Terraria/Localization/` | Text and languages: [src/Terraria/Localization/AGENTS.md](src/Terraria/Localization/AGENTS.md) |
 | `Terraria/IO/` | Player/world files, config, resource packs: [src/Terraria/IO/AGENTS.md](src/Terraria/IO/AGENTS.md) |
 | `Terraria/Social/` | Steam / WeGame platform integration: [src/Terraria/Social/AGENTS.md](src/Terraria/Social/AGENTS.md) |
-| `Aether/` | Aether's own code (new files, hooked into the game): the retained-mode title menu: [src/Aether/AGENTS.md](src/Aether/AGENTS.md) |
+| `Aether/` | Aether's own code (new files, hooked into the game): the retained-mode title menu and in-game UI: [src/Aether/AGENTS.md](src/Aether/AGENTS.md) |
 | `ReLogic/` | Re-Logic's framework library (assets, fonts, RGB, OS layer), built by `ReLogic/ReLogic.csproj`: [src/ReLogic/AGENTS.md](src/ReLogic/AGENTS.md) |
 
 Smaller namespaces without their own notes: `Audio/` (`SoundEngine`), `GameInput/` (`PlayerInput`, keybind profiles), `Map/`, `Chat/` (chat commands and tags), `Initializers/` (startup registration: assets, chat tags, net modules, screen effects), `Testing/` (debug commands, state snapshots, replay tooling), `Achievements/`, `DataStructures/`, `Utilities/`, `Server/`.

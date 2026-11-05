@@ -1,0 +1,42 @@
+--- /dev/null
++++ b/Aether/UI/Game/GameScreens.cs
+@@ -0,0 +1,39 @@
++using Microsoft.Xna.Framework.Graphics;
++using Terraria;
++using Terraria.UI;
++
++namespace Aether.UI.Game;
++
++/// <summary>
++/// Hosts Aether's retained-mode replacements for the in-game (immediate-mode) UI. Each legacy entry
++/// point hands its drawing to <see cref="Draw" /> with the screen that replaces it; like the title
++/// menu's MenuScreens, the screens run in their own UserInterface and hand
++/// UserInterface.ActiveInstance back afterwards, since vanilla code uses it to mean its own UIs.
++/// </summary>
++public static class GameScreens
++{
++    private static UserInterface _ui;
++
++    /// <summary>Updates and draws screen; call from the legacy draw it replaces, in UI zoom.</summary>
++    public static void Draw(UIGameScreen screen, SpriteBatch spriteBatch)
++    {
++        UserInterface previous = UserInterface.ActiveInstance;
++        if (_ui == null)
++        {
++            _ui = new UserInterface();
++        }
++        // Use() recalculates the layout whenever it switches instances, i.e. every frame here.
++        _ui.Use();
++        _ui.SetState(screen);
++        screen.UpdateState();
++        _ui.Update(Main._drawInterfaceGameTime);
++        _ui.Draw(spriteBatch, Main._drawInterfaceGameTime);
++        previous.Use();
++    }
++
++    /// <summary>Drops the current screen, so the next Draw opens it afresh (input reset, rebuilt).</summary>
++    public static void Close()
++    {
++        _ui?.SetState(null);
++    }
++}

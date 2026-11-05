@@ -27,6 +27,15 @@
  
      private static Stopwatch saveTime = new Stopwatch();
  
+@@ -2556,7 +2556,7 @@
+ 
+     private List<GameInterfaceLayer> _gameInterfaceLayers;
+ 
+-    private static GameTime _drawInterfaceGameTime;
++    internal static GameTime _drawInterfaceGameTime;
+ 
+     public static bool DoGlowingMouseItemDraw;
+ 
 @@ -2614,7 +2614,7 @@
  
      public static bool blockMouse;
