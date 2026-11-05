@@ -157,7 +157,37 @@
          else
          {
              int num35 = 4;
-@@ -42649,6 +42654,7 @@
+@@ -42569,12 +42574,13 @@
+                     text = Lang.inter[20].Value;
+                 }
+                 ChatManager.DrawColorCodedStringWithShadow(spriteBatch, FontAssets.MouseText.Value, text, new Vector2(num53 + 50, num54), new Microsoft.Xna.Framework.Color(mouseTextColor, mouseTextColor, mouseTextColor, mouseTextColor), 0f, Vector2.Zero, Vector2.One);
+-                if (mouseX >= num53 && (float)mouseX <= (float)num53 + (float)TextureAssets.InventoryBack.Width() * inventoryScale && mouseY >= num54 && (float)mouseY <= (float)num54 + (float)TextureAssets.InventoryBack.Height() * inventoryScale && !PlayerInput.IgnoreMouseInterface)
++                if (!Aether.UI.Game.UISingleSlot.Reforge.Draw(num53, num54) && mouseX >= num53 && (float)mouseX <= (float)num53 + (float)TextureAssets.InventoryBack.Width() * inventoryScale && mouseY >= num54 && (float)mouseY <= (float)num54 + (float)TextureAssets.InventoryBack.Height() * inventoryScale && !PlayerInput.IgnoreMouseInterface)
+                 {
+                     craftingHide = true;
+                     player[myPlayer].mouseInterface = true;
+                     ItemSlot.Handle(ref reforgeItem, 5);
+                 }
++                if (!Aether.UI.Game.UIInventorySlots.Enabled)
+                 ItemSlot.Draw(spriteBatch, ref reforgeItem, 5, new Vector2(num53, num54));
+             }
+         }
+@@ -42591,12 +42597,13 @@
+                 int num64 = 73;
+                 int num65 = 331 + num52;
+                 DrawGuideCraftText(num64, num65);
+-                if (mouseX >= num64 && (float)mouseX <= (float)num64 + (float)TextureAssets.InventoryBack.Width() * inventoryScale && mouseY >= num65 && (float)mouseY <= (float)num65 + (float)TextureAssets.InventoryBack.Height() * inventoryScale && !PlayerInput.IgnoreMouseInterface)
++                if (!Aether.UI.Game.UISingleSlot.Guide.Draw(num64, num65) && mouseX >= num64 && (float)mouseX <= (float)num64 + (float)TextureAssets.InventoryBack.Width() * inventoryScale && mouseY >= num65 && (float)mouseY <= (float)num65 + (float)TextureAssets.InventoryBack.Height() * inventoryScale && !PlayerInput.IgnoreMouseInterface)
+                 {
+                     craftingHide = true;
+                     player[myPlayer].mouseInterface = true;
+                     ItemSlot.Handle(ref guideItem, 7);
+                 }
++                if (!Aether.UI.Game.UIInventorySlots.Enabled)
+                 ItemSlot.Draw(spriteBatch, ref guideItem, 7, new Vector2(num64, num65));
+             }
+         }
+@@ -42649,6 +42656,7 @@
          float num68 = vector2.X / vector3.X;
          spriteBatch.DrawString(FontAssets.MouseText.Value, Lang.inter[26].Value, new Vector2(496f, 84f + (vector2.Y - vector2.Y * num68) / 2f), new Microsoft.Xna.Framework.Color(mouseTextColor, mouseTextColor, mouseTextColor, mouseTextColor), 0f, default, 0.75f * num68, SpriteEffects.None, 0f);
          inventoryScale = 0.6f;
@@ -165,7 +195,7 @@
          for (int num69 = 0; num69 < 4; num69++)
          {
              int num70 = 497;
-@@ -42667,6 +42673,7 @@
+@@ -42667,6 +42675,7 @@
          float num72 = vector4.X / vector5.X;
          spriteBatch.DrawString(FontAssets.MouseText.Value, Lang.inter[27].Value, new Vector2(532f, 84f + (vector4.Y - vector4.Y * num72) / 2f), new Microsoft.Xna.Framework.Color(mouseTextColor, mouseTextColor, mouseTextColor, mouseTextColor), 0f, default, 0.75f * num72, SpriteEffects.None, 0f);
          inventoryScale = 0.6f;
@@ -173,7 +203,20 @@
          for (int num73 = 0; num73 < 4; num73++)
          {
              int num74 = 534;
-@@ -42835,7 +42842,7 @@
+@@ -42698,10 +42707,11 @@
+             Microsoft.Xna.Framework.Color white = Microsoft.Xna.Framework.Color.White;
+             Utils.DrawBorderStringFourWay(spriteBatch, FontAssets.MouseText.Value, text3, 504 + shopHappinessTextOffsetX, invBottom + shopHappinessTextOffsetY, white * ((float)(int)mouseTextColor / 255f), Microsoft.Xna.Framework.Color.Black, Vector2.Zero);
+             inventoryScale = 0.755f;
+-            if (mouseX > 73 && mouseX < (int)(73f + 560f * inventoryScale) && mouseY > invBottom && mouseY < (int)((float)invBottom + 224f * inventoryScale) && !PlayerInput.IgnoreMouseInterface)
++            if (!Aether.UI.Game.UIShopSlots.Draw() && mouseX > 73 && mouseX < (int)(73f + 560f * inventoryScale) && mouseY > invBottom && mouseY < (int)((float)invBottom + 224f * inventoryScale) && !PlayerInput.IgnoreMouseInterface)
+             {
+                 player[myPlayer].mouseInterface = true;
+             }
++            if (!Aether.UI.Game.UIInventorySlots.Enabled)
+             for (int num76 = 0; num76 < 10; num76++)
+             {
+                 for (int num77 = 0; num77 < 4; num77++)
+@@ -42835,7 +42845,7 @@
          }
      }
  
@@ -182,7 +225,7 @@
      {
          int num = 10;
          Player player = Main.player[myPlayer];
-@@ -43008,7 +43015,7 @@
+@@ -43008,7 +43018,7 @@
          PlayerInput.UpdateHousingCursor();
      }
  
@@ -191,7 +234,7 @@
      {
          Vector2 vector = new Vector2(inventoryX - 10 - 47 - 47 - 14, (float)inventoryY + (float)TextureAssets.InventoryBack.Height() * 0.5f);
          Texture2D value = TextureAssets.Extra[58].Value;
-@@ -43268,6 +43275,10 @@
+@@ -43268,6 +43278,10 @@
              inventoryScale = 0.755f;
              num += 5;
          }
@@ -202,7 +245,7 @@
          new Microsoft.Xna.Framework.Color(150, 150, 150, 150);
          if (mouseX >= num && (float)mouseX <= (float)num + (float)TextureAssets.InventoryBack.Width() * inventoryScale && mouseY >= num2 && (float)mouseY <= (float)num2 + (float)TextureAssets.InventoryBack.Height() * inventoryScale && !PlayerInput.IgnoreMouseInterface)
          {
-@@ -49281,7 +49292,7 @@
+@@ -49281,7 +49295,7 @@
          menuMode = 5000;
      }
  
@@ -211,7 +254,7 @@
      {
          return () =>
          {
-@@ -49574,7 +49585,10 @@
+@@ -49574,7 +49588,10 @@
              GamepadMainMenuHandler.CanRun = true;
          }
          DrawInterface_13_AchievementCompletePopups();
@@ -223,7 +266,7 @@
          {
              array9[0] = Lang.menu[102].Value;
              num2 = 200;
-@@ -52202,7 +52216,7 @@
+@@ -52202,7 +52219,7 @@
          selectedMenu2 = -1;
          focusMenu = -1;
          bool flag7 = mouseLeft && !PlayerInput.UsingGamepad;
@@ -232,7 +275,7 @@
          {
              grabColorSlider = 0;
              hBar = -1f;
-@@ -53046,19 +53060,19 @@
+@@ -53046,19 +53063,19 @@
          FrameSkipMode = (FrameSkipMode)frameSkipMode;
      }
  
@@ -255,7 +298,7 @@
      {
          SoundEngine.PlaySound(11);
          menuMode = 0;
-@@ -53066,7 +53080,7 @@
+@@ -53066,7 +53083,7 @@
          Netplay.ServerPassword = "";
      }
  
@@ -264,7 +307,7 @@
      {
          Netplay.ServerPassword = passwordCandidate;
          HostAndPlay();
-@@ -53129,7 +53143,7 @@
+@@ -53129,7 +53146,7 @@
          menuMode = 10;
      }
  
@@ -273,7 +316,7 @@
      {
          if (SocialAPI.Network != null)
          {
-@@ -53142,7 +53156,7 @@
+@@ -53142,7 +53159,7 @@
          Netplay.ServerPassword = "";
      }
  
@@ -282,7 +325,7 @@
      {
          if (string.IsNullOrWhiteSpace(text))
          {
-@@ -53156,7 +53170,7 @@
+@@ -53156,7 +53173,7 @@
          return true;
      }
  
@@ -291,7 +334,7 @@
      {
          Netplay.ListenPort = ushort.Parse(candidatePort);
          autoPass = false;
-@@ -53414,10 +53428,10 @@
+@@ -53414,10 +53431,10 @@
          }
      }
  
@@ -304,7 +347,7 @@
          {
              result = true;
          }
-@@ -67754,7 +67768,7 @@
+@@ -67754,7 +67771,7 @@
      {
          bool flag = false;
          Form form = null;
@@ -313,7 +356,7 @@
          {
              form = Control.FromHandle(instance.Window.Handle);
              screenMaximized = form.WindowState == FormWindowState.Maximized;
-@@ -67785,7 +67799,7 @@
+@@ -67785,7 +67802,7 @@
                      TryPickingDefaultUIScale(800f);
                  }
              }
@@ -322,7 +365,7 @@
              {
                  form.MinimumSize = new Size(0, 0);
                  if (!fullscreen && !flag3)
-@@ -67824,7 +67838,7 @@
+@@ -67824,7 +67841,7 @@
          else
          {
              PlayerInput.RawMouseScale = Vector2.One;
@@ -331,7 +374,7 @@
              {
                  form.MinimumSize = new Size(minScreenW, minScreenH);
                  if (flag)
-@@ -67839,7 +67853,7 @@
+@@ -67839,7 +67856,7 @@
              num4 = graphics.GraphicsDevice.Viewport.Height;
              flag2 = graphics.PreferredBackBufferWidth != graphics.GraphicsDevice.Viewport.Width || graphics.PreferredBackBufferHeight != graphics.GraphicsDevice.Viewport.Height;
          }
@@ -340,7 +383,7 @@
          {
              if (form.ClientSize.Width < graphics.PreferredBackBufferWidth)
              {
-@@ -67884,7 +67898,7 @@
+@@ -67884,7 +67901,7 @@
              PendingResolutionWidth = screenWidth;
              PendingResolutionHeight = screenHeight;
              PlayerInput.CacheOriginalScreenDimensions();

@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/Aether/UI/Game/InGamePreview.cs
-@@ -0,0 +1,56 @@
+@@ -0,0 +1,101 @@
 +using System;
 +using Microsoft.Xna.Framework.Input;
 +using Terraria;
@@ -12,7 +12,8 @@
 +/// Test controls for the migrated in-game UI, only when the game was started with
 +/// <c>-aetherscreens</c> (`./aether screens`): Ctrl+Shift+L switches every migrated piece between its
 +/// retained and legacy versions (for comparing them), Ctrl+Shift+B opens the player's piggy bank (a
-+/// container to test with, wherever you are).
++/// container to test with, wherever you are), and Ctrl+Shift+G / Ctrl+Shift+S talk to the nearest
++/// town NPC and open the Guide's crafting slot / a shop (the Merchant's stock).
 +/// </summary>
 +public static class InGamePreview
 +{
@@ -22,7 +23,32 @@
 +
 +    private static bool _bankKeyWasDown;
 +
++    private static bool _guideKeyWasDown;
++
++    private static bool _shopKeyWasDown;
++
 +    public static bool IsEnabled => Program.LaunchParameters.ContainsKey("-aetherscreens");
++
++    // Menus tied to an NPC close as soon as the player isn't talking to one.
++    private static void TalkToNearestTownNPC()
++    {
++        Player player = Main.LocalPlayer;
++        int nearest = -1;
++        float distance = float.MaxValue;
++        for (int i = 0; i < Main.maxNPCs; i++)
++        {
++            NPC npc = Main.npc[i];
++            if (npc.active && npc.townNPC && player.Distance(npc.Center) < distance)
++            {
++                distance = player.Distance(npc.Center);
++                nearest = i;
++            }
++        }
++        if (nearest >= 0)
++        {
++            player.SetTalkNPC(nearest);
++        }
++    }
 +
 +    /// <summary>Called by the migrated pieces' draw hooks (whether or not they're showing legacy).</summary>
 +    public static void Update()
@@ -43,6 +69,25 @@
 +            SoundEngine.PlaySound(12);
 +            Main.NewText("Aether: " + (UIInventorySlots.Enabled ? "retained" : "legacy") + " in-game UI");
 +        }
++        bool guideKey = chord && Main.keyState.IsKeyDown(Keys.G);
++        bool shopKey = chord && Main.keyState.IsKeyDown(Keys.S);
++        if ((guideKey && !_guideKeyWasDown) || (shopKey && !_shopKeyWasDown))
++        {
++            TalkToNearestTownNPC();
++            if (guideKey)
++            {
++                Main.playerInventory = true;
++                Main.npcChatText = "";
++                Main.InGuideCraftMenu = true;
++                SoundEngine.PlaySound(12);
++            }
++            else
++            {
++                Main.instance.OpenShop(1);
++            }
++        }
++        _guideKeyWasDown = guideKey;
++        _shopKeyWasDown = shopKey;
 +        if (bankKey && !_bankKeyWasDown)
 +        {
 +            Player player = Main.LocalPlayer;
