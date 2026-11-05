@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/Aether/UI/Game/UIIconButton.cs
-@@ -0,0 +1,133 @@
+@@ -0,0 +1,136 @@
 +using System;
 +using Microsoft.Xna.Framework;
 +using Microsoft.Xna.Framework.Graphics;
@@ -45,6 +45,9 @@
 +    /// <summary>Mouse text shown after drawing while hovered, unless something else already set one.</summary>
 +    public Func<string> Tooltip;
 +
++    /// <summary>Whether the button ticks when the hover starts (some legacy buttons are silent, or their caller ticks).</summary>
++    public bool TickOnHover = true;
++
 +    public bool IsHovered => _hovered;
 +
 +    public override bool ContainsPoint(Vector2 point)
@@ -86,7 +89,7 @@
 +        if (hovered != _hovered)
 +        {
 +            _hovered = hovered;
-+            if (hovered)
++            if (hovered && TickOnHover)
 +            {
 +                SoundEngine.PlaySound(12);
 +            }
