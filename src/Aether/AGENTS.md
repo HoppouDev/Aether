@@ -52,4 +52,7 @@ Pieces move to retained mode one at a time, each through a small hook at the top
   `UIIngameOptions.ShowLegacy` switches back to the legacy window, for comparison.
   Window resizes (fullscreen, resolution) go through `Main.QueueMainThreadAction` instead of happening mid-draw.
   Checked against the legacy window pixel for pixel, and by hand with mouse and keyboard; gamepad use is untested.
-- Still legacy: everything else (inventory, hotbar, chests, crafting, NPC chat, map, resource bars, mouse text, …).
+- Migrated: the open inventory's item slots (`UIInventorySlots`: the 50-slot main grid, coin and ammo columns, trash slot), each part its own screen drawn where `Main.DrawInventory` / `DrawTrashItemSlot` drew it; `UIInventorySlots.Enabled = false` brings back the legacy loops.
+  `UIGameItemSlot` is the shared slot element: it hit-tests like the legacy loops (edges included) and leaves the slot behaviour to `ItemSlot.Handle`/`ItemSlot.Draw`, as vanilla's `UIItemSlot` does, setting `Main.inventoryScale` first since `ItemSlot` reads it.
+  Use it for the remaining slot groups (equipment, chest, shop, …).
+- Still legacy: the rest of `DrawInventory` (equipment and dye pages, chest and shop, crafting, sort/deposit buttons, bestiary/emote/PvP/map buttons), the hotbar, NPC chat, the stylist and dresser windows, the full-screen map and minimap, resource bars, info and builder accessory bars, tooltips and mouse text.

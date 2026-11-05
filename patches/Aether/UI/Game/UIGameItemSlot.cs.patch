@@ -1,0 +1,98 @@
+--- /dev/null
++++ b/Aether/UI/Game/UIGameItemSlot.cs
+@@ -0,0 +1,95 @@
++using System;
++using Microsoft.Xna.Framework;
++using Microsoft.Xna.Framework.Graphics;
++using Terraria;
++using Terraria.GameContent;
++using Terraria.GameInput;
++using Terraria.UI;
++
++namespace Aether.UI.Game;
++
++/// <summary>
++/// An inventory-style slot, like the legacy loops in Main.DrawInventory: while the mouse is over it,
++/// it claims the mouse and runs ItemSlot.Handle (clicks, shift-click, stacking, tooltips); then
++/// ItemSlot.Draw, at the slot's scale (Main.inventoryScale, which ItemSlot reads). The slot behaviour
++/// itself stays in ItemSlot, as in vanilla's own retained UIItemSlot.
++/// </summary>
++public class UIGameItemSlot : UIElement
++{
++    private readonly Func<Item[]> _items;
++
++    private readonly int _slot;
++
++    private readonly int _context;
++
++    private readonly Func<Item> _getItem;
++
++    private readonly Action<Item> _setItem;
++
++    private readonly Item[] _single = new Item[1];
++
++    private float _scale = 1f;
++
++    /// <summary>Runs just before Handle (e.g. to clear stale per-slot flags); returns allowInteract.</summary>
++    public Func<bool> BeforeHandle;
++
++    /// <summary>A slot of an item array (Player.inventory, a chest, ...).</summary>
++    public UIGameItemSlot(Func<Item[]> items, int slot, int context)
++    {
++        _items = items;
++        _slot = slot;
++        _context = context;
++    }
++
++    /// <summary>A single item field (Player.trashItem, ...).</summary>
++    public UIGameItemSlot(Func<Item> getItem, Action<Item> setItem, int context)
++    {
++        _getItem = getItem;
++        _setItem = setItem;
++        _context = context;
++    }
++
++    /// <summary>Puts the slot's top-left corner at topLeft (relative to its parent), at scale.</summary>
++    public void Place(Vector2 topLeft, float scale)
++    {
++        _scale = scale;
++        Left.Set(topLeft.X, 0f);
++        Top.Set(topLeft.Y, 0f);
++        Width.Set(TextureAssets.InventoryBack.Width() * scale, 0f);
++        Height.Set(TextureAssets.InventoryBack.Height() * scale, 0f);
++    }
++
++    // The legacy hit test includes the slot's right and bottom edges.
++    public override bool ContainsPoint(Vector2 point)
++    {
++        CalculatedStyle dimensions = GetDimensions();
++        if (point.X >= dimensions.X && point.X <= dimensions.X + dimensions.Width && point.Y >= dimensions.Y)
++        {
++            return point.Y <= dimensions.Y + dimensions.Height;
++        }
++        return false;
++    }
++
++    protected override void DrawSelf(SpriteBatch spriteBatch)
++    {
++        Main.inventoryScale = _scale;
++        Item[] items = _items?.Invoke() ?? _single;
++        int slot = (_items != null) ? _slot : 0;
++        if (_getItem != null)
++        {
++            _single[0] = _getItem();
++        }
++        if (IsMouseHovering && !PlayerInput.IgnoreMouseInterface)
++        {
++            Main.player[Main.myPlayer].mouseInterface = true;
++            bool allowInteract = BeforeHandle == null || BeforeHandle();
++            ItemSlot.Handle(items, _context, slot, allowInteract);
++        }
++        CalculatedStyle dimensions = GetDimensions();
++        ItemSlot.Draw(spriteBatch, items, _context, slot, new Vector2(dimensions.X, dimensions.Y));
++        if (_setItem != null)
++        {
++            _setItem(_single[0]);
++        }
++    }
++}

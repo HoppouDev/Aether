@@ -67,7 +67,7 @@
 +    {
 +        if (ShowLegacy)
 +        {
-+            GameScreens.Close();
++            GameScreens.Close(Instance);
 +            return false;
 +        }
 +        GameScreens.Draw(Instance, spriteBatch);
@@ -85,7 +85,7 @@
 +    /// <summary>Called by IngameOptions.Open: the next draw starts fresh.</summary>
 +    public static void Opened()
 +    {
-+        GameScreens.Close();
++        GameScreens.Close(Instance);
 +    }
 +
 +    private static bool IsActive(GameCulture.CultureName culture)

@@ -108,7 +108,47 @@
              {
                  inputTextEscape = true;
              }
-@@ -49281,7 +49281,7 @@
+@@ -41911,10 +41911,11 @@
+         DrawTrashItemSlot(num, num2);
+         spriteBatch.DrawString(FontAssets.MouseText.Value, Lang.inter[4].Value, new Vector2(40f, 0f) + vector, new Microsoft.Xna.Framework.Color(mouseTextColor, mouseTextColor, mouseTextColor, mouseTextColor), 0f, default, 1f, SpriteEffects.None, 0f);
+         inventoryScale = 0.85f;
+-        if (mouseX > 20 && mouseX < (int)(20f + 560f * inventoryScale) && mouseY > 20 && mouseY < (int)(20f + 280f * inventoryScale) && !PlayerInput.IgnoreMouseInterface)
++        if (!Aether.UI.Game.UIInventorySlots.Enabled && mouseX > 20 && mouseX < (int)(20f + 560f * inventoryScale) && mouseY > 20 && mouseY < (int)(20f + 280f * inventoryScale) && !PlayerInput.IgnoreMouseInterface)
+         {
+             player[myPlayer].mouseInterface = true;
+         }
++        if (!Aether.UI.Game.UIInventorySlots.DrawGrid())
+         for (int i = 0; i < 10; i++)
+         {
+             for (int j = 0; j < 5; j++)
+@@ -42649,6 +42650,7 @@
+         float num68 = vector2.X / vector3.X;
+         spriteBatch.DrawString(FontAssets.MouseText.Value, Lang.inter[26].Value, new Vector2(496f, 84f + (vector2.Y - vector2.Y * num68) / 2f), new Microsoft.Xna.Framework.Color(mouseTextColor, mouseTextColor, mouseTextColor, mouseTextColor), 0f, default, 0.75f * num68, SpriteEffects.None, 0f);
+         inventoryScale = 0.6f;
++        if (!Aether.UI.Game.UIInventorySlots.DrawCoinsAndAmmo())
+         for (int num69 = 0; num69 < 4; num69++)
+         {
+             int num70 = 497;
+@@ -42667,6 +42669,7 @@
+         float num72 = vector4.X / vector5.X;
+         spriteBatch.DrawString(FontAssets.MouseText.Value, Lang.inter[27].Value, new Vector2(532f, 84f + (vector4.Y - vector4.Y * num72) / 2f), new Microsoft.Xna.Framework.Color(mouseTextColor, mouseTextColor, mouseTextColor, mouseTextColor), 0f, default, 0.75f * num72, SpriteEffects.None, 0f);
+         inventoryScale = 0.6f;
++        if (!Aether.UI.Game.UIInventorySlots.Enabled)
+         for (int num73 = 0; num73 < 4; num73++)
+         {
+             int num74 = 534;
+@@ -43268,6 +43271,10 @@
+             inventoryScale = 0.755f;
+             num += 5;
+         }
++        if (Aether.UI.Game.UIInventorySlots.DrawTrash())
++        {
++            return;
++        }
+         new Microsoft.Xna.Framework.Color(150, 150, 150, 150);
+         if (mouseX >= num && (float)mouseX <= (float)num + (float)TextureAssets.InventoryBack.Width() * inventoryScale && mouseY >= num2 && (float)mouseY <= (float)num2 + (float)TextureAssets.InventoryBack.Height() * inventoryScale && !PlayerInput.IgnoreMouseInterface)
+         {
+@@ -49281,7 +49288,7 @@
          menuMode = 5000;
      }
  
@@ -117,7 +157,7 @@
      {
          return () =>
          {
-@@ -49574,7 +49574,10 @@
+@@ -49574,7 +49581,10 @@
              GamepadMainMenuHandler.CanRun = true;
          }
          DrawInterface_13_AchievementCompletePopups();
@@ -129,7 +169,7 @@
          {
              array9[0] = Lang.menu[102].Value;
              num2 = 200;
-@@ -52202,7 +52205,7 @@
+@@ -52202,7 +52212,7 @@
          selectedMenu2 = -1;
          focusMenu = -1;
          bool flag7 = mouseLeft && !PlayerInput.UsingGamepad;
@@ -138,7 +178,7 @@
          {
              grabColorSlider = 0;
              hBar = -1f;
-@@ -53046,19 +53049,19 @@
+@@ -53046,19 +53056,19 @@
          FrameSkipMode = (FrameSkipMode)frameSkipMode;
      }
  
@@ -161,7 +201,7 @@
      {
          SoundEngine.PlaySound(11);
          menuMode = 0;
-@@ -53066,7 +53069,7 @@
+@@ -53066,7 +53076,7 @@
          Netplay.ServerPassword = "";
      }
  
@@ -170,7 +210,7 @@
      {
          Netplay.ServerPassword = passwordCandidate;
          HostAndPlay();
-@@ -53129,7 +53132,7 @@
+@@ -53129,7 +53139,7 @@
          menuMode = 10;
      }
  
@@ -179,7 +219,7 @@
      {
          if (SocialAPI.Network != null)
          {
-@@ -53142,7 +53145,7 @@
+@@ -53142,7 +53152,7 @@
          Netplay.ServerPassword = "";
      }
  
@@ -188,7 +228,7 @@
      {
          if (string.IsNullOrWhiteSpace(text))
          {
-@@ -53156,7 +53159,7 @@
+@@ -53156,7 +53166,7 @@
          return true;
      }
  
@@ -197,7 +237,7 @@
      {
          Netplay.ListenPort = ushort.Parse(candidatePort);
          autoPass = false;
-@@ -53414,10 +53417,10 @@
+@@ -53414,10 +53424,10 @@
          }
      }
  
@@ -210,7 +250,7 @@
          {
              result = true;
          }
-@@ -67754,7 +67757,7 @@
+@@ -67754,7 +67764,7 @@
      {
          bool flag = false;
          Form form = null;
@@ -219,7 +259,7 @@
          {
              form = Control.FromHandle(instance.Window.Handle);
              screenMaximized = form.WindowState == FormWindowState.Maximized;
-@@ -67785,7 +67788,7 @@
+@@ -67785,7 +67795,7 @@
                      TryPickingDefaultUIScale(800f);
                  }
              }
@@ -228,7 +268,7 @@
              {
                  form.MinimumSize = new Size(0, 0);
                  if (!fullscreen && !flag3)
-@@ -67824,7 +67827,7 @@
+@@ -67824,7 +67834,7 @@
          else
          {
              PlayerInput.RawMouseScale = Vector2.One;
@@ -237,7 +277,7 @@
              {
                  form.MinimumSize = new Size(minScreenW, minScreenH);
                  if (flag)
-@@ -67839,7 +67842,7 @@
+@@ -67839,7 +67849,7 @@
              num4 = graphics.GraphicsDevice.Viewport.Height;
              flag2 = graphics.PreferredBackBufferWidth != graphics.GraphicsDevice.Viewport.Width || graphics.PreferredBackBufferHeight != graphics.GraphicsDevice.Viewport.Height;
          }
@@ -246,7 +286,7 @@
          {
              if (form.ClientSize.Width < graphics.PreferredBackBufferWidth)
              {
-@@ -67884,7 +67887,7 @@
+@@ -67884,7 +67894,7 @@
              PendingResolutionWidth = screenWidth;
              PendingResolutionHeight = screenHeight;
              PlayerInput.CacheOriginalScreenDimensions();
