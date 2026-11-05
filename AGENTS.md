@@ -74,7 +74,6 @@ dotnet build -c Debug
 - **`./aether build --target`** (`lin64`, `win64`, `mac`, with `mac64`/`macarm` as aliases of the one universal `mac` bundle, or `all`; repeatable) also packages `dist/<target>/`, the same layout as the run folder but copied, so it's self-contained and runs on that OS.
   It can be built on any OS: `lin64` and `win64` need the Linux build (`--game-dir`), `mac` the macOS build (`./aether download --platform macos` or `--platform-dir`, which needs exactly one mac/win64 target); another OS's Steam install isn't looked for.
   `dist/` contains the game's files: it's gitignored and for playing on your own machines, not for distributing.
-  Saves default to `.aether/saves/`, so your real saves are left alone; the startup log should report `FNA3D v26.11.0` and `FAudio v26.11.0`. macOS and Windows are implemented but not yet tested on real machines.
 - The client exe has no headless mode: `Main.dedServ` is only set in the separate server build, so any runtime test opens a game window.
 
 ## Layout
@@ -85,7 +84,7 @@ dotnet build -c Debug
 | `patches/` | yes | Aether itself: the client's changes to the game, as unified diffs mirroring `src/`. |
 | `prek.toml`, `rumdl.toml`, `cog.toml` | yes | Git hooks (patch guard, basic checks, rumdl, conventional-pre-commit, cocogitto) and their configs. |
 | `Terraria.csproj`, `ReLogic/ReLogic.csproj`, `dotnet-tools.json` | yes | Project files (`Terraria.csproj` compiles `src/**/*.cs` except `src/ReLogic/`, references `lib/` and the ReLogic project, embeds `src/Resources/*`; `ReLogic.csproj` builds `ReLogic.dll` from `src/ReLogic/`) and the pinned ilspycmd. |
-| `src/` | only `AGENTS.md` | Editable tree: `Terraria/` (game code, one folder per namespace), `ReLogic/` (Re-Logic's framework: assets, fonts, RGB, OS layer), `BCrypt/`, `nativefiledialog.cs`, `Properties/` (bundled third-party source, assembly attributes) and `Resources/` (embedded data files, each named after its exact manifest resource name). |
+| `src/` | only `AGENTS.md` | Editable tree: `Aether/` (Aether's own code, all added files), `Terraria/` (game code, one folder per namespace), `ReLogic/` (Re-Logic's framework: assets, fonts, RGB, OS layer), `BCrypt/`, `nativefiledialog.cs`, `Properties/` (bundled third-party source, assembly attributes) and `Resources/` (embedded data files, each named after its exact manifest resource name). |
 | `.base/` | no | Pristine decompile, same shape as `src/`. |
 | `dist/` | no | `./aether build --target` output: one self-contained, playable folder per OS (contains game files). |
 | `lib/` | no | Third-party DLLs extracted from `Terraria.exe`'s embedded resources (`lib/ReLogic.dll` is only used to decompile; the build uses the one compiled from `src/ReLogic/`), `FNA.dll` + `FNA.dll.config` built from the pinned FNA commit, `fnalibs/` and `fnalibs-apple/` (FNA's native libraries for Linux, Windows and macOS, hash-checked), and `steamworks/` (the official 64-bit Windows Steamworks.NET and `steam_api64.dll`, from the release pinned in `tools/steamworks.json`). |
@@ -135,6 +134,7 @@ dotnet build -c Debug
 | `Terraria/Localization/` | Text and languages: [src/Terraria/Localization/AGENTS.md](src/Terraria/Localization/AGENTS.md) |
 | `Terraria/IO/` | Player/world files, config, resource packs: [src/Terraria/IO/AGENTS.md](src/Terraria/IO/AGENTS.md) |
 | `Terraria/Social/` | Steam / WeGame platform integration: [src/Terraria/Social/AGENTS.md](src/Terraria/Social/AGENTS.md) |
+| `Aether/` | Aether's own code (new files, hooked into the game): the retained-mode title menu: [src/Aether/AGENTS.md](src/Aether/AGENTS.md) |
 | `ReLogic/` | Re-Logic's framework library (assets, fonts, RGB, OS layer), built by `ReLogic/ReLogic.csproj`: [src/ReLogic/AGENTS.md](src/ReLogic/AGENTS.md) |
 
 Smaller namespaces without their own notes: `Audio/` (`SoundEngine`), `GameInput/` (`PlayerInput`, keybind profiles), `Map/`, `Chat/` (chat commands and tags), `Initializers/` (startup registration: assets, chat tags, net modules, screen effects), `Testing/` (debug commands, state snapshots, replay tooling), `Achievements/`, `DataStructures/`, `Utilities/`, `Server/`.

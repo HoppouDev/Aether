@@ -1,0 +1,100 @@
+--- /dev/null
++++ b/Aether/UI/Menu/UIMenuScreen.cs
+@@ -0,0 +1,97 @@
++using System;
++using Terraria;
++using Terraria.Audio;
++using Terraria.GameInput;
++using Terraria.UI;
++
++namespace Aether.UI.Menu;
++
++/// <summary>
++/// A title-menu screen laid out like DrawMenu's: a centred column of <see cref="UIMenuItem" />s, item
++/// <c>i</c> at <c>ItemsTop + ItemSpacing * i</c> (plus its own offset). Items are rebuilt every time
++/// the screen opens, so they can depend on the game's state.
++/// </summary>
++public abstract class UIMenuScreen : UIState
++{
++    protected float ItemsTop = 250f;
++
++    protected float ItemSpacing = 80f;
++
++    private int _itemCount;
++
++    /// <summary>False hands this mode back to the legacy menu for now (e.g. a status screen that shares it).</summary>
++    public virtual bool IsAvailable => true;
++
++    protected abstract void BuildItems();
++
++    /// <summary>The gamepad's back button.</summary>
++    public virtual void GoBack()
++    {
++    }
++
++    public override void OnActivate()
++    {
++        Rebuild();
++    }
++
++    protected void Rebuild()
++    {
++        RemoveAllChildren();
++        _itemCount = 0;
++        BuildItems();
++    }
++
++    protected UIMenuItem AddItem(Func<string> text, Action onClick, float scale = 1f, float offset = 0f)
++    {
++        UIMenuItem item = new UIMenuItem(text, onClick)
++        {
++            TextScale = scale,
++            HAlign = 0.5f
++        };
++        item.Top.Set(ItemsTop + ItemSpacing * _itemCount + offset, 0f);
++        _itemCount++;
++        Append(item);
++        return item;
++    }
++
++    protected UIMenuItem AddItem(string text, Action onClick, float scale = 1f, float offset = 0f)
++    {
++        return AddItem(() => text, onClick, scale, offset);
++    }
++
++    protected UIMenuItem AddLabel(Func<string> text, float scale = 1f, float offset = 0f)
++    {
++        UIMenuItem uIMenuItem = AddItem(text, null, scale, offset);
++        uIMenuItem.IsLabel = true;
++        return uIMenuItem;
++    }
++
++    /// <summary>Applies this frame's typing to text, like DrawMenu's text fields.</summary>
++    protected static string ReadTextInput(string text)
++    {
++        PlayerInput.WritingText = true;
++        Main.instance.HandleIME();
++        string inputText = Main.GetInputText(text);
++        if (inputText != text)
++        {
++            SoundEngine.PlaySound(12);
++        }
++        return inputText;
++    }
++
++    /// <summary>A text field's value with DrawMenu's blinking cursor.</summary>
++    protected static string WithCursor(string text)
++    {
++        return text + ((Main.instance.textBlinkerState == 1) ? "|" : " ");
++    }
++
++    protected static void BlinkCursor()
++    {
++        Main.instance.textBlinkerCount++;
++        if (Main.instance.textBlinkerCount >= 20)
++        {
++            Main.instance.textBlinkerState = 1 - Main.instance.textBlinkerState;
++            Main.instance.textBlinkerCount = 0;
++        }
++    }
++}

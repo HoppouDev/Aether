@@ -1,5 +1,32 @@
 --- a/Terraria/Main.cs
 +++ b/Terraria/Main.cs
+@@ -239,7 +239,7 @@
+ 
+     public static Entity CurrentDrawnEntity;
+ 
+-    private static bool GameAskedToQuit = false;
++    internal static bool GameAskedToQuit = false;
+ 
+     public static float ForcedMinimumZoom = 1f;
+ 
+@@ -392,7 +392,7 @@
+ 
+     public static UserInterface InGameUI = new UserInterface();
+ 
+-    private static Action _pendingCharacterSelect;
++    internal static Action _pendingCharacterSelect;
+ 
+     public static bool drawBackGore;
+ 
+@@ -2614,7 +2614,7 @@
+ 
+     public static bool blockMouse;
+ 
+-    private static bool _blockFancyUIWhileLoading;
++    internal static bool _blockFancyUIWhileLoading;
+ 
+     private bool[] menuWide = new bool[100];
+ 
 @@ -3917,7 +3917,7 @@
  
      private static void TrySupporting8K()
@@ -45,7 +72,46 @@
              {
                  inputTextEscape = true;
              }
-@@ -53417,7 +53417,7 @@
+@@ -49281,7 +49281,7 @@
+         menuMode = 5000;
+     }
+ 
+-    private static Action CreateGoToMenuEvent(int menu)
++    internal static Action CreateGoToMenuEvent(int menu)
+     {
+         return () =>
+         {
+@@ -49574,7 +49574,10 @@
+             GamepadMainMenuHandler.CanRun = true;
+         }
+         DrawInterface_13_AchievementCompletePopups();
+-        if (menuMode == 1212)
++        if (Aether.UI.Menu.MenuScreens.Draw(spriteBatch, gameTime))
++        {
++        }
++        else if (menuMode == 1212)
+         {
+             array9[0] = Lang.menu[102].Value;
+             num2 = 200;
+@@ -53142,7 +53145,7 @@
+         Netplay.ServerPassword = "";
+     }
+ 
+-    private static bool IsGoodPortAddress(string text)
++    internal static bool IsGoodPortAddress(string text)
+     {
+         if (string.IsNullOrWhiteSpace(text))
+         {
+@@ -53156,7 +53159,7 @@
+         return true;
+     }
+ 
+-    private static void OnSubmitServerPort(string candidatePort)
++    internal static void OnSubmitServerPort(string candidatePort)
+     {
+         Netplay.ListenPort = ushort.Parse(candidatePort);
+         autoPass = false;
+@@ -53417,7 +53420,7 @@
      private static bool IsBorderlessDisplayAvailable()
      {
          bool result = false;
@@ -54,7 +120,7 @@
          {
              result = true;
          }
-@@ -67754,7 +67754,7 @@
+@@ -67754,7 +67757,7 @@
      {
          bool flag = false;
          Form form = null;
@@ -63,7 +129,7 @@
          {
              form = Control.FromHandle(instance.Window.Handle);
              screenMaximized = form.WindowState == FormWindowState.Maximized;
-@@ -67785,7 +67785,7 @@
+@@ -67785,7 +67788,7 @@
                      TryPickingDefaultUIScale(800f);
                  }
              }
@@ -72,7 +138,7 @@
              {
                  form.MinimumSize = new Size(0, 0);
                  if (!fullscreen && !flag3)
-@@ -67824,7 +67824,7 @@
+@@ -67824,7 +67827,7 @@
          else
          {
              PlayerInput.RawMouseScale = Vector2.One;
@@ -81,7 +147,7 @@
              {
                  form.MinimumSize = new Size(minScreenW, minScreenH);
                  if (flag)
-@@ -67839,7 +67839,7 @@
+@@ -67839,7 +67842,7 @@
              num4 = graphics.GraphicsDevice.Viewport.Height;
              flag2 = graphics.PreferredBackBufferWidth != graphics.GraphicsDevice.Viewport.Width || graphics.PreferredBackBufferHeight != graphics.GraphicsDevice.Viewport.Height;
          }
@@ -90,7 +156,7 @@
          {
              if (form.ClientSize.Width < graphics.PreferredBackBufferWidth)
              {
-@@ -67884,7 +67884,7 @@
+@@ -67884,7 +67887,7 @@
              PendingResolutionWidth = screenWidth;
              PendingResolutionHeight = screenHeight;
              PlayerInput.CacheOriginalScreenDimensions();

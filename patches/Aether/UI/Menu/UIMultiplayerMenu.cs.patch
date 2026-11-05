@@ -1,0 +1,56 @@
+--- /dev/null
++++ b/Aether/UI/Menu/UIMultiplayerMenu.cs
+@@ -0,0 +1,53 @@
++using Microsoft.Xna.Framework;
++using Terraria;
++using Terraria.Audio;
++using Terraria.Social;
++
++namespace Aether.UI.Menu;
++
++/// <summary>The title screen's multiplayer menu (menuMode 12).</summary>
++public class UIMultiplayerMenu : UIMenuScreen
++{
++    protected override void BuildItems()
++    {
++        // With Steam: join via Steam (friends), plus join via IP; otherwise just join (via IP).
++        AddItem(Lang.menu[(SocialAPI.Network != null) ? 146 : 87].Value, delegate
++        {
++            Main.LoadPlayers();
++            Main.menuMultiplayer = true;
++            SoundEngine.PlaySound(10);
++            Main.ClearPendingPlayerSelectCallbacks();
++            Main.menuMode = 1;
++        });
++        if (SocialAPI.Network != null)
++        {
++            AddItem(Lang.menu[145].Value, delegate
++            {
++                SoundEngine.PlaySound(10);
++                SocialAPI.Friends.OpenJoinInterface();
++            });
++        }
++        AddItem(Lang.menu[88].Value, delegate
++        {
++            Main.LoadPlayers();
++            SoundEngine.PlaySound(10);
++            Main.ClearPendingPlayerSelectCallbacks();
++            Main.menuMode = 1;
++            Main.menuMultiplayer = true;
++            Main.menuServer = true;
++        });
++        AddItem(Lang.menu[5].Value, GoBack);
++    }
++
++    public override void Update(GameTime gameTime)
++    {
++        Main.menuServer = false;
++        base.Update(gameTime);
++    }
++
++    public override void GoBack()
++    {
++        SoundEngine.PlaySound(11);
++        Main.menuMode = 0;
++    }
++}

@@ -1,0 +1,92 @@
+--- /dev/null
++++ b/Aether/UI/Menu/MenuScreens.cs
+@@ -0,0 +1,89 @@
++using System;
++using System.Collections.Generic;
++using Microsoft.Xna.Framework;
++using Microsoft.Xna.Framework.Graphics;
++using Terraria;
++using Terraria.UI;
++using Terraria.UI.Gamepad;
++
++namespace Aether.UI.Menu;
++
++/// <summary>
++/// Retained-mode replacements for the title menu's legacy screens, one <see cref="UIMenuScreen" /> per
++/// <c>Main.menuMode</c>. <c>Main.DrawMenu</c> calls <see cref="Draw" /> before its legacy chain of
++/// <c>menuMode</c> branches: when a screen here owns the current mode it is updated and drawn and the
++/// legacy branch is skipped. <c>menuMode</c> keeps its vanilla meaning, so legacy screens, vanilla
++/// <c>MenuUI</c> screens (mode 888) and every other check of <c>menuMode</c> keep working, and screens
++/// can be migrated one at a time.
++/// </summary>
++public static class MenuScreens
++{
++    private static readonly Dictionary<int, Func<UIMenuScreen>> Factories = new Dictionary<int, Func<UIMenuScreen>>
++    {
++        [0] = () => new UIMainMenu(),
++        [11] = () => new UISettingsMenu(),
++        [12] = () => new UIMultiplayerMenu(),
++        [13] = () => new UIJoinServerMenu(),
++        [131] = () => new UIServerPortMenu()
++    };
++
++    private static readonly Dictionary<int, UIMenuScreen> Screens = new Dictionary<int, UIMenuScreen>();
++
++    private static UserInterface _ui;
++
++    public static bool Owns(int menuMode)
++    {
++        return Factories.ContainsKey(menuMode);
++    }
++
++    /// <summary>Updates and draws the screen for the current <c>menuMode</c>; false if it's still legacy.</summary>
++    public static bool Draw(SpriteBatch spriteBatch, GameTime gameTime)
++    {
++        int mode = Main.menuMode;
++        UIMenuScreen screen = GetScreen(mode);
++        if (screen == null || !screen.IsAvailable)
++        {
++            _ui?.SetState(null);
++            return false;
++        }
++        // Vanilla code opens its own screens with UserInterface.ActiveInstance (meaning Main.MenuUI),
++        // and the UserInterface constructor and Draw both take that over, so hand it back afterwards.
++        UserInterface previous = UserInterface.ActiveInstance;
++        if (_ui == null)
++        {
++            _ui = new UserInterface();
++        }
++        // Use() recalculates the layout whenever it switches instances, i.e. every frame here, which
++        // picks up resolution and text changes.
++        _ui.Use();
++        _ui.SetState(screen);
++        bool backPressed = UILinkPointNavigator.Shortcuts.BackButtonInUse && !UILinkPointNavigator.Shortcuts.BackButtonLock;
++        _ui.Update(gameTime);
++        if (backPressed && Main.menuMode == mode)
++        {
++            UILinkPointNavigator.Shortcuts.BackButtonLock = true;
++            screen.GoBack();
++        }
++        if (Main.menuMode == mode)
++        {
++            _ui.Draw(spriteBatch, gameTime);
++        }
++        previous.Use();
++        return true;
++    }
++
++    private static UIMenuScreen GetScreen(int mode)
++    {
++        if (Screens.TryGetValue(mode, out var screen))
++        {
++            return screen;
++        }
++        if (!Factories.TryGetValue(mode, out var factory))
++        {
++            return null;
++        }
++        screen = factory();
++        Screens[mode] = screen;
++        return screen;
++    }
++}

@@ -3,6 +3,7 @@
 Terraria runs **two UI systems side by side**:
 
 1. **Legacy immediate-mode UI**: the main menu, inventory, hotbar, chests, NPC chat, map and mouse text, drawn by hand from `Main.cs` (`DrawMenu` ~line 49320, `DrawInterface` ~line 45865).
+   Aether is moving the title menu's screens to retained mode one `menuMode` at a time: [../../Aether/AGENTS.md](../../Aether/AGENTS.md).
 2. **Retained element tree** (`UIElement`/`UIState`/`UserInterface`): used for newer screens such as character/world creation and selection, bestiary, achievements, controls, resource packs, workshop and emotes.
 
 Both draw through `SpriteBatch` in screen space and scale with `Main.UIScale`.
