@@ -1,0 +1,62 @@
+--- /dev/null
++++ b/Aether/UI/Menu/UIVolumeSettings.cs
+@@ -0,0 +1,59 @@
++using System;
++using Terraria;
++using Terraria.Audio;
++
++namespace Aether.UI.Menu;
++
++/// <summary>Settings → Volume (menuMode 26): music, sound and ambient sliders.</summary>
++public class UIVolumeSettings : UIMenuScreen
++{
++    public UIVolumeSettings()
++    {
++        ItemsTop = 200f;
++        ItemSpacing = 10f;
++    }
++
++    protected override void BuildItems()
++    {
++        AddLabel(() => "");
++        AddLabel(() => Lang.menu[65].Value, 1f, 10f);
++        AddItem(() => Lang.menu[5].Value, GoBack, 1f, 250f);
++        AddVolume(0, 99, () => Main.musicVolume, delegate(float value)
++        {
++            Main.musicVolume = value;
++        }, 2);
++        AddVolume(1, 98, () => Main.soundVolume, delegate(float value)
++        {
++            Main.soundVolume = value;
++        }, 3);
++        AddVolume(2, 119, () => Main.ambientVolume, delegate(float value)
++        {
++            Main.ambientVolume = value;
++        }, 4);
++    }
++
++    private void AddVolume(int row, int name, Func<float> getValue, Action<float> setValue, int gamepadFeature)
++    {
++        float top = 320f + 30f * row;
++        UIMenuSlider slider = new UIMenuSlider(getValue, setValue, gamepadFeature);
++        slider.Left.Set(-3f - slider.Width.Pixels, 0.5f);
++        slider.Top.Set(top + 12f - slider.Height.Pixels / 2f, 0f);
++        Append(slider);
++        AddText(() => Lang.menu[name].Value, 7f, top);
++        AddText(() => Math.Round(getValue() * 100f) + "%", 97f, top);
++    }
++
++    private void AddText(Func<string> text, float fromCenter, float top)
++    {
++        UIMenuText uIMenuText = new UIMenuText(text);
++        uIMenuText.Left.Set(fromCenter, 0.5f);
++        uIMenuText.Top.Set(top, 0f);
++        Append(uIMenuText);
++    }
++
++    public override void GoBack()
++    {
++        Main.menuMode = 11;
++        SoundEngine.PlaySound(11);
++    }
++}

@@ -93,6 +93,15 @@
          {
              array9[0] = Lang.menu[102].Value;
              num2 = 200;
+@@ -52202,7 +52205,7 @@
+         selectedMenu2 = -1;
+         focusMenu = -1;
+         bool flag7 = mouseLeft && !PlayerInput.UsingGamepad;
+-        if (!flag)
++        if (!flag && !Aether.UI.Menu.MenuScreens.Owns(menuMode))
+         {
+             grabColorSlider = 0;
+             hBar = -1f;
 @@ -53142,7 +53145,7 @@
          Netplay.ServerPassword = "";
      }
@@ -111,8 +120,12 @@
      {
          Netplay.ListenPort = ushort.Parse(candidatePort);
          autoPass = false;
-@@ -53417,7 +53420,7 @@
-     private static bool IsBorderlessDisplayAvailable()
+@@ -53414,10 +53417,10 @@
+         }
+     }
+ 
+-    private static bool IsBorderlessDisplayAvailable()
++    internal static bool IsBorderlessDisplayAvailable()
      {
          bool result = false;
 -        if (Platform.IsWindows)

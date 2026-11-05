@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/Aether/UI/Menu/MenuScreens.cs
-@@ -0,0 +1,89 @@
+@@ -0,0 +1,102 @@
 +using System;
 +using System.Collections.Generic;
 +using Microsoft.Xna.Framework;
@@ -27,7 +27,20 @@
 +        [11] = () => new UISettingsMenu(),
 +        [12] = () => new UIMultiplayerMenu(),
 +        [13] = () => new UIJoinServerMenu(),
-+        [131] = () => new UIServerPortMenu()
++        [131] = () => new UIServerPortMenu(),
++        [112] = () => new UIGeneralSettings(),
++        [1112] = () => new UIInterfaceSettings(),
++        [1111] = () => new UIVideoSettings(),
++        [2008] = () => new UIEffectsSettings(),
++        [111] = () => new UIResolutionSettings(),
++        [28] = () => new UIParallaxSettings(),
++        [26] = () => new UIVolumeSettings(),
++        [1125] = () => new UICursorSettings(),
++        [25] = () => new UICursorColorMenu(border: false),
++        [252] = () => new UICursorColorMenu(border: true),
++        [1127] = () => new UIControlsSettings(),
++        [1212] = () => new UILanguageMenu(firstRun: true),
++        [1213] = () => new UILanguageMenu(firstRun: false)
 +    };
 +
 +    private static readonly Dictionary<int, UIMenuScreen> Screens = new Dictionary<int, UIMenuScreen>();

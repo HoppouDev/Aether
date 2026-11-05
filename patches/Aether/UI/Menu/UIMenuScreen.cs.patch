@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/Aether/UI/Menu/UIMenuScreen.cs
-@@ -0,0 +1,97 @@
+@@ -0,0 +1,117 @@
 +using System;
 +using Terraria;
 +using Terraria.Audio;
@@ -60,6 +60,26 @@
 +    protected UIMenuItem AddItem(string text, Action onClick, float scale = 1f, float offset = 0f)
 +    {
 +        return AddItem(() => text, onClick, scale, offset);
++    }
++
++    /// <summary>An item that changes a setting in place (DrawMenu plays the tick sound for these).</summary>
++    protected UIMenuItem AddToggle(Func<string> text, Action change, float scale = 1f, float offset = 0f)
++    {
++        return AddItem(text, delegate
++        {
++            SoundEngine.PlaySound(12);
++            change();
++        }, scale, offset);
++    }
++
++    /// <summary>An item that opens another menuMode, with DrawMenu's sound for it.</summary>
++    protected UIMenuItem AddLink(Func<string> text, int menuMode, int sound = 10, float scale = 1f, float offset = 0f)
++    {
++        return AddItem(text, delegate
++        {
++            SoundEngine.PlaySound(sound);
++            Main.menuMode = menuMode;
++        }, scale, offset);
 +    }
 +
 +    protected UIMenuItem AddLabel(Func<string> text, float scale = 1f, float offset = 0f)

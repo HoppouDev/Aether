@@ -1,0 +1,79 @@
+--- /dev/null
++++ b/Aether/UI/Menu/UIMenuSlider.cs
+@@ -0,0 +1,76 @@
++using System;
++using Microsoft.Xna.Framework;
++using Microsoft.Xna.Framework.Graphics;
++using Terraria;
++using Terraria.Audio;
++using Terraria.GameContent;
++using Terraria.UI;
++using Terraria.UI.Gamepad;
++
++namespace Aether.UI.Menu;
++
++/// <summary>
++/// A 0..1 value bar like the legacy volume and parallax sliders (drawn by IngameOptions.DrawValueBar):
++/// press on it and drag. <c>gamepadFeature</c> is the UILinksInitializer.HandleOptionsSpecials case
++/// that adjusts the same value with the gamepad while the bar is focused.
++/// </summary>
++public class UIMenuSlider : UIElement
++{
++    private readonly Func<float> _getValue;
++
++    private readonly Action<float> _setValue;
++
++    private readonly int _gamepadFeature;
++
++    private bool _dragging;
++
++    public UIMenuSlider(Func<float> getValue, Action<float> setValue, int gamepadFeature)
++    {
++        _getValue = getValue;
++        _setValue = setValue;
++        _gamepadFeature = gamepadFeature;
++        Width.Set(TextureAssets.ColorBar.Width(), 0f);
++        Height.Set(TextureAssets.ColorBar.Height(), 0f);
++    }
++
++    public override void LeftMouseDown(UIMouseEvent evt)
++    {
++        base.LeftMouseDown(evt);
++        _dragging = true;
++    }
++
++    public override void MouseOver(UIMouseEvent evt)
++    {
++        base.MouseOver(evt);
++        SoundEngine.PlaySound(12);
++    }
++
++    public override void Update(GameTime gameTime)
++    {
++        base.Update(gameTime);
++        if (!Main.mouseLeft)
++        {
++            _dragging = false;
++        }
++        if (_dragging)
++        {
++            // The bar's track is inset 5px on each side.
++            CalculatedStyle dimensions = GetDimensions();
++            _setValue(MathHelper.Clamp((Main.MouseScreen.X - dimensions.X - 5f) / (dimensions.Width - 10f), 0f, 1f));
++        }
++        if (_dragging || IsMouseHovering)
++        {
++            UILinkPointNavigator.Shortcuts.OPTIONS_BUTTON_SPECIALFEATURE = _gamepadFeature;
++        }
++    }
++
++    protected override void DrawSelf(SpriteBatch spriteBatch)
++    {
++        CalculatedStyle dimensions = GetDimensions();
++        Vector2 center = dimensions.Center();
++        GamepadMainMenuHandler.MenuItemPositions.Add(center);
++        // DrawValueBar takes the bar's right edge and vertical centre.
++        IngameOptions.valuePosition = new Vector2(dimensions.X + dimensions.Width, center.Y);
++        IngameOptions.DrawValueBar(spriteBatch, 1f, _getValue(), _dragging ? 1 : 0);
++    }
++}

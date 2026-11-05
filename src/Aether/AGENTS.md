@@ -21,6 +21,11 @@ Those screens are being moved, one `menuMode` at a time, to retained-mode `UISta
   Make a private `Main` member the screen needs `internal` rather than copying it.
   If the mode is shared with another screen (mode 0 is the connection status screen while `Netplay.ClientLoopThreadRunning`), return false from `IsAvailable` then.
   Legacy items act on mouse-down, retained ones on mouse-up; `UserInterface.SetState` ignores clicks for 200 ms, so neither clicks through into the next screen.
-- Migrated: 0 (main menu), 11 (settings), 12 (multiplayer), 13 (join via IP), 131 (server port).
-  Still legacy: the settings pages (112, 1112, 1111, 26, 1125, 1127, 1213 and their children), language select (1212), world/server status and error screens, and the in-game UI.
+- Sliders: `UIMenuSlider` is a value bar (drawn by vanilla's `IngameOptions.DrawValueBar`) and `UIMenuColorBars` the HSL(+alpha) colour bars; `UIMenuText` is the small caption/value text beside them.
+  Both set `UILinkPointNavigator.Shortcuts.OPTIONS_BUTTON_SPECIALFEATURE` while focused, so the gamepad adjusts them through `UILinksInitializer.HandleOptionsSpecials`.
+  The colour bars keep their state in `Main.hBar`/`sBar`/`lBar`/`aBar` like `DrawMenu` (the gamepad edits those), so `DrawMenu`'s per-frame reset of them is patched to skip modes `MenuScreens` owns.
+- Window changes (resolution, fullscreen) go through `Main.QueueMainThreadAction`: `DrawMenu` defers them to the end of the frame, and the screens run mid-draw.
+- Migrated: 0 (main menu), 11 (settings), 12 (multiplayer), 13 (join via IP), 131 (server port), and every settings page: 112 (general), 1112 (interface), 1111 (video), 2008 (effects), 111 (resolution), 28 (parallax), 26 (volume), 1125 (cursor), 25 and 252 (cursor and border colour), 1127 (controls), 1213 (language) and 1212 (first-run language).
+  Modes 27 and 272727 (old key binding screens) are unreachable in vanilla and stay legacy.
+  Still legacy: world/server status and error screens (10, 14, 15, 100, 200, 201, …), world generation and server setup (-7, -71, 5, 6, 7, 8, 9, 16, 30, 31, 882, 889, 5000, 3000, 1000000, …), and the in-game UI.
   Tested by hand with mouse and keyboard; gamepad navigation is untested.
