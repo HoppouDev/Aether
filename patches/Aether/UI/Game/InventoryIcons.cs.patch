@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/Aether/UI/Game/InventoryIcons.cs
-@@ -0,0 +1,427 @@
+@@ -0,0 +1,436 @@
 +using System.Collections.Generic;
 +using Microsoft.Xna.Framework;
 +using Microsoft.Xna.Framework.Graphics;
@@ -21,11 +21,20 @@
 +{
 +    public readonly List<UIIconButton> Buttons = new List<UIIconButton>();
 +
++    // Appended when the screen first opens: groups are built in static initializers, which the game
++    // runs at startup (Program.ForceLoadAssembly) before there's a UserInterface to lay them out in.
 +    public UIIconButtonGroup Add(UIIconButton button)
 +    {
 +        Buttons.Add(button);
-+        Append(button);
 +        return this;
++    }
++
++    public override void OnInitialize()
++    {
++        foreach (UIIconButton button in Buttons)
++        {
++            Append(button);
++        }
 +    }
 +
 +    /// <summary>Called by the legacy method in place of its body; false: run the legacy body.</summary>

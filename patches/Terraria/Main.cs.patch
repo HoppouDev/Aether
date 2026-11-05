@@ -497,7 +497,46 @@
          Vector2 vector = FontAssets.MouseText.Value.MeasureString(textSizeMatcher);
          Vector2 vector2 = FontAssets.MouseText.Value.MeasureString(text);
          Vector2 vector3 = FontAssets.DeathText.Value.MeasureString(text);
-@@ -48452,6 +48519,10 @@
+@@ -47828,6 +47895,7 @@
+             num4 += 50f;
+         }
+         Microsoft.Xna.Framework.Color color = new Microsoft.Xna.Framework.Color(100, 100, 100, mouseTextColor);
++        Aether.UI.Game.UIInfoAccs.Begin();
+         for (int i = 0; i < 12; i++)
+         {
+             string text2 = "";
+@@ -48256,6 +48324,10 @@
+             {
+                 continue;
+             }
++            if (Aether.UI.Game.UIInfoAccs.Collect(i, num, text2, text3, infoTextColor, infoTextShadowColor))
++            {
++                continue;
++            }
+             GetInfoAccIconPosition(num3, startX, out var X, out var Y);
+             if (num >= 0)
+             {
+@@ -48367,6 +48439,10 @@
+                 spriteBatch.DrawString(FontAssets.MouseText.Value, text2, new Vector2(X + num27, Y + 74 + num29 * i + num28 + 48), color3, 0f, default, scale, SpriteEffects.None, 0f);
+             }
+         }
++        if (Aether.UI.Game.UIInfoAccs.Draw(startX, num4))
++        {
++            return;
++        }
+         if (!string.IsNullOrEmpty(text))
+         {
+             if (playerInventory)
+@@ -48389,7 +48465,7 @@
+         }
+     }
+ 
+-    private static void GetInfoAccIconPosition(int drawnCount, int StartX, out int X, out int Y)
++    internal static void GetInfoAccIconPosition(int drawnCount, int StartX, out int X, out int Y)
+     {
+         if (!playerInventory)
+         {
+@@ -48452,6 +48528,10 @@
          {
              return;
          }
@@ -508,7 +547,7 @@
          int num = 0;
          Player player = Main.player[myPlayer];
          int[] builderAccStatus = Main.player[myPlayer].builderAccStatus;
-@@ -48693,7 +48764,7 @@
+@@ -48693,7 +48773,7 @@
          UILinkPointNavigator.Shortcuts.BUILDERACCCOUNT = num;
      }
  
@@ -517,7 +556,7 @@
      {
          blockReplaceIcons = 1;
          torchGodIcons = (plr.unlockedBiomeTorches ? 1 : 0);
-@@ -49281,7 +49352,7 @@
+@@ -49281,7 +49361,7 @@
          menuMode = 5000;
      }
  
@@ -526,7 +565,7 @@
      {
          return () =>
          {
-@@ -49574,7 +49645,10 @@
+@@ -49574,7 +49654,10 @@
              GamepadMainMenuHandler.CanRun = true;
          }
          DrawInterface_13_AchievementCompletePopups();
@@ -538,7 +577,7 @@
          {
              array9[0] = Lang.menu[102].Value;
              num2 = 200;
-@@ -52202,7 +52276,7 @@
+@@ -52202,7 +52285,7 @@
          selectedMenu2 = -1;
          focusMenu = -1;
          bool flag7 = mouseLeft && !PlayerInput.UsingGamepad;
@@ -547,7 +586,7 @@
          {
              grabColorSlider = 0;
              hBar = -1f;
-@@ -53046,19 +53120,19 @@
+@@ -53046,19 +53129,19 @@
          FrameSkipMode = (FrameSkipMode)frameSkipMode;
      }
  
@@ -570,7 +609,7 @@
      {
          SoundEngine.PlaySound(11);
          menuMode = 0;
-@@ -53066,7 +53140,7 @@
+@@ -53066,7 +53149,7 @@
          Netplay.ServerPassword = "";
      }
  
@@ -579,7 +618,7 @@
      {
          Netplay.ServerPassword = passwordCandidate;
          HostAndPlay();
-@@ -53129,7 +53203,7 @@
+@@ -53129,7 +53212,7 @@
          menuMode = 10;
      }
  
@@ -588,7 +627,7 @@
      {
          if (SocialAPI.Network != null)
          {
-@@ -53142,7 +53216,7 @@
+@@ -53142,7 +53225,7 @@
          Netplay.ServerPassword = "";
      }
  
@@ -597,7 +636,7 @@
      {
          if (string.IsNullOrWhiteSpace(text))
          {
-@@ -53156,7 +53230,7 @@
+@@ -53156,7 +53239,7 @@
          return true;
      }
  
@@ -606,7 +645,7 @@
      {
          Netplay.ListenPort = ushort.Parse(candidatePort);
          autoPass = false;
-@@ -53414,10 +53488,10 @@
+@@ -53414,10 +53497,10 @@
          }
      }
  
@@ -619,7 +658,7 @@
          {
              result = true;
          }
-@@ -53506,7 +53580,7 @@
+@@ -53506,7 +53589,7 @@
          plr.voiceVariant = variantOrder[num];
      }
  
@@ -628,7 +667,7 @@
      {
          CycleClothingStyle_Inner(plr);
          while (!IsValidPlayerStyle(plr))
-@@ -67754,7 +67828,7 @@
+@@ -67754,7 +67837,7 @@
      {
          bool flag = false;
          Form form = null;
@@ -637,7 +676,7 @@
          {
              form = Control.FromHandle(instance.Window.Handle);
              screenMaximized = form.WindowState == FormWindowState.Maximized;
-@@ -67785,7 +67859,7 @@
+@@ -67785,7 +67868,7 @@
                      TryPickingDefaultUIScale(800f);
                  }
              }
@@ -646,7 +685,7 @@
              {
                  form.MinimumSize = new Size(0, 0);
                  if (!fullscreen && !flag3)
-@@ -67824,7 +67898,7 @@
+@@ -67824,7 +67907,7 @@
          else
          {
              PlayerInput.RawMouseScale = Vector2.One;
@@ -655,7 +694,7 @@
              {
                  form.MinimumSize = new Size(minScreenW, minScreenH);
                  if (flag)
-@@ -67839,7 +67913,7 @@
+@@ -67839,7 +67922,7 @@
              num4 = graphics.GraphicsDevice.Viewport.Height;
              flag2 = graphics.PreferredBackBufferWidth != graphics.GraphicsDevice.Viewport.Width || graphics.PreferredBackBufferHeight != graphics.GraphicsDevice.Viewport.Height;
          }
@@ -664,7 +703,7 @@
          {
              if (form.ClientSize.Width < graphics.PreferredBackBufferWidth)
              {
-@@ -67884,7 +67958,7 @@
+@@ -67884,7 +67967,7 @@
              PendingResolutionWidth = screenWidth;
              PendingResolutionHeight = screenHeight;
              PlayerInput.CacheOriginalScreenDimensions();

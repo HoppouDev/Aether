@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/Aether/UI/Game/UIBuilderToggles.cs
-@@ -0,0 +1,206 @@
+@@ -0,0 +1,207 @@
 +using System;
 +using System.Collections.Generic;
 +using Microsoft.Xna.Framework;
@@ -21,12 +21,13 @@
 +/// </summary>
 +public class UIBuilderToggles : UIIconButtonGroup
 +{
-+    public static readonly UIBuilderToggles Instance = new UIBuilderToggles();
-+
 +    // The legacy loop's order of builderAccStatus slots: wire modes (8, 9) first, then 0 to 7.
 +    private static readonly int[] Order = new int[10] { 8, 9, 0, 1, 2, 3, 4, 5, 6, 7 };
 +
 +    private static readonly string[] WireNames = new string[5] { "Game.RedWires", "Game.BlueWires", "Game.GreenWires", "Game.YellowWires", "Game.Actuators" };
++
++    // After the arrays above: static fields are initialized in order, and the constructor uses them.
++    public static readonly UIBuilderToggles Instance = new UIBuilderToggles();
 +
 +    private readonly Rectangle[] _areas = new Rectangle[12];
 +

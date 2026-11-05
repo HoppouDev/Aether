@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/Aether/UI/Game/InGamePreview.cs
-@@ -0,0 +1,200 @@
+@@ -0,0 +1,205 @@
 +using System;
 +using Microsoft.Xna.Framework.Input;
 +using Terraria;
@@ -16,7 +16,7 @@
 +/// container to test with, wherever you are), and Ctrl+Shift+G / Ctrl+Shift+S talk to the nearest
 +/// town NPC and open the Guide's crafting slot / a shop (the Merchant's stock), and Ctrl+Shift+U gives a few
 +/// timed buffs (Well Fed, Ironskin, Regeneration, Swiftness) and Ctrl+Shift+I crafting materials (wood,
-+/// gel, stone), Ctrl+Shift+N brings the nearest town NPC over and talks to it, and Ctrl+Shift+H does
++/// gel, stone) and a watch, depth meter and ruler, Ctrl+Shift+N brings the nearest town NPC over and talks to it, and Ctrl+Shift+H does
 +/// that and opens the stylist's hair window, and Ctrl+Shift+O places a dresser beside the player (in the world: use a test world) and opens its clothes window.
 +/// </summary>
 +public static class InGamePreview
@@ -115,6 +115,11 @@
 +            Main.LocalPlayer.QuickSpawnItem(new EntitySource_DebugCommand(), 9, 99);
 +            Main.LocalPlayer.QuickSpawnItem(new EntitySource_DebugCommand(), 23, 30);
 +            Main.LocalPlayer.QuickSpawnItem(new EntitySource_DebugCommand(), 3, 99);
++            // Info and builder accessories, which work from the inventory: watch, depth meter, ruler.
++            foreach (int item in new int[3] { 15, 18, 2799 })
++            {
++                Main.LocalPlayer.QuickSpawnItem(new EntitySource_DebugCommand(), item);
++            }
 +        }
 +        _itemKeyWasDown = itemKey;
 +        bool talkKey = chord && Main.keyState.IsKeyDown(Keys.N);
