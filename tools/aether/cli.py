@@ -10,6 +10,7 @@ import typer
 
 from . import __doc__ as package_doc
 from . import paths
+from .control import DEFAULT_PORT, Control, ControlError
 from .decompile import build_base
 from .game import (
     TARGETS,
@@ -214,7 +215,19 @@ SaveDirOption = Annotated[
 RealSavesOption = Annotated[
     bool, typer.Option("--real-saves", help="Use the game's normal save directory.")
 ]
+ControlOption = Annotated[
+    int | None,
+    typer.Option(
+        "--control",
+        help="Accept input and commands on this local port (-aethercontrol): `aether control`, "
+        f"the `aether mcp` server (default port {DEFAULT_PORT}).",
+    ),
+]
 GAME_ARGS = {"allow_extra_args": True, "ignore_unknown_options": True}
+
+
+def game_args(ctx: typer.Context, control: int | None) -> list[str]:
+    return [*(["-aethercontrol", str(control)] if control else []), *ctx.args]
 
 
 def launch_build(
@@ -302,13 +315,19 @@ def launch_command(
     platform_dir: PlatformDirOption = None,
     save_dir: SaveDirOption = None,
     real_saves: RealSavesOption = False,
+    control: ControlOption = None,
 ) -> None:
     """Run the most recent build (Debug or Release) without building.
 
     Same run folder and options as `aether run`; extra arguments go to the game.
     """
     launch_build(
-        latest_build(), game_dir, platform_dir, save_dir, real_saves, list(ctx.args)
+        latest_build(),
+        game_dir,
+        platform_dir,
+        save_dir,
+        real_saves,
+        game_args(ctx, control),
     )
 
 
@@ -320,6 +339,7 @@ def run_game(
     release: ReleaseOption = False,
     save_dir: SaveDirOption = None,
     real_saves: RealSavesOption = False,
+    control: ControlOption = None,
 ) -> None:
     """Build the client and run it in a scratch copy of the game (.aether/run/).
 
@@ -329,16 +349,19 @@ def run_game(
     `aether build` and `aether launch` do the two halves separately.
     """
     exe = build_client("Release" if release else "Debug", host_platform())
-    launch_build(exe, game_dir, platform_dir, save_dir, real_saves, list(ctx.args))
+    launch_build(
+        exe, game_dir, platform_dir, save_dir, real_saves, game_args(ctx, control)
+    )
 
 
 @app.command("screens", context_settings=GAME_ARGS)
 def screens(
     ctx: typer.Context,
     mode: Annotated[
-        int | None,
+        str | None,
         typer.Argument(
-            help="A menuMode to open directly (default: the gallery of all migrated screens)."
+            help="A menuMode to open directly (default: the gallery of all migrated screens).",
+            show_default=False,
         ),
     ] = None,
     game_dir: GameDirOption = None,
@@ -349,6 +372,7 @@ def screens(
     ] = False,
     save_dir: SaveDirOption = None,
     real_saves: RealSavesOption = False,
+    control: ControlOption = None,
 ) -> None:
     """Build the client and open its title-menu screen gallery (`-aetherscreens`).
 
@@ -360,8 +384,63 @@ def screens(
         if no_build
         else build_client("Release" if release else "Debug", host_platform())
     )
-    args = ["-aetherscreens", *([str(mode)] if mode is not None else []), *ctx.args]
+    extra = game_args(ctx, control)
+    # After `--`, click hands the first game argument to MODE when there's no mode.
+    if mode is not None and not mode.isdigit():
+        if not mode.startswith("-"):
+            raise typer.BadParameter(f"{mode!r} isn't a menuMode", param_hint="MODE")
+        extra.insert(len(extra) - len(ctx.args), mode)
+        mode = None
+    args = ["-aetherscreens", *([mode] if mode is not None else []), *extra]
     launch_build(exe, game_dir, platform_dir, save_dir, real_saves, args)
+
+
+PortOption = Annotated[
+    int,
+    typer.Option("--port", help="The game's control port (its -aethercontrol PORT)."),
+]
+
+
+@app.command()
+def control(
+    commands: Annotated[
+        list[str] | None,
+        typer.Argument(
+            help="Commands, one per argument (e.g. 'mouse move 400 300 250'); "
+            "default: one per line from stdin."
+        ),
+    ] = None,
+    port: PortOption = DEFAULT_PORT,
+) -> None:
+    """Send commands to a client started with `-aethercontrol` and print their results.
+
+    The input goes straight into the game (no window focus or system input): mouse moves and
+    drags, keys, typing, a synthetic gamepad, screenshots and state. Start a client for it with
+    e.g. `./aether run --control 47321`. The commands are listed in
+    src/Aether/Testing/ControlServer.cs; agents can use the `aether mcp` server instead.
+    """
+    game = Control(port)
+    lines = commands if commands else (line.rstrip("\n") for line in sys.stdin)
+    for line in lines:
+        if not line.strip():
+            continue
+        try:
+            result = game.send(line)
+        except ControlError as e:
+            log(f"error: {line}: {e}")
+            raise typer.Exit(1) from e
+        print(result if result else "ok")
+
+
+@app.command()
+def mcp(port: PortOption = DEFAULT_PORT) -> None:
+    """Run the `aether-game` MCP server (stdio), which lets agents launch and drive the client.
+
+    Registered for this repo in .mcp.json; see .agents/skills/aether-game/SKILL.md.
+    """
+    from .mcp_server import serve
+
+    serve(port)
 
 
 @app.command()

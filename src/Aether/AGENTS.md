@@ -74,4 +74,21 @@ Pieces move to retained mode one at a time, each through a small hook at the top
   The hotbar shown while the inventory is closed (`UIHotbar`, from `Main.GUIHotbarDrawInner`): its slots are laid out every frame (`UpdateState`) because they grow with `Main.hotbarScale`, and selecting is on mouse held, as in the legacy code.
 - **Testing in game:** with `-aetherscreens` (`./aether screens`), `InGamePreview` adds Ctrl+Shift+L (switch every migrated in-game piece between retained and legacy) and Ctrl+Shift+B (open the player's piggy bank, a container to test with), Ctrl+Shift+S (talk to the nearest town NPC and open the Merchant's shop) and Ctrl+Shift+G (the same, with the Guide's crafting slot) Ctrl+Shift+U (a few timed buffs) and Ctrl+Shift+I (crafting materials, and a watch, depth meter and ruler), Ctrl+Shift+K (enough kills for a slime and a zombie banner) Ctrl+Shift+N (bring the nearest town NPC over and talk to it) Ctrl+Shift+H (the same, then open the hair window) and Ctrl+Shift+O (place a dresser beside the player, which changes the world, and open its window); they work while a migrated piece is being drawn, which in game is always (the hotbar or the inventory).
   To compare a migrated piece with the legacy code, take the same screenshot before and after Ctrl+Shift+L (in the title-menu gallery, Tab) and diff them with `magick compare -metric AE -fuzz 20% retained.png legacy.png diff.png`; the pieces migrated so far match pixel for pixel.
+  Agents can do this with the `aether-game` MCP server: `game_launch` with `screens: true`, then `key_press` `ctrl+shift+l` between two `game_screenshot`s at `scale: 1`.
 - Still legacy: the rest of `DrawInventory` (the shop's savings and happiness display, the reforge price text), the full-screen map, resource bars, tooltips and mouse text.
+
+## Synthetic input and remote control (`Testing/`)
+
+Started with `-aethercontrol [PORT]` (`./aether run|launch|screens --control PORT`), the client can be driven without its window having focus and without system input, for agents and tests:
+
+- `SyntheticInput` is the input the game reads instead of the devices.
+  The game's input reads are patched to go through it: `Mouse.GetState()` and `GamePad.GetState()` in `PlayerInput`, and `Keyboard.GetState()` in `PlayerInput` and `Main`.
+  While control is on, the mouse is entirely synthetic, synthetic keys are added to the real keyboard's, and a connected synthetic gamepad replaces the real first one.
+  Typed text goes into `Main.keyInt`, like the IME listener's.
+  `FocusHelper.UpdateFocus` treats the window as focused, and `Main` doesn't throttle an inactive window.
+- `ControlServer` listens on 127.0.0.1 (default port 47321) for one command per line.
+  Commands from all connections run in order on the main thread: `Main.Update` calls `ControlServer.Tick()` first, before the update reads its input.
+  Each command is an iterator that yields once per update, so smooth moves, drags, stick and trigger glides and waits span updates, and the reply comes when the command has finished.
+  Screenshots read the back buffer in `Main.OnPostDraw`, optionally cropped and box-filtered.
+  The command list is its doc comment.
+- Clients: `./aether control` (`tools/aether/control.py`) and the `aether-game` MCP server (`tools/aether/mcp_server.py`, FastMCP, registered in `.mcp.json`); `.agents/skills/aether-game/SKILL.md` is the guide for agents.

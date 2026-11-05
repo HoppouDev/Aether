@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "aether-game": {
+      "command": "./aether",
+      "args": ["mcp"]
+    }
+  }
+}

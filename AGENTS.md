@@ -17,6 +17,8 @@ Notes on the game's modules live in `AGENTS.md` files under `src/Terraria/`; rea
 ./aether build     # just build (bin/<Debug|Release>/net40/Terraria.exe); --target lin64|win64|mac|all: also package dist/<target>/
 ./aether launch    # just play the most recent build (Debug or Release), no build
 ./aether screens   # build and open the gallery of Aether's retained-mode title-menu screens (MODE: just that one)
+./aether control   # send input/commands to a client started with --control PORT (run, launch, screens)
+./aether mcp       # the aether-game MCP server (.mcp.json): agents launch and drive the client
 ./aether update    # move the base to the newest Terraria on Steam and re-apply the patches (--check: just look)
 ```
 
@@ -39,8 +41,7 @@ Notes on the game's modules live in `AGENTS.md` files under `src/Terraria/`; rea
   Reformatting or renaming produces huge patches that break on every regeneration.
 - **Versions:** `tools/base.json` pins the build the base is decompiled from (`game_version`, Linux depot manifest, `Terraria.exe` sha256, plus the macOS/Windows manifests), and `setup` checks the exe against it.
   `patches/GAME_VERSION` records the game version the patches are known to apply to; it's committed with them.
-  `diff` sets it to the base's version (patches made against the base apply to it by definition), and so does an `apply` or `setup` in which every patch applies; `status` and `diff --check` report when the two differ.
-  ilspycmd is pinned in `dotnet-tools.json`.
+  `diff` sets it to the base's version (patches made against the base apply to it by definition), and so does an `apply` or `setup` in which every patch applies; `status` and `diff --check` report when the two differ. ilspycmd is pinned in `dotnet-tools.json`.
   The decompile recipe lives in `tools/aether/decompile.py` (`build_base`; libraries in `PATCHABLE_LIBRARIES` are decompiled too, into `src/<name>/`): net40 reference assemblies plus the extracted DLLs (not the game's Mono `mscorlib`, which makes ILSpy emit `MathF.PI`), `--nested-directories -p`, leading tabs → 4 spaces, CRLF → LF for resources.
   Changing the recipe changes `.base/`; bump `recipe` in `base.json`, regenerate, and refresh all patches.
 - The game location defaults to `aether download`'s copy in `.aether/game/` if there is one, otherwise `~/.local/share/Steam/steamapps/common/Terraria`; override it with `--game-dir` or `$TERRARIA_DIR`.
@@ -70,19 +71,20 @@ dotnet build -c Debug
     That Steamworks.NET sits next to the exe, so the CLR loads it instead of the Linux one embedded in the client.
     The Windows build (`--platform-dir`, `.aether/game-windows/` from `./aether download --platform windows`, or the Steam install) is optional: it only supplies the vanilla 32-bit `TerrariaServer.exe` and its own `steam_api.dll`, for Host & Play.
     Its other natives are 32-bit and unused: `ReLogic.Native.dll` is only the XNA IME, the RGB SDKs fail silently, and there's no x64 `nfd.dll`, so Aether's patch to `NativeFileDialog.cs` makes the file browser (resource-pack/world import) return nothing instead of crashing.
-  Saves default to `.aether/saves/`, so your real saves are left alone; the startup log should report `FNA3D v26.11.0` and `FAudio v26.11.0`.
-  macOS and Windows are implemented but not yet tested on real machines (Linux and the `lin64` target are).
+  Saves default to `.aether/saves/`, so your real saves are left alone; the startup log should report `FNA3D v26.11.0` and `FAudio v26.11.0`. macOS and Windows are implemented but not yet tested on real machines (Linux and the `lin64` target are).
 - **`./aether build --target`** (`lin64`, `win64`, `mac`, with `mac64`/`macarm` as aliases of the one universal `mac` bundle, or `all`; repeatable) also packages `dist/<target>/`, the same layout as the run folder but copied, so it's self-contained and runs on that OS.
   It can be built on any OS: `lin64` and `win64` need the Linux build (`--game-dir`), `mac` the macOS build (`./aether download --platform macos` or `--platform-dir`, which needs exactly one mac/win64 target); another OS's Steam install isn't looked for.
   `dist/` contains the game's files: it's gitignored and for playing on your own machines, not for distributing.
 - The client exe has no headless mode: `Main.dedServ` is only set in the separate server build, so any runtime test opens a game window.
+  To drive that window without focusing it or sending system input, start it with `--control PORT` and use `./aether control` or the `aether-game` MCP server (see `.agents/skills/aether-game/SKILL.md`).
 
 ## Layout
 
 | Path | Committed? | What it is |
 | --- | --- | --- |
-| `aether`, `pyproject.toml`, `uv.lock`, `tools/` | yes | Patch workflow CLI: a uv project (typer) whose package is `tools/aether/` (`cli.py` commands, `decompile.py` recipe, `fna.py` FNA build and natives, `steamworks.py` the 64-bit Steamworks.NET, `game.py` building, run folders and `dist/` targets, `steam.py` SteamCMD, `update.py`, `patches.py` diff/apply, `guard.py` commit guard, `tree.py`, `pinning.py`, `paths.py`, `util.py`); `./aether` runs it with `uv run`. Plus the pinned base (`tools/base.json`), FNA (`tools/fna.json`) and Steamworks.NET (`tools/steamworks.json`). |
+| `aether`, `pyproject.toml`, `uv.lock`, `tools/` | yes | Patch workflow CLI: a uv project (typer) whose package is `tools/aether/` (`cli.py` commands, `decompile.py` recipe, `fna.py` FNA build and natives, `steamworks.py` the 64-bit Steamworks.NET, `game.py` building, run folders and `dist/` targets, `control.py` and `mcp_server.py` the control-socket client and FastMCP server, `steam.py` SteamCMD, `update.py`, `patches.py` diff/apply, `guard.py` commit guard, `tree.py`, `pinning.py`, `paths.py`, `util.py`); `./aether` runs it with `uv run`. Plus the pinned base (`tools/base.json`), FNA (`tools/fna.json`) and Steamworks.NET (`tools/steamworks.json`). |
 | `patches/` | yes | Aether itself: the client's changes to the game, as unified diffs mirroring `src/`. |
+| `.mcp.json`, `.agents/skills/` | yes | The `aether-game` MCP server registration and the agent skill for driving the game (`aether-game`). |
 | `prek.toml`, `rumdl.toml`, `cog.toml` | yes | Git hooks (patch guard, basic checks, rumdl, conventional-pre-commit, cocogitto) and their configs. |
 | `Terraria.csproj`, `ReLogic/ReLogic.csproj`, `dotnet-tools.json` | yes | Project files (`Terraria.csproj` compiles `src/**/*.cs` except `src/ReLogic/`, references `lib/` and the ReLogic project, embeds `src/Resources/*`; `ReLogic.csproj` builds `ReLogic.dll` from `src/ReLogic/`) and the pinned ilspycmd. |
 | `src/` | only `AGENTS.md` | Editable tree: `Aether/` (Aether's own code, all added files), `Terraria/` (game code, one folder per namespace), `ReLogic/` (Re-Logic's framework: assets, fonts, RGB, OS layer), `BCrypt/`, `nativefiledialog.cs`, `Properties/` (bundled third-party source, assembly attributes) and `Resources/` (embedded data files, each named after its exact manifest resource name). |

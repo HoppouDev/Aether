@@ -483,6 +483,11 @@ def test_build_platform_dir_needs_one_non_linux_target(repo, monkeypatch):
     [
         (["screens", "--no-build"], ["-aetherscreens"]),
         (["screens", "15", "--no-build", "--", "-x"], ["-aetherscreens", "15", "-x"]),
+        (
+            ["screens", "--no-build", "--control", "5000", "--", "-x"],
+            ["-aetherscreens", "-aethercontrol", "5000", "-x"],
+        ),
+        (["screens", "--no-build", "--", "-x", "y"], ["-aetherscreens", "-x", "y"]),
     ],
 )
 def test_screens_opens_the_gallery(repo, tmp_path, monkeypatch, argv, expected):
