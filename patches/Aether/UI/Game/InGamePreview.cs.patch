@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/Aether/UI/Game/InGamePreview.cs
-@@ -0,0 +1,152 @@
+@@ -0,0 +1,200 @@
 +using System;
 +using Microsoft.Xna.Framework.Input;
 +using Terraria;
@@ -17,7 +17,7 @@
 +/// town NPC and open the Guide's crafting slot / a shop (the Merchant's stock), and Ctrl+Shift+U gives a few
 +/// timed buffs (Well Fed, Ironskin, Regeneration, Swiftness) and Ctrl+Shift+I crafting materials (wood,
 +/// gel, stone), Ctrl+Shift+N brings the nearest town NPC over and talks to it, and Ctrl+Shift+H does
-+/// that and opens the stylist's hair window.
++/// that and opens the stylist's hair window, and Ctrl+Shift+O places a dresser beside the player (in the world: use a test world) and opens its clothes window.
 +/// </summary>
 +public static class InGamePreview
 +{
@@ -38,6 +38,8 @@
 +    private static bool _talkKeyWasDown;
 +
 +    private static bool _hairKeyWasDown;
++
++    private static bool _dresserKeyWasDown;
 +
 +    public static bool IsEnabled => Program.LaunchParameters.ContainsKey("-aetherscreens");
 +
@@ -137,6 +139,52 @@
 +        }
 +        _talkKeyWasDown = talkKey;
 +        _hairKeyWasDown = hairKey;
++        bool dresserKey = chord && Main.keyState.IsKeyDown(Keys.O);
++        if (dresserKey && !_dresserKeyWasDown)
++        {
++            // The window stays open only next to a real dresser, so place one beside the player.
++            Player player = Main.LocalPlayer;
++            int y = (int)(player.Bottom.Y / 16f) - 1;
++            int x = (int)(player.Center.X / 16f);
++            foreach (int dx in new int[6] { 3, 4, 5, -3, -4, -5 })
++            {
++                // Clear the plants in the way, then try to place it.
++                for (int i = x + dx - 1; i <= x + dx + 1; i++)
++                {
++                    for (int j = y - 1; j <= y; j++)
++                    {
++                        if (Main.tile[i, j].active() && !Main.tileSolid[Main.tile[i, j].type])
++                        {
++                            WorldGen.KillTile(i, j, fail: false, effectOnly: false, noItem: true);
++                        }
++                    }
++                }
++                if (WorldGen.PlaceTile(x + dx, y, 88))
++                {
++                    x += dx;
++                    break;
++                }
++            }
++            for (int i = x - 2; i <= x + 2; i++)
++            {
++                for (int j = y - 2; j <= y; j++)
++                {
++                    Tile tile = Main.tile[i, j];
++                    if (tile.active() && tile.type == 88 && tile.frameX % 54 == 0 && tile.frameY == 0)
++                    {
++                        Main.interactedDresserTopLeftX = i;
++                        Main.interactedDresserTopLeftY = j;
++                        player.SetTalkNPC(-1);
++                        Main.npcChatText = "";
++                        Main.playerInventory = false;
++                        Main.OpenClothesWindow();
++                        _dresserKeyWasDown = true;
++                        return;
++                    }
++                }
++            }
++        }
++        _dresserKeyWasDown = dresserKey;
 +        _guideKeyWasDown = guideKey;
 +        _shopKeyWasDown = shopKey;
 +        if (bankKey && !_bankKeyWasDown)
