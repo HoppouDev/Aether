@@ -1,12 +1,13 @@
 --- /dev/null
 +++ b/Aether/UI/Game/InGamePreview.cs
-@@ -0,0 +1,221 @@
+@@ -0,0 +1,260 @@
 +using System;
 +using Microsoft.Xna.Framework.Input;
 +using Terraria;
 +using Terraria.Audio;
 +using Terraria.DataStructures;
 +using Terraria.GameContent;
++using Terraria.ID;
 +
 +namespace Aether.UI.Game;
 +
@@ -15,9 +16,10 @@
 +/// <c>-aetherscreens</c> (`./aether screens`): Ctrl+Shift+L switches every migrated piece between its
 +/// retained and legacy versions (for comparing them), Ctrl+Shift+B opens the player's piggy bank (a
 +/// container to test with, wherever you are), and Ctrl+Shift+G / Ctrl+Shift+S talk to the nearest
-+/// town NPC and open the Guide's crafting slot / a shop (the Merchant's stock), and Ctrl+Shift+U gives a few
++/// town NPC and open the Guide's crafting slot / a shop (the Merchant's stock), Ctrl+Shift+R does
++/// the same with the reforge slot (again: fill the empty slot with a gold broadsword, or empty it), and Ctrl+Shift+U gives a few
 +/// timed buffs (Well Fed, Ironskin, Regeneration, Swiftness) and Ctrl+Shift+I crafting materials (wood,
-+/// gel, stone) and a watch, depth meter and ruler, Ctrl+Shift+N brings the nearest town NPC over and talks to it, and Ctrl+Shift+H does
++/// gel, stone), a watch, depth meter and ruler, and savings (coins in the piggy bank and safe), Ctrl+Shift+N brings the nearest town NPC over and talks to it, and Ctrl+Shift+H does
 +/// that and opens the stylist's hair window, Ctrl+Shift+K adds banner kills (a claimable slime and zombie banner), and Ctrl+Shift+O places a dresser beside the player (in the world: use a test world) and opens its clothes window.
 +/// </summary>
 +public static class InGamePreview
@@ -31,6 +33,8 @@
 +    private static bool _guideKeyWasDown;
 +
 +    private static bool _shopKeyWasDown;
++
++    private static bool _reforgeKeyWasDown;
 +
 +    private static bool _buffKeyWasDown;
 +
@@ -47,6 +51,19 @@
 +    public static bool IsEnabled => Program.LaunchParameters.ContainsKey("-aetherscreens");
 +
 +    // Menus tied to an NPC close as soon as the player isn't talking to one.
++    private static void AddToBank(Chest bank, int type, int stack)
++    {
++        for (int i = 0; i < bank.item.Length; i++)
++        {
++            if (bank.item[i].IsAir)
++            {
++                bank.item[i].SetDefaults(type);
++                bank.item[i].stack = stack;
++                return;
++            }
++        }
++    }
++
 +    private static void TalkToNearestTownNPC()
 +    {
 +        Player player = Main.LocalPlayer;
@@ -88,10 +105,27 @@
 +        }
 +        bool guideKey = chord && Main.keyState.IsKeyDown(Keys.G);
 +        bool shopKey = chord && Main.keyState.IsKeyDown(Keys.S);
-+        if ((guideKey && !_guideKeyWasDown) || (shopKey && !_shopKeyWasDown))
++        bool reforgeKey = chord && Main.keyState.IsKeyDown(Keys.R);
++        if ((guideKey && !_guideKeyWasDown) || (shopKey && !_shopKeyWasDown) || (reforgeKey && !_reforgeKeyWasDown))
 +        {
 +            TalkToNearestTownNPC();
-+            if (guideKey)
++            if (reforgeKey)
++            {
++                // The Goblin Tinkerer's reforge slot, with any NPC; a second press empties or fills the slot.
++                Main.playerInventory = true;
++                Main.npcChatText = "";
++                if (Main.InReforgeMenu && Main.reforgeItem.type > 0)
++                {
++                    Main.reforgeItem.TurnToAir();
++                }
++                else if (Main.InReforgeMenu)
++                {
++                    Main.reforgeItem.SetDefaults(ItemID.GoldBroadsword);
++                }
++                Main.InReforgeMenu = true;
++                SoundEngine.PlaySound(12);
++            }
++            else if (guideKey)
 +            {
 +                Main.playerInventory = true;
 +                Main.npcChatText = "";
@@ -118,6 +152,10 @@
 +            Main.LocalPlayer.QuickSpawnItem(new EntitySource_DebugCommand(), 9, 99);
 +            Main.LocalPlayer.QuickSpawnItem(new EntitySource_DebugCommand(), 23, 30);
 +            Main.LocalPlayer.QuickSpawnItem(new EntitySource_DebugCommand(), 3, 99);
++            // Savings (shown by shops and the reforge slot): 3 gold 45 silver in the piggy bank, a platinum in the safe.
++            AddToBank(Main.LocalPlayer.bank, ItemID.GoldCoin, 3);
++            AddToBank(Main.LocalPlayer.bank, ItemID.SilverCoin, 45);
++            AddToBank(Main.LocalPlayer.bank2, ItemID.PlatinumCoin, 1);
 +            // Info and builder accessories, which work from the inventory: watch, depth meter, ruler.
 +            foreach (int item in new int[3] { 15, 18, 2799 })
 +            {
@@ -208,6 +246,7 @@
 +        _dresserKeyWasDown = dresserKey;
 +        _guideKeyWasDown = guideKey;
 +        _shopKeyWasDown = shopKey;
++        _reforgeKeyWasDown = reforgeKey;
 +        if (bankKey && !_bankKeyWasDown)
 +        {
 +            Player player = Main.LocalPlayer;
