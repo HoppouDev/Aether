@@ -523,7 +523,23 @@
          int num = -1;
          Vector2 vector = new Vector2(screenWidth - 162, yPos);
          vector.X += 82f;
-@@ -44118,6 +44172,10 @@
+@@ -43787,6 +43841,7 @@
+         PlayerInput.SetZoom_UI();
+         if (!LocalPlayer.ghost && LocalPlayer.spectating < 0)
+         {
++            if (!Aether.UI.Game.UIResourceBars.Hover())
+             ResourceSetsManager.TryToHoverOverResources();
+         }
+         AchievementAdvisor.DrawMouseHover();
+@@ -44095,6 +44150,7 @@
+ 
+     protected void GUIBarsDrawInner()
+     {
++        if (!Aether.UI.Game.UIResourceBars.Draw())
+         ResourceSetsManager.Draw();
+         spriteBatch.End();
+         spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.PointClamp, DepthStencilState.None, RasterizerState.CullCounterClockwise, null, UIScaleMatrix);
+@@ -44118,6 +44174,10 @@
  
      public void DrawInterface_Resources_Buffs()
      {
@@ -534,7 +550,7 @@
          PipsUseGrid = false;
          int num = -1;
          int num2 = 11;
-@@ -44512,6 +44570,10 @@
+@@ -44512,6 +44572,10 @@
          {
              return;
          }
@@ -545,7 +561,7 @@
          string text = Lang.inter[37].Value;
          if (player[myPlayer].inventory[player[myPlayer].selectedItem].Name != null && player[myPlayer].inventory[player[myPlayer].selectedItem].Name != "")
          {
-@@ -44638,6 +44700,10 @@
+@@ -44638,6 +44702,10 @@
              CancelHairWindow();
              return;
          }
@@ -556,7 +572,7 @@
          Hairstyles.UpdateUnlocks();
          int count = Hairstyles.AvailableHairstyles.Count;
          int num = screenHeight / 2 + 60;
-@@ -45144,6 +45210,10 @@
+@@ -45144,6 +45212,10 @@
              CancelClothesWindow();
              return;
          }
@@ -567,7 +583,7 @@
          int num = 477;
          int num2 = 163;
          int num3 = num / 2;
-@@ -46544,6 +46614,10 @@
+@@ -46544,6 +46616,10 @@
  
      public static void DrawSettingButton(ref bool mouseOver, ref float scale, int posX, int posY, string text, string textSizeMatcher, Action clickAction)
      {
@@ -578,7 +594,7 @@
          Vector2 vector = FontAssets.MouseText.Value.MeasureString(textSizeMatcher);
          Vector2 vector2 = FontAssets.MouseText.Value.MeasureString(text);
          Vector2 vector3 = FontAssets.DeathText.Value.MeasureString(text);
-@@ -47828,6 +47902,7 @@
+@@ -47828,6 +47904,7 @@
              num4 += 50f;
          }
          Microsoft.Xna.Framework.Color color = new Microsoft.Xna.Framework.Color(100, 100, 100, mouseTextColor);
@@ -586,7 +602,7 @@
          for (int i = 0; i < 12; i++)
          {
              string text2 = "";
-@@ -48256,6 +48331,10 @@
+@@ -48256,6 +48333,10 @@
              {
                  continue;
              }
@@ -597,7 +613,7 @@
              GetInfoAccIconPosition(num3, startX, out var X, out var Y);
              if (num >= 0)
              {
-@@ -48367,6 +48446,10 @@
+@@ -48367,6 +48448,10 @@
                  spriteBatch.DrawString(FontAssets.MouseText.Value, text2, new Vector2(X + num27, Y + 74 + num29 * i + num28 + 48), color3, 0f, default, scale, SpriteEffects.None, 0f);
              }
          }
@@ -608,7 +624,7 @@
          if (!string.IsNullOrEmpty(text))
          {
              if (playerInventory)
-@@ -48389,7 +48472,7 @@
+@@ -48389,7 +48474,7 @@
          }
      }
  
@@ -617,7 +633,7 @@
      {
          if (!playerInventory)
          {
-@@ -48452,6 +48535,10 @@
+@@ -48452,6 +48537,10 @@
          {
              return;
          }
@@ -628,7 +644,7 @@
          int num = 0;
          Player player = Main.player[myPlayer];
          int[] builderAccStatus = Main.player[myPlayer].builderAccStatus;
-@@ -48693,7 +48780,7 @@
+@@ -48693,7 +48782,7 @@
          UILinkPointNavigator.Shortcuts.BUILDERACCCOUNT = num;
      }
  
@@ -637,7 +653,7 @@
      {
          blockReplaceIcons = 1;
          torchGodIcons = (plr.unlockedBiomeTorches ? 1 : 0);
-@@ -49281,7 +49368,7 @@
+@@ -49281,7 +49370,7 @@
          menuMode = 5000;
      }
  
@@ -646,7 +662,7 @@
      {
          return () =>
          {
-@@ -49574,7 +49661,10 @@
+@@ -49574,7 +49663,10 @@
              GamepadMainMenuHandler.CanRun = true;
          }
          DrawInterface_13_AchievementCompletePopups();
@@ -658,7 +674,7 @@
          {
              array9[0] = Lang.menu[102].Value;
              num2 = 200;
-@@ -52202,7 +52292,7 @@
+@@ -52202,7 +52294,7 @@
          selectedMenu2 = -1;
          focusMenu = -1;
          bool flag7 = mouseLeft && !PlayerInput.UsingGamepad;
@@ -667,7 +683,7 @@
          {
              grabColorSlider = 0;
              hBar = -1f;
-@@ -53046,19 +53136,19 @@
+@@ -53046,19 +53138,19 @@
          FrameSkipMode = (FrameSkipMode)frameSkipMode;
      }
  
@@ -690,7 +706,7 @@
      {
          SoundEngine.PlaySound(11);
          menuMode = 0;
-@@ -53066,7 +53156,7 @@
+@@ -53066,7 +53158,7 @@
          Netplay.ServerPassword = "";
      }
  
@@ -699,7 +715,7 @@
      {
          Netplay.ServerPassword = passwordCandidate;
          HostAndPlay();
-@@ -53129,7 +53219,7 @@
+@@ -53129,7 +53221,7 @@
          menuMode = 10;
      }
  
@@ -708,7 +724,7 @@
      {
          if (SocialAPI.Network != null)
          {
-@@ -53142,7 +53232,7 @@
+@@ -53142,7 +53234,7 @@
          Netplay.ServerPassword = "";
      }
  
@@ -717,7 +733,7 @@
      {
          if (string.IsNullOrWhiteSpace(text))
          {
-@@ -53156,7 +53246,7 @@
+@@ -53156,7 +53248,7 @@
          return true;
      }
  
@@ -726,7 +742,7 @@
      {
          Netplay.ListenPort = ushort.Parse(candidatePort);
          autoPass = false;
-@@ -53414,10 +53504,10 @@
+@@ -53414,10 +53506,10 @@
          }
      }
  
@@ -739,7 +755,7 @@
          {
              result = true;
          }
-@@ -53506,7 +53596,7 @@
+@@ -53506,7 +53598,7 @@
          plr.voiceVariant = variantOrder[num];
      }
  
@@ -748,7 +764,7 @@
      {
          CycleClothingStyle_Inner(plr);
          while (!IsValidPlayerStyle(plr))
-@@ -67754,7 +67844,7 @@
+@@ -67754,7 +67846,7 @@
      {
          bool flag = false;
          Form form = null;
@@ -757,7 +773,7 @@
          {
              form = Control.FromHandle(instance.Window.Handle);
              screenMaximized = form.WindowState == FormWindowState.Maximized;
-@@ -67785,7 +67875,7 @@
+@@ -67785,7 +67877,7 @@
                      TryPickingDefaultUIScale(800f);
                  }
              }
@@ -766,7 +782,7 @@
              {
                  form.MinimumSize = new Size(0, 0);
                  if (!fullscreen && !flag3)
-@@ -67824,7 +67914,7 @@
+@@ -67824,7 +67916,7 @@
          else
          {
              PlayerInput.RawMouseScale = Vector2.One;
@@ -775,7 +791,7 @@
              {
                  form.MinimumSize = new Size(minScreenW, minScreenH);
                  if (flag)
-@@ -67839,7 +67929,7 @@
+@@ -67839,7 +67931,7 @@
              num4 = graphics.GraphicsDevice.Viewport.Height;
              flag2 = graphics.PreferredBackBufferWidth != graphics.GraphicsDevice.Viewport.Width || graphics.PreferredBackBufferHeight != graphics.GraphicsDevice.Viewport.Height;
          }
@@ -784,7 +800,7 @@
          {
              if (form.ClientSize.Width < graphics.PreferredBackBufferWidth)
              {
-@@ -67884,7 +67974,7 @@
+@@ -67884,7 +67976,7 @@
              PendingResolutionWidth = screenWidth;
              PendingResolutionHeight = screenHeight;
              PlayerInput.CacheOriginalScreenDimensions();

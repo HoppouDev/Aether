@@ -1,0 +1,619 @@
+--- /dev/null
++++ b/Aether/UI/Game/UIResourceBars.cs
+@@ -0,0 +1,616 @@
++using System;
++using System.Collections.Generic;
++using Microsoft.Xna.Framework;
++using Microsoft.Xna.Framework.Graphics;
++using ReLogic.Content;
++using ReLogic.Graphics;
++using Terraria;
++using Terraria.GameContent;
++using Terraria.GameContent.UI.ResourceSets;
++using Terraria.UI;
++
++namespace Aether.UI.Game;
++
++/// <summary>One sprite of a resource display: what SpriteBatch.Draw gets, plus the area that counts as hovering it.</summary>
++public struct ResourcePiece
++{
++    public Texture2D Texture;
++
++    public Vector2 Position;
++
++    public Rectangle Source;
++
++    public Color Color;
++
++    public Vector2 Origin;
++
++    public float Scale;
++
++    public Rectangle Hit;
++}
++
++/// <summary>Draws one <see cref="ResourcePiece" />.</summary>
++public class UIResourceSprite : UIElement
++{
++    public ResourcePiece Piece;
++
++    public UIResourceSprite()
++    {
++        IgnoresMouseInteraction = true;
++    }
++
++    protected override void DrawSelf(SpriteBatch spriteBatch)
++    {
++        spriteBatch.Draw(Piece.Texture, Piece.Position, Piece.Source, Piece.Color, 0f, Piece.Origin, Piece.Scale, SpriteEffects.None, 0f);
++    }
++}
++
++/// <summary>
++/// The life or the mana display: its pieces, laid out afresh each frame, in pooled sprites. It counts
++/// as hovered over any piece's area (as ResourceDrawSettings tests it), or over <see cref="Area" />.
++/// </summary>
++public class UIResourceGroup : UIElement
++{
++    public readonly List<ResourcePiece> Pieces = new List<ResourcePiece>();
++
++    private readonly List<UIResourceSprite> _sprites = new List<UIResourceSprite>();
++
++    /// <summary>Instead of the pieces' areas, what counts as hovering (the classic style's rectangles).</summary>
++    public Func<Vector2, bool> Area;
++
++    /// <summary>Hands the laid out pieces to the sprites, in drawing order.</summary>
++    public void Sync()
++    {
++        while (_sprites.Count < Pieces.Count)
++        {
++            UIResourceSprite sprite = new UIResourceSprite();
++            _sprites.Add(sprite);
++            Append(sprite);
++        }
++        while (Elements.Count > Pieces.Count)
++        {
++            RemoveChild(Elements[Elements.Count - 1]);
++        }
++        for (int i = 0; i < Pieces.Count; i++)
++        {
++            if (_sprites[i].Parent == null)
++            {
++                Append(_sprites[i]);
++            }
++            _sprites[i].Piece = Pieces[i];
++        }
++    }
++
++    public override bool ContainsPoint(Vector2 point)
++    {
++        if (Area != null)
++        {
++            return Area(point);
++        }
++        Point mouse = point.ToPoint();
++        foreach (ResourcePiece piece in Pieces)
++        {
++            if (piece.Hit.Contains(mouse))
++            {
++                return true;
++            }
++        }
++        return false;
++    }
++}
++
++/// <summary>A line of plain text (SpriteBatch.DrawString), optionally right-aligned on its position.</summary>
++public class UIResourceText : UIElement
++{
++    public string Text;
++
++    public Vector2 Position;
++
++    public bool RightAligned;
++
++    public UIResourceText()
++    {
++        IgnoresMouseInteraction = true;
++    }
++
++    protected override void DrawSelf(SpriteBatch spriteBatch)
++    {
++        if (Text == null)
++        {
++            return;
++        }
++        DynamicSpriteFont font = FontAssets.MouseText.Value;
++        Color color = new Color(Main.mouseTextColor, Main.mouseTextColor, Main.mouseTextColor, Main.mouseTextColor);
++        Vector2 origin = RightAligned ? new Vector2(font.MeasureString(Text).X, 0f) : default(Vector2);
++        spriteBatch.DrawString(font, Text, Position, color, 0f, origin, 1f, SpriteEffects.None, 0f);
++    }
++}
++
++/// <summary>
++/// The player's life and mana at the top right (Main.GUIBarsDrawInner, replacing the active
++/// IPlayerResourcesDisplaySet's drawing), in the style picked in the settings: classic hearts and stars
++/// ("Default"), the framed hearts and stars ("New", "NewWithText") or horizontal bars ("HorizontalBars",
++/// "HorizontalBarsWithText", "HorizontalBarsWithFullText"). Each style lays out the same pieces the
++/// legacy one draws, in the same order; hovering life or mana shows its numbers.
++/// </summary>
++public class UIResourceBars : UIGameScreen
++{
++    public static readonly UIResourceBars Instance = new UIResourceBars();
++
++    private const string FancyFolder = "Images\\UI\\PlayerResourceSets\\FancyClassic\\";
++
++    private const string BarsFolder = "Images\\UI\\PlayerResourceSets\\HorizontalBars\\";
++
++    // Life text: "Life" and "x/y"; mana text: "Mana" (and "x/y" with full-text bars).
++    private readonly UIResourceText[] _texts = new UIResourceText[4];
++
++    private UIResourceGroup _life;
++
++    private UIResourceGroup _mana;
++
++    private string _style;
++
++    // The classic style's hover areas depend on where it last laid out the hearts.
++    private float _classicLifePerHeart = 20f;
++
++    private int _classicAnchorX;
++
++    public override void OnInitialize()
++    {
++        for (int i = 0; i < _texts.Length; i++)
++        {
++            _texts[i] = new UIResourceText();
++            Append(_texts[i]);
++        }
++        _life = new UIResourceGroup();
++        _mana = new UIResourceGroup();
++        Append(_life);
++        Append(_mana);
++    }
++
++    private static bool Handles(string style)
++    {
++        switch (style)
++        {
++        case "Default":
++        case "New":
++        case "NewWithText":
++        case "HorizontalBars":
++        case "HorizontalBarsWithText":
++        case "HorizontalBarsWithFullText":
++            return true;
++        default:
++            return false;
++        }
++    }
++
++    /// <summary>Called by Main.GUIBarsDrawInner in place of ResourceSetsManager.Draw; false: draw that.</summary>
++    public static bool Draw()
++    {
++        if (!UIInventorySlots.Enabled || !Handles(Main.ResourceSetsManager.ActiveSetKeyName))
++        {
++            return false;
++        }
++        GameScreens.Draw(Instance, Main.spriteBatch);
++        return true;
++    }
++
++    /// <summary>Called by Main.DrawMouseOver in place of ResourceSetsManager.TryToHoverOverResources; false: do that.</summary>
++    public static bool Hover()
++    {
++        if (!UIInventorySlots.Enabled || !Handles(Main.ResourceSetsManager.ActiveSetKeyName) || Instance._life == null)
++        {
++            return false;
++        }
++        if (Instance._life.IsMouseHovering)
++        {
++            CommonResourceBarMethods.DrawLifeMouseOver();
++        }
++        if (Instance._mana.IsMouseHovering)
++        {
++            CommonResourceBarMethods.DrawManaMouseOver();
++        }
++        return true;
++    }
++
++    public override void UpdateState()
++    {
++        _style = Main.ResourceSetsManager.ActiveSetKeyName;
++        foreach (UIResourceText text in _texts)
++        {
++            text.Text = null;
++            text.RightAligned = false;
++        }
++        _life.Pieces.Clear();
++        _mana.Pieces.Clear();
++        _life.Area = null;
++        _mana.Area = null;
++        Player player = Main.LocalPlayer;
++        switch (_style)
++        {
++        case "Default":
++            LayOutClassic(player);
++            break;
++        case "New":
++        case "NewWithText":
++            LayOutFancy(player, _style == "NewWithText");
++            break;
++        default:
++            LayOutBars(player, _style == "HorizontalBarsWithFullText" ? 2 : _style == "HorizontalBarsWithText" ? 1 : 0);
++            break;
++        }
++        _life.Sync();
++        _mana.Sync();
++        Recalculate();
++    }
++
++    private void SetText(int index, string text, Vector2 position, bool rightAligned = false)
++    {
++        _texts[index].Text = text;
++        _texts[index].Position = position;
++        _texts[index].RightAligned = rightAligned;
++    }
++
++    /// <summary>"Life" and "x/y", centred on center the way the legacy sets centre "Life max/max".</summary>
++    private void LayOutLifeText(Player player, Vector2 center)
++    {
++        string text = Lang.inter[0].Value + " " + player.statLifeMax2 + "/" + player.statLifeMax2;
++        Vector2 size = FontAssets.MouseText.Value.MeasureString(text);
++        SetText(0, Lang.inter[0].Value, center + new Vector2((0f - size.X) * 0.5f, 0f));
++        SetText(1, player.statLife + "/" + player.statLifeMax2, center + new Vector2(size.X * 0.5f, 0f), rightAligned: true);
++    }
++
++    /// <summary>The same as ResourceDrawSettings.Draw, laying out pieces instead of drawing them.</summary>
++    private static void Lay(List<ResourcePiece> pieces, Vector2 topLeftAnchor, int count, int indexOffset, ResourceDrawSettings.TextureGetter getTexture, Vector2 offsetPerDraw, Vector2 offsetPerDrawByTexturePercentile, Vector2 offsetSpriteAnchorByTexturePercentile)
++    {
++        for (int i = 0; i < count; i++)
++        {
++            getTexture(i + indexOffset, indexOffset, indexOffset + count - 1, out var texture, out var drawOffset, out var drawScale, out var sourceRect);
++            Rectangle source = sourceRect ?? texture.Frame();
++            Vector2 position = topLeftAnchor + drawOffset;
++            Vector2 origin = source.Size() * offsetSpriteAnchorByTexturePercentile;
++            Rectangle hit = source;
++            hit.X += (int)(position.X - origin.X);
++            hit.Y += (int)(position.Y - origin.Y);
++            pieces.Add(new ResourcePiece
++            {
++                Texture = texture.Value,
++                Position = position,
++                Source = source,
++                Color = Color.White,
++                Origin = origin,
++                Scale = drawScale,
++                Hit = hit
++            });
++            topLeftAnchor += offsetPerDraw + source.Size() * offsetPerDrawByTexturePercentile;
++        }
++    }
++
++    private static Asset<Texture2D> Texture(string path)
++    {
++        return Main.Assets.Request<Texture2D>(path);
++    }
++
++    // Classic (ClassicPlayerResourcesDisplaySet): a heart per 20 life (more per heart past 400 max
++    // life, golden for life fruit), two rows of ten, and a column of stars; the one being filled pulses.
++
++    private void LayOutClassic(Player player)
++    {
++        int anchorX = Main.screenWidth - 800;
++        _classicAnchorX = anchorX;
++        _classicLifePerHeart = 20f;
++        _life.Area = point =>
++        {
++            Player localPlayer = Main.LocalPlayer;
++            int width = 26 * localPlayer.statLifeMax2 / (int)_classicLifePerHeart;
++            int extraHeight = 0;
++            if (localPlayer.statLifeMax2 > 200)
++            {
++                width = 260;
++                extraHeight += 26;
++            }
++            return point.X > (float)(500 + _classicAnchorX) && point.X < (float)(500 + width + _classicAnchorX) && point.Y > 32f && point.Y < (float)(32 + TextureAssets.Heart.Height() + extraHeight);
++        };
++        _mana.Area = point =>
++        {
++            int height = 28 * Main.LocalPlayer.statManaMax2 / 20;
++            return point.X > (float)(762 + _classicAnchorX) && point.X < (float)(786 + _classicAnchorX) && point.Y > 30f && point.Y < (float)(30 + height);
++        };
++        if (player.ghost)
++        {
++            return;
++        }
++        int hearts = player.statLifeMax / 20;
++        int fruit = (player.statLifeMax - 400) / 5;
++        if (fruit < 0)
++        {
++            fruit = 0;
++        }
++        if (fruit > 0)
++        {
++            hearts = player.statLifeMax / (20 + fruit / 4);
++            _classicLifePerHeart = (float)player.statLifeMax / 20f;
++        }
++        _classicLifePerHeart += (player.statLifeMax2 - player.statLifeMax) / hearts;
++        float lifePerHeart = _classicLifePerHeart;
++        int row = (int)((float)player.statLifeMax2 / lifePerHeart);
++        if (row >= 10)
++        {
++            row = 10;
++        }
++        LayOutLifeText(player, new Vector2(500 + 13 * row + anchorX, 6f));
++        Texture2D heart = TextureAssets.Heart.Value;
++        int width = TextureAssets.Heart.Width();
++        int height = TextureAssets.Heart.Height();
++        for (int i = 1; i < (int)((float)player.statLifeMax2 / lifePerHeart) + 1; i++)
++        {
++            ClassicFill(player.statLife, i, lifePerHeart, out int shade, out float scale);
++            int x = 0;
++            int y = 0;
++            if (i > 10)
++            {
++                x -= 260;
++                y += 26;
++            }
++            Texture2D texture = heart;
++            if (fruit > 0)
++            {
++                fruit--;
++                texture = TextureAssets.Heart2.Value;
++            }
++            _life.Pieces.Add(new ResourcePiece
++            {
++                Texture = texture,
++                Position = new Vector2(500 + 26 * (i - 1) + x + anchorX + width / 2, 32f + ((float)height - (float)height * scale) / 2f + (float)y + (float)(height / 2)),
++                Source = new Rectangle(0, 0, width, height),
++                Color = new Color(shade, shade, shade, (int)((double)shade * 0.9)),
++                Origin = new Vector2(width / 2, height / 2),
++                Scale = scale
++            });
++        }
++        if (player.statManaMax2 <= 0)
++        {
++            return;
++        }
++        Vector2 size = FontAssets.MouseText.Value.MeasureString(Lang.inter[2].Value);
++        int textWidth = 50;
++        if (size.X >= 45f)
++        {
++            textWidth = (int)size.X + 5;
++        }
++        SetText(2, Lang.inter[2].Value, new Vector2(800 - textWidth + anchorX, 6f));
++        int starWidth = TextureAssets.Mana.Width();
++        int starHeight = TextureAssets.Mana.Height();
++        for (int i = 1; i < player.statManaMax2 / 20 + 1; i++)
++        {
++            ClassicFill(player.statMana, i, 20f, out int shade, out float scale);
++            _mana.Pieces.Add(new ResourcePiece
++            {
++                Texture = TextureAssets.Mana.Value,
++                Position = new Vector2(775 + anchorX, (float)(30 + starHeight / 2) + ((float)starHeight - (float)starHeight * scale) / 2f + (float)(28 * (i - 1))),
++                Source = new Rectangle(0, 0, starWidth, starHeight),
++                Color = new Color(shade, shade, shade, (int)((double)shade * 0.9)),
++                Origin = new Vector2(starWidth / 2, starHeight / 2),
++                Scale = scale
++            });
++        }
++    }
++
++    /// <summary>How full the n-th (from 1) classic heart or star is drawn: its shade and scale (the one being filled pulses with the cursor).</summary>
++    private static void ClassicFill(int value, int n, float perIcon, out int shade, out float scale)
++    {
++        shade = 255;
++        scale = 1f;
++        bool pulse = false;
++        if ((float)value >= (float)n * perIcon)
++        {
++            if ((float)value == (float)n * perIcon)
++            {
++                pulse = true;
++            }
++        }
++        else
++        {
++            float fill = ((float)value - (float)(n - 1) * perIcon) / perIcon;
++            shade = (int)(30f + 225f * fill);
++            if (shade < 30)
++            {
++                shade = 30;
++            }
++            scale = fill / 4f + 0.75f;
++            if ((double)scale < 0.75)
++            {
++                scale = 0.75f;
++            }
++            if (fill > 0f)
++            {
++                pulse = true;
++            }
++        }
++        if (pulse)
++        {
++            scale += Main.cursorScale - 1f;
++        }
++    }
++
++    // Framed hearts and stars (FancyClassicPlayerResourcesDisplaySet): a frame of panels (two rows of
++    // ten hearts, a column of stars) with each heart or star filled to scale.
++
++    private void LayOutFancy(Player player, bool withText)
++    {
++        PlayerStatsSnapshot stats = new PlayerStatsSnapshot(player);
++        float lifePerHeart = stats.LifePerSegment;
++        int row1 = Utils.Clamp((int)((float)stats.LifeMax / lifePerHeart), 0, 10);
++        int row2 = Utils.Clamp((int)((float)(stats.LifeMax - 200) / lifePerHeart), 0, 10);
++        int lastHeartFilling = (int)((float)stats.Life / lifePerHeart);
++        int lastHeartPanel = row1 + row2 - 1;
++        float manaPerStar = stats.ManaPerSegment;
++        int stars = (int)((float)stats.ManaMax / manaPerStar);
++        int lastStarFilling = (int)((float)stats.Mana / manaPerStar);
++        Vector2 anchor = new Vector2(Main.screenWidth - 300 + 4, 15f);
++        if (withText)
++        {
++            anchor.Y += 6f;
++            LayOutLifeText(player, anchor + new Vector2(-4f, 3f) + new Vector2(130f, -24f));
++        }
++        ResourceDrawSettings.TextureGetter heartPanel = delegate(int index, int first, int last, out Asset<Texture2D> sprite, out Vector2 offset, out float scale, out Rectangle? source)
++        {
++            source = null;
++            offset = Vector2.Zero;
++            sprite = Texture(FancyFolder + "Heart_Left");
++            scale = 1f;
++            if (index == last && index == first)
++            {
++                sprite = Texture(FancyFolder + "Heart_Single_Fancy");
++                offset = new Vector2(-4f, -4f);
++            }
++            else if (index == last && last == lastHeartPanel)
++            {
++                sprite = Texture(FancyFolder + "Heart_Right_Fancy");
++                offset = new Vector2(-8f, -4f);
++            }
++            else if (index == last)
++            {
++                sprite = Texture(FancyFolder + "Heart_Right");
++            }
++            else if (index != first)
++            {
++                sprite = Texture(FancyFolder + "Heart_Middle");
++            }
++        };
++        ResourceDrawSettings.TextureGetter heartFilling = delegate(int index, int first, int last, out Asset<Texture2D> sprite, out Vector2 offset, out float scale, out Rectangle? source)
++        {
++            source = null;
++            offset = Vector2.Zero;
++            sprite = Texture(FancyFolder + (index < stats.LifeFruitCount ? "Heart_Fill_B" : "Heart_Fill"));
++            float fill = (scale = Utils.GetLerpValue(lifePerHeart * (float)index, lifePerHeart * (float)(index + 1), stats.Life, clamped: true));
++            if (index == lastHeartFilling && fill > 0f)
++            {
++                scale += Main.cursorScale - 1f;
++            }
++        };
++        Lay(_life.Pieces, anchor, row1, 0, heartPanel, Vector2.Zero, Vector2.UnitX, Vector2.Zero);
++        Lay(_life.Pieces, anchor + new Vector2(0f, 28f), row2, 10, heartPanel, Vector2.Zero, Vector2.UnitX, Vector2.Zero);
++        Lay(_life.Pieces, anchor + new Vector2(15f, 15f), row1, 0, heartFilling, Vector2.UnitX * 2f, Vector2.UnitX, new Vector2(0.5f, 0.5f));
++        Lay(_life.Pieces, anchor + new Vector2(15f, 15f) + new Vector2(0f, 28f), row2, 10, heartFilling, Vector2.UnitX * 2f, Vector2.UnitX, new Vector2(0.5f, 0.5f));
++        Vector2 manaAnchor = new Vector2(Main.screenWidth - 40, 22f);
++        ResourceDrawSettings.TextureGetter starPanel = delegate(int index, int first, int last, out Asset<Texture2D> sprite, out Vector2 offset, out float scale, out Rectangle? source)
++        {
++            source = null;
++            offset = Vector2.Zero;
++            sprite = Texture(FancyFolder + "Star_A");
++            scale = 1f;
++            if (index == last && index == first)
++            {
++                sprite = Texture(FancyFolder + "Star_Single");
++            }
++            else if (index == last)
++            {
++                sprite = Texture(FancyFolder + "Star_C");
++            }
++            else if (index != first)
++            {
++                sprite = Texture(FancyFolder + "Star_B");
++            }
++        };
++        ResourceDrawSettings.TextureGetter starFilling = delegate(int index, int first, int last, out Asset<Texture2D> sprite, out Vector2 offset, out float scale, out Rectangle? source)
++        {
++            source = null;
++            offset = Vector2.Zero;
++            sprite = Texture(FancyFolder + "Star_Fill");
++            float fill = (scale = Utils.GetLerpValue(manaPerStar * (float)index, manaPerStar * (float)(index + 1), stats.Mana, clamped: true));
++            if (index == lastStarFilling && fill > 0f)
++            {
++                scale += Main.cursorScale - 1f;
++            }
++        };
++        Lay(_mana.Pieces, manaAnchor, stars, 0, starPanel, Vector2.Zero, Vector2.UnitY, Vector2.Zero);
++        Lay(_mana.Pieces, manaAnchor + new Vector2(15f, 16f), stars, 0, starFilling, Vector2.UnitY * -2f, Vector2.UnitY, new Vector2(0.5f, 0.5f));
++    }
++
++    // Horizontal bars (HorizontalBarsPlayerResourcesDisplaySet): a life bar over a mana bar, right
++    // aligned, each a frame of segments filled from the left; textStyle 1 adds the life text, 2 the mana
++    // text too.
++
++    private void LayOutBars(Player player, int textStyle)
++    {
++        PlayerStatsSnapshot stats = new PlayerStatsSnapshot(player);
++        int hpSegments = (int)((float)stats.LifeMax / stats.LifePerSegment);
++        int mpSegments = (int)((float)stats.ManaMax / stats.ManaPerSegment);
++        int fruit = stats.LifeFruitCount;
++        float hpPercent = (float)stats.Life / (float)stats.LifeMax;
++        float mpPercent = (float)stats.Mana / (float)stats.ManaMax;
++        int y = 18;
++        int x = Main.screenWidth - 300 - 22 + 16;
++        if (textStyle == 2)
++        {
++            y += 2;
++            LayOutLifeText(player, new Vector2(x, y) + new Vector2(130f, -20f));
++            string label = Lang.inter[2].Value + ":";
++            string value = player.statMana + "/" + player.statManaMax2;
++            Vector2 center = new Vector2(Main.screenWidth - 180, 65f);
++            Vector2 size = FontAssets.MouseText.Value.MeasureString(label + " " + value);
++            SetText(2, label, center + new Vector2((0f - size.X) * 0.5f, 0f));
++            SetText(3, value, center + new Vector2(size.X * 0.5f, 0f), rightAligned: true);
++        }
++        else if (textStyle == 1)
++        {
++            y += 4;
++            LayOutLifeText(player, new Vector2(x, y) + new Vector2(130f, -20f));
++        }
++        Asset<Texture2D> hpFill = Texture(BarsFolder + "HP_Fill");
++        Asset<Texture2D> mpFill = Texture(BarsFolder + "MP_Fill");
++        Vector2 lifeAnchor = new Vector2(x, y);
++        lifeAnchor.X += (20 - hpSegments) * Texture(BarsFolder + "HP_Panel_Middle").Width();
++        Lay(_life.Pieces, lifeAnchor, hpSegments + 2, 0, BarPanel("HP_Panel_Middle", "HP_Panel_Right", new Vector2(-16f, -10f)), Vector2.Zero, Vector2.UnitX, Vector2.Zero);
++        Lay(_life.Pieces, lifeAnchor + new Vector2(6f, 6f), hpSegments, 0, delegate(int index, int first, int last, out Asset<Texture2D> sprite, out Vector2 offset, out float scale, out Rectangle? source)
++        {
++            sprite = index >= hpSegments - fruit ? Texture(BarsFolder + "HP_Fill_Honey") : hpFill;
++            FillBar(index, sprite, hpSegments, hpPercent, out offset, out scale, out source);
++        }, new Vector2(hpFill.Width(), 0f), Vector2.Zero, Vector2.Zero);
++        Vector2 manaAnchor = new Vector2(x - 10, y + 24);
++        manaAnchor.X += (20 - mpSegments) * Texture(BarsFolder + "MP_Panel_Middle").Width();
++        Lay(_mana.Pieces, manaAnchor, mpSegments + 2, 0, BarPanel("MP_Panel_Middle", "MP_Panel_Right", new Vector2(-16f, -6f)), Vector2.Zero, Vector2.UnitX, Vector2.Zero);
++        Lay(_mana.Pieces, manaAnchor + new Vector2(6f, 6f), mpSegments, 0, delegate(int index, int first, int last, out Asset<Texture2D> sprite, out Vector2 offset, out float scale, out Rectangle? source)
++        {
++            sprite = mpFill;
++            FillBar(index, sprite, mpSegments, mpPercent, out offset, out scale, out source);
++        }, new Vector2(mpFill.Width(), 0f), Vector2.Zero, Vector2.Zero);
++    }
++
++    private static ResourceDrawSettings.TextureGetter BarPanel(string middle, string right, Vector2 rightOffset)
++    {
++        return delegate(int index, int first, int last, out Asset<Texture2D> sprite, out Vector2 offset, out float scale, out Rectangle? source)
++        {
++            source = null;
++            offset = Vector2.Zero;
++            sprite = Texture(BarsFolder + "Panel_Left");
++            scale = 1f;
++            if (index == last)
++            {
++                sprite = Texture(BarsFolder + right);
++                offset = rightOffset;
++            }
++            else if (index != first)
++            {
++                sprite = Texture(BarsFolder + middle);
++            }
++        };
++    }
++
++    /// <summary>A bar segment cut to how full it is, from the left (the bar empties from the right).</summary>
++    private static void FillBar(int index, Asset<Texture2D> sprite, int segments, float fillPercent, out Vector2 offset, out float scale, out Rectangle? source)
++    {
++        offset = Vector2.Zero;
++        float perSegment = 1f / (float)segments;
++        float empty = Utils.GetLerpValue(perSegment * (float)index, perSegment * (float)(index + 1), 1f - fillPercent, clamped: true);
++        float fill = 1f - empty;
++        scale = 1f;
++        Rectangle frame = sprite.Frame();
++        int cut = (int)((float)frame.Width * (1f - fill));
++        offset.X += cut;
++        frame.X += cut;
++        frame.Width -= cut;
++        source = frame;
++    }
++}

@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/Aether/UI/Game/InGamePreview.cs
-@@ -0,0 +1,260 @@
+@@ -0,0 +1,287 @@
 +using System;
 +using Microsoft.Xna.Framework.Input;
 +using Terraria;
@@ -13,14 +13,20 @@
 +
 +/// <summary>
 +/// Test controls for the migrated in-game UI, only when the game was started with
-+/// <c>-aetherscreens</c> (`./aether screens`): Ctrl+Shift+L switches every migrated piece between its
-+/// retained and legacy versions (for comparing them), Ctrl+Shift+B opens the player's piggy bank (a
-+/// container to test with, wherever you are), and Ctrl+Shift+G / Ctrl+Shift+S talk to the nearest
-+/// town NPC and open the Guide's crafting slot / a shop (the Merchant's stock), Ctrl+Shift+R does
-+/// the same with the reforge slot (again: fill the empty slot with a gold broadsword, or empty it), and Ctrl+Shift+U gives a few
-+/// timed buffs (Well Fed, Ironskin, Regeneration, Swiftness) and Ctrl+Shift+I crafting materials (wood,
-+/// gel, stone), a watch, depth meter and ruler, and savings (coins in the piggy bank and safe), Ctrl+Shift+N brings the nearest town NPC over and talks to it, and Ctrl+Shift+H does
-+/// that and opens the stylist's hair window, Ctrl+Shift+K adds banner kills (a claimable slime and zombie banner), and Ctrl+Shift+O places a dresser beside the player (in the world: use a test world) and opens its clothes window.
++/// <c>-aetherscreens</c> (`./aether screens`). All are Ctrl+Shift chords:
++/// <list type="bullet">
++/// <item>L switches every migrated piece between its retained and legacy versions (for comparing them);</item>
++/// <item>B opens the player's piggy bank (a container to test with, wherever you are);</item>
++/// <item>G / S / R talk to the nearest town NPC and open the Guide's crafting slot / a shop (the
++/// Merchant's stock) / the reforge slot (R again: fill the empty slot with a gold broadsword, or empty it);</item>
++/// <item>U gives a few timed buffs (Well Fed, Ironskin, Regeneration, Swiftness);</item>
++/// <item>I gives crafting materials (wood, gel, stone), a watch, depth meter and ruler, and savings
++/// (coins in the piggy bank and safe);</item>
++/// <item>N brings the nearest town NPC over and talks to it, and H does that and opens the stylist's hair window;</item>
++/// <item>K adds banner kills (a claimable slime and zombie banner);</item>
++/// <item>O places a dresser beside the player (in the world: use a test world) and opens its clothes window;</item>
++/// <item>V cycles the life and mana style, and J sets 333/500 life (with life fruit) and 77/200 mana.</item>
++/// </list>
 +/// </summary>
 +public static class InGamePreview
 +{
@@ -35,6 +41,10 @@
 +    private static bool _shopKeyWasDown;
 +
 +    private static bool _reforgeKeyWasDown;
++
++    private static bool _styleKeyWasDown;
++
++    private static bool _statsKeyWasDown;
 +
 +    private static bool _buffKeyWasDown;
 +
@@ -137,6 +147,23 @@
 +                Main.instance.OpenShop(1);
 +            }
 +        }
++        bool styleKey = chord && Main.keyState.IsKeyDown(Keys.V);
++        if (styleKey && !_styleKeyWasDown)
++        {
++            Main.ResourceSetsManager.CycleResourceSet();
++            Main.NewText("Aether: life and mana style " + Main.ResourceSetsManager.ActiveSetKeyName);
++        }
++        _styleKeyWasDown = styleKey;
++        bool statsKey = chord && Main.keyState.IsKeyDown(Keys.J);
++        if (statsKey && !_statsKeyWasDown)
++        {
++            // Partly full life (with life fruit) and mana, for the resource displays.
++            Main.LocalPlayer.statLifeMax = 500;
++            Main.LocalPlayer.statManaMax = 200;
++            Main.LocalPlayer.statLife = 333;
++            Main.LocalPlayer.statMana = 77;
++        }
++        _statsKeyWasDown = statsKey;
 +        bool buffKey = chord && Main.keyState.IsKeyDown(Keys.U);
 +        if (buffKey && !_buffKeyWasDown)
 +        {
