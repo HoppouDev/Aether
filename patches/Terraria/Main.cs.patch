@@ -36,6 +36,15 @@
  
      private static Stopwatch saveTime = new Stopwatch();
  
+@@ -2526,7 +2526,7 @@
+ 
+     private static int mH;
+ 
+-    private static int rare;
++    internal static int rare;
+ 
+     public static int hairStart;
+ 
 @@ -2556,7 +2556,7 @@
  
      private List<GameInterfaceLayer> _gameInterfaceLayers;
@@ -245,7 +254,18 @@
          new Microsoft.Xna.Framework.Color(150, 150, 150, 150);
          if (mouseX >= num && (float)mouseX <= (float)num + (float)TextureAssets.InventoryBack.Width() * inventoryScale && mouseY >= num2 && (float)mouseY <= (float)num2 + (float)TextureAssets.InventoryBack.Height() * inventoryScale && !PlayerInput.IgnoreMouseInterface)
          {
-@@ -49281,7 +49295,7 @@
+@@ -44512,6 +44526,10 @@
+         {
+             return;
+         }
++        if (Aether.UI.Game.UIHotbar.Draw())
++        {
++            return;
++        }
+         string text = Lang.inter[37].Value;
+         if (player[myPlayer].inventory[player[myPlayer].selectedItem].Name != null && player[myPlayer].inventory[player[myPlayer].selectedItem].Name != "")
+         {
+@@ -49281,7 +49299,7 @@
          menuMode = 5000;
      }
  
@@ -254,7 +274,7 @@
      {
          return () =>
          {
-@@ -49574,7 +49588,10 @@
+@@ -49574,7 +49592,10 @@
              GamepadMainMenuHandler.CanRun = true;
          }
          DrawInterface_13_AchievementCompletePopups();
@@ -266,7 +286,7 @@
          {
              array9[0] = Lang.menu[102].Value;
              num2 = 200;
-@@ -52202,7 +52219,7 @@
+@@ -52202,7 +52223,7 @@
          selectedMenu2 = -1;
          focusMenu = -1;
          bool flag7 = mouseLeft && !PlayerInput.UsingGamepad;
@@ -275,7 +295,7 @@
          {
              grabColorSlider = 0;
              hBar = -1f;
-@@ -53046,19 +53063,19 @@
+@@ -53046,19 +53067,19 @@
          FrameSkipMode = (FrameSkipMode)frameSkipMode;
      }
  
@@ -298,7 +318,7 @@
      {
          SoundEngine.PlaySound(11);
          menuMode = 0;
-@@ -53066,7 +53083,7 @@
+@@ -53066,7 +53087,7 @@
          Netplay.ServerPassword = "";
      }
  
@@ -307,7 +327,7 @@
      {
          Netplay.ServerPassword = passwordCandidate;
          HostAndPlay();
-@@ -53129,7 +53146,7 @@
+@@ -53129,7 +53150,7 @@
          menuMode = 10;
      }
  
@@ -316,7 +336,7 @@
      {
          if (SocialAPI.Network != null)
          {
-@@ -53142,7 +53159,7 @@
+@@ -53142,7 +53163,7 @@
          Netplay.ServerPassword = "";
      }
  
@@ -325,7 +345,7 @@
      {
          if (string.IsNullOrWhiteSpace(text))
          {
-@@ -53156,7 +53173,7 @@
+@@ -53156,7 +53177,7 @@
          return true;
      }
  
@@ -334,7 +354,7 @@
      {
          Netplay.ListenPort = ushort.Parse(candidatePort);
          autoPass = false;
-@@ -53414,10 +53431,10 @@
+@@ -53414,10 +53435,10 @@
          }
      }
  
@@ -347,7 +367,7 @@
          {
              result = true;
          }
-@@ -67754,7 +67771,7 @@
+@@ -67754,7 +67775,7 @@
      {
          bool flag = false;
          Form form = null;
@@ -356,7 +376,7 @@
          {
              form = Control.FromHandle(instance.Window.Handle);
              screenMaximized = form.WindowState == FormWindowState.Maximized;
-@@ -67785,7 +67802,7 @@
+@@ -67785,7 +67806,7 @@
                      TryPickingDefaultUIScale(800f);
                  }
              }
@@ -365,7 +385,7 @@
              {
                  form.MinimumSize = new Size(0, 0);
                  if (!fullscreen && !flag3)
-@@ -67824,7 +67841,7 @@
+@@ -67824,7 +67845,7 @@
          else
          {
              PlayerInput.RawMouseScale = Vector2.One;
@@ -374,7 +394,7 @@
              {
                  form.MinimumSize = new Size(minScreenW, minScreenH);
                  if (flag)
-@@ -67839,7 +67856,7 @@
+@@ -67839,7 +67860,7 @@
              num4 = graphics.GraphicsDevice.Viewport.Height;
              flag2 = graphics.PreferredBackBufferWidth != graphics.GraphicsDevice.Viewport.Width || graphics.PreferredBackBufferHeight != graphics.GraphicsDevice.Viewport.Height;
          }
@@ -383,7 +403,7 @@
          {
              if (form.ClientSize.Width < graphics.PreferredBackBufferWidth)
              {
-@@ -67884,7 +67901,7 @@
+@@ -67884,7 +67905,7 @@
              PendingResolutionWidth = screenWidth;
              PendingResolutionHeight = screenHeight;
              PlayerInput.CacheOriginalScreenDimensions();
