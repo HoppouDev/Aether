@@ -497,7 +497,27 @@
          Vector2 vector = FontAssets.MouseText.Value.MeasureString(textSizeMatcher);
          Vector2 vector2 = FontAssets.MouseText.Value.MeasureString(text);
          Vector2 vector3 = FontAssets.DeathText.Value.MeasureString(text);
-@@ -49281,7 +49348,7 @@
+@@ -48452,6 +48519,10 @@
+         {
+             return;
+         }
++        if (Aether.UI.Game.UIBuilderToggles.Draw(start))
++        {
++            return;
++        }
+         int num = 0;
+         Player player = Main.player[myPlayer];
+         int[] builderAccStatus = Main.player[myPlayer].builderAccStatus;
+@@ -48693,7 +48764,7 @@
+         UILinkPointNavigator.Shortcuts.BUILDERACCCOUNT = num;
+     }
+ 
+-    private static void GetBuilderAccsCountToShow(Player plr, out int blockReplaceIcons, out int torchGodIcons, out int totalDrawnIcons)
++    internal static void GetBuilderAccsCountToShow(Player plr, out int blockReplaceIcons, out int torchGodIcons, out int totalDrawnIcons)
+     {
+         blockReplaceIcons = 1;
+         torchGodIcons = (plr.unlockedBiomeTorches ? 1 : 0);
+@@ -49281,7 +49352,7 @@
          menuMode = 5000;
      }
  
@@ -506,7 +526,7 @@
      {
          return () =>
          {
-@@ -49574,7 +49641,10 @@
+@@ -49574,7 +49645,10 @@
              GamepadMainMenuHandler.CanRun = true;
          }
          DrawInterface_13_AchievementCompletePopups();
@@ -518,7 +538,7 @@
          {
              array9[0] = Lang.menu[102].Value;
              num2 = 200;
-@@ -52202,7 +52272,7 @@
+@@ -52202,7 +52276,7 @@
          selectedMenu2 = -1;
          focusMenu = -1;
          bool flag7 = mouseLeft && !PlayerInput.UsingGamepad;
@@ -527,7 +547,7 @@
          {
              grabColorSlider = 0;
              hBar = -1f;
-@@ -53046,19 +53116,19 @@
+@@ -53046,19 +53120,19 @@
          FrameSkipMode = (FrameSkipMode)frameSkipMode;
      }
  
@@ -550,7 +570,7 @@
      {
          SoundEngine.PlaySound(11);
          menuMode = 0;
-@@ -53066,7 +53136,7 @@
+@@ -53066,7 +53140,7 @@
          Netplay.ServerPassword = "";
      }
  
@@ -559,7 +579,7 @@
      {
          Netplay.ServerPassword = passwordCandidate;
          HostAndPlay();
-@@ -53129,7 +53199,7 @@
+@@ -53129,7 +53203,7 @@
          menuMode = 10;
      }
  
@@ -568,7 +588,7 @@
      {
          if (SocialAPI.Network != null)
          {
-@@ -53142,7 +53212,7 @@
+@@ -53142,7 +53216,7 @@
          Netplay.ServerPassword = "";
      }
  
@@ -577,7 +597,7 @@
      {
          if (string.IsNullOrWhiteSpace(text))
          {
-@@ -53156,7 +53226,7 @@
+@@ -53156,7 +53230,7 @@
          return true;
      }
  
@@ -586,7 +606,7 @@
      {
          Netplay.ListenPort = ushort.Parse(candidatePort);
          autoPass = false;
-@@ -53414,10 +53484,10 @@
+@@ -53414,10 +53488,10 @@
          }
      }
  
@@ -599,7 +619,7 @@
          {
              result = true;
          }
-@@ -53506,7 +53576,7 @@
+@@ -53506,7 +53580,7 @@
          plr.voiceVariant = variantOrder[num];
      }
  
@@ -608,7 +628,7 @@
      {
          CycleClothingStyle_Inner(plr);
          while (!IsValidPlayerStyle(plr))
-@@ -67754,7 +67824,7 @@
+@@ -67754,7 +67828,7 @@
      {
          bool flag = false;
          Form form = null;
@@ -617,7 +637,7 @@
          {
              form = Control.FromHandle(instance.Window.Handle);
              screenMaximized = form.WindowState == FormWindowState.Maximized;
-@@ -67785,7 +67855,7 @@
+@@ -67785,7 +67859,7 @@
                      TryPickingDefaultUIScale(800f);
                  }
              }
@@ -626,7 +646,7 @@
              {
                  form.MinimumSize = new Size(0, 0);
                  if (!fullscreen && !flag3)
-@@ -67824,7 +67894,7 @@
+@@ -67824,7 +67898,7 @@
          else
          {
              PlayerInput.RawMouseScale = Vector2.One;
@@ -635,7 +655,7 @@
              {
                  form.MinimumSize = new Size(minScreenW, minScreenH);
                  if (flag)
-@@ -67839,7 +67909,7 @@
+@@ -67839,7 +67913,7 @@
              num4 = graphics.GraphicsDevice.Viewport.Height;
              flag2 = graphics.PreferredBackBufferWidth != graphics.GraphicsDevice.Viewport.Width || graphics.PreferredBackBufferHeight != graphics.GraphicsDevice.Viewport.Height;
          }
@@ -644,7 +664,7 @@
          {
              if (form.ClientSize.Width < graphics.PreferredBackBufferWidth)
              {
-@@ -67884,7 +67954,7 @@
+@@ -67884,7 +67958,7 @@
              PendingResolutionWidth = screenWidth;
              PendingResolutionHeight = screenHeight;
              PlayerInput.CacheOriginalScreenDimensions();
