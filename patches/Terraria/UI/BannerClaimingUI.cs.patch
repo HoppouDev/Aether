@@ -1,0 +1,109 @@
+--- a/Terraria/UI/BannerClaimingUI.cs
++++ b/Terraria/UI/BannerClaimingUI.cs
+@@ -14,7 +14,7 @@
+ 
+ public class BannerClaimingUI : IPipsUI
+ {
+-    private struct Entry
++    internal struct Entry
+     {
+         public int Index;
+ 
+@@ -23,21 +23,21 @@
+         public int Stack;
+     }
+ 
+-    private int _focusedElementIndex;
++    internal int _focusedElementIndex;
+ 
+-    private int _gridSelectionCandidateIndex;
++    internal int _gridSelectionCandidateIndex;
+ 
+-    private float _currentElementOffset;
++    internal float _currentElementOffset;
+ 
+     private int _availableItemsCount;
+ 
+-    private int _gridStartingElementIndex;
++    internal int _gridStartingElementIndex;
+ 
+-    private int _bannerStackRequestLimiter;
++    internal int _bannerStackRequestLimiter;
+ 
+-    private Entry[] _squashedItemTypesToShow = new Entry[400];
++    internal Entry[] _squashedItemTypesToShow = new Entry[400];
+ 
+-    private int previousFocusBanner = -1;
++    internal int previousFocusBanner = -1;
+ 
+     private int previousFocusTime;
+ 
+@@ -81,6 +81,10 @@
+ 
+     public void DrawBannersList(SpriteBatch spriteBatch, int adjY, int middleY, Color craftingTipColor)
+     {
++        if (Aether.UI.Game.UIBannerList.Draw(this, adjY, middleY, craftingTipColor))
++        {
++            return;
++        }
+         UILinkPointNavigator.Shortcuts.CRAFT_CurrentRecipeBig = -1;
+         UILinkPointNavigator.Shortcuts.CRAFT_CurrentRecipeSmall = -1;
+         int num = UpdateAndGetClaimableItemsCount();
+@@ -173,7 +177,7 @@
+         }
+     }
+ 
+-    private void DrawBannersList_Move(int claimableItemsCount)
++    internal void DrawBannersList_Move(int claimableItemsCount)
+     {
+         _focusedElementIndex = Utils.Clamp(_focusedElementIndex, 0, claimableItemsCount - 1);
+         _currentElementOffset = Utils.Clamp(_currentElementOffset, 0f, claimableItemsCount - 1);
+@@ -186,7 +190,7 @@
+         }
+     }
+ 
+-    private void TryClaimingBanner(Entry bannerEntry)
++    internal void TryClaimingBanner(Entry bannerEntry)
+     {
+         ItemSlot.HandleItemPickupAction(SendRequestForBanner, bannerEntry, bannerEntry.Type, bannerEntry.Stack, ref _bannerStackRequestLimiter);
+     }
+@@ -197,7 +201,7 @@
+         SoundEngine.PlaySound(7);
+     }
+ 
+-    private int UpdateAndGetClaimableItemsCount()
++    internal int UpdateAndGetClaimableItemsCount()
+     {
+         ushort[] claimableBannerCounts = BannerSystem.GetClaimableBannerCounts();
+         Entry[] squashedItemTypesToShow = _squashedItemTypesToShow;
+@@ -225,7 +229,7 @@
+         return num;
+     }
+ 
+-    private void GetItemSlotColors(float offset, int middleY, float fadeInValue, int recipeIndex, out double inventoryAlpha, out Color inventoryColor2)
++    internal void GetItemSlotColors(float offset, int middleY, float fadeInValue, int recipeIndex, out double inventoryAlpha, out Color inventoryColor2)
+     {
+         inventoryAlpha = inventoryBack.A + 50;
+         double num = 255.0;
+@@ -258,6 +262,10 @@
+         {
+             num2 -= 150;
+         }
++        if (Aether.UI.Game.UIBannerList.DrawToggle(num, num2))
++        {
++            return;
++        }
+         UILinkPointNavigator.SetPosition(11002, new Vector2(num, num2));
+         bool flag = Main.mouseX > num - 15 && Main.mouseX < num + 15 && Main.mouseY > num2 - 15 && Main.mouseY < num2 + 15 && !PlayerInput.IgnoreMouseInterface;
+         if (Main.PipsCurrentPage == Main.PipPage.Banners)
+@@ -289,6 +297,10 @@
+ 
+     public void DrawBannersGrid(SpriteBatch spriteBatch)
+     {
++        if (Aether.UI.Game.UIBannerGrid.Draw(this))
++        {
++            return;
++        }
+         int num = UpdateAndGetClaimableItemsCount();
+         BannerSystem.AnyNewClaimableBanners = false;
+         UILinkPointNavigator.Shortcuts.CRAFT_CurrentRecipeBig = -1;

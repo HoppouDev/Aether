@@ -38,15 +38,15 @@
 +        return false;
 +    }
 +
-+    /// <summary>Draws item with a background of the given brightness (0 to 255).</summary>
-+    public void DrawItem(SpriteBatch spriteBatch, ref Item item, Vector2 position, double backAlpha, Color lightColor = default(Color))
++    /// <summary>Draws item with a background of the given brightness (0 to 255), in ItemSlot context (22: crafting).</summary>
++    public void DrawItem(SpriteBatch spriteBatch, ref Item item, Vector2 position, double backAlpha, Color lightColor = default(Color), int context = 22)
 +    {
 +        Left.Set(position.X, 0f);
 +        Top.Set(position.Y, 0f);
 +        Color saved = Main.inventoryBack;
 +        byte alpha = (byte)Math.Max(0.0, backAlpha);
 +        Main.inventoryBack = new Color(alpha, alpha, alpha, alpha);
-+        ItemSlot.Draw(spriteBatch, ref item, 22, position, lightColor);
++        ItemSlot.Draw(spriteBatch, ref item, context, position, lightColor);
 +        Main.inventoryBack = saved;
 +    }
 +}
@@ -78,7 +78,7 @@
 +    }
 +
 +    /// <summary>Called by the legacy method in place of its body; false: run the legacy body.</summary>
-+    protected bool DrawScreen()
++    internal bool DrawScreen()
 +    {
 +        InGamePreview.Update();
 +        if (!UIInventorySlots.Enabled)

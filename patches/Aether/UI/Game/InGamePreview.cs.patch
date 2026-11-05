@@ -1,11 +1,12 @@
 --- /dev/null
 +++ b/Aether/UI/Game/InGamePreview.cs
-@@ -0,0 +1,205 @@
+@@ -0,0 +1,221 @@
 +using System;
 +using Microsoft.Xna.Framework.Input;
 +using Terraria;
 +using Terraria.Audio;
 +using Terraria.DataStructures;
++using Terraria.GameContent;
 +
 +namespace Aether.UI.Game;
 +
@@ -17,7 +18,7 @@
 +/// town NPC and open the Guide's crafting slot / a shop (the Merchant's stock), and Ctrl+Shift+U gives a few
 +/// timed buffs (Well Fed, Ironskin, Regeneration, Swiftness) and Ctrl+Shift+I crafting materials (wood,
 +/// gel, stone) and a watch, depth meter and ruler, Ctrl+Shift+N brings the nearest town NPC over and talks to it, and Ctrl+Shift+H does
-+/// that and opens the stylist's hair window, and Ctrl+Shift+O places a dresser beside the player (in the world: use a test world) and opens its clothes window.
++/// that and opens the stylist's hair window, Ctrl+Shift+K adds banner kills (a claimable slime and zombie banner), and Ctrl+Shift+O places a dresser beside the player (in the world: use a test world) and opens its clothes window.
 +/// </summary>
 +public static class InGamePreview
 +{
@@ -40,6 +41,8 @@
 +    private static bool _hairKeyWasDown;
 +
 +    private static bool _dresserKeyWasDown;
++
++    private static bool _bannerKeyWasDown;
 +
 +    public static bool IsEnabled => Program.LaunchParameters.ContainsKey("-aetherscreens");
 +
@@ -144,6 +147,19 @@
 +        }
 +        _talkKeyWasDown = talkKey;
 +        _hairKeyWasDown = hairKey;
++        bool bannerKey = chord && Main.keyState.IsKeyDown(Keys.K);
++        if (bannerKey && !_bannerKeyWasDown)
++        {
++            // Enough blue slime and zombie kills for a claimable banner of each (counted in the world).
++            foreach (int npcType in new int[2] { 1, 3 })
++            {
++                for (int i = 0; i < 50; i++)
++                {
++                    BannerSystem.AddNPCKillBy(npcType, Main.myPlayer);
++                }
++            }
++        }
++        _bannerKeyWasDown = bannerKey;
 +        bool dresserKey = chord && Main.keyState.IsKeyDown(Keys.O);
 +        if (dresserKey && !_dresserKeyWasDown)
 +        {
