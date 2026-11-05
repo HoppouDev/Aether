@@ -1,0 +1,136 @@
+--- /dev/null
++++ b/Aether/UI/Game/UIIconButton.cs
+@@ -0,0 +1,133 @@
++using System;
++using Microsoft.Xna.Framework;
++using Microsoft.Xna.Framework.Graphics;
++using Terraria;
++using Terraria.Audio;
++using Terraria.GameInput;
++using Terraria.UI;
++
++namespace Aether.UI.Game;
++
++/// <summary>
++/// A small icon button of the in-game UI, like the legacy ones in Main.DrawInventory: it claims the
++/// mouse while hovered, ticks when the hover starts, acts on press (left, and optionally right), and
++/// shows its name as mouse text. Its area can move every frame (e.g. lower while a chest is open).
++/// </summary>
++public class UIIconButton : UIElement
++{
++    private bool _hovered;
++
++    /// <summary>The click area, in UI coordinates.</summary>
++    public Func<Rectangle> Area;
++
++    /// <summary>Hit-test with the area's right and bottom edges included (some legacy buttons do).</summary>
++    public bool IncludeFarEdges;
++
++    /// <summary>When set and false, the button can't be hovered (e.g. while inventory actions are pending).</summary>
++    public Func<bool> CanHover;
++
++    public Action OnPress;
++
++    public Action OnRightPress;
++
++    /// <summary>Whether a press uses up the click (Main.mouseLeftRelease = false), as most legacy buttons do.</summary>
++    public bool ConsumesClick = true;
++
++    /// <summary>Draws the icon in its area (hovered: whether the mouse is on it).</summary>
++    public Action<SpriteBatch, Rectangle, bool> DrawIcon;
++
++    /// <summary>Runs every frame the button is hovered, before acting on a press (e.g. its mouse text).</summary>
++    public Action WhileHovered;
++
++    /// <summary>Mouse text shown after drawing while hovered, unless something else already set one.</summary>
++    public Func<string> Tooltip;
++
++    public bool IsHovered => _hovered;
++
++    public override bool ContainsPoint(Vector2 point)
++    {
++        if (Area == null || PlayerInput.IgnoreMouseInterface || (CanHover != null && !CanHover()))
++        {
++            return false;
++        }
++        Rectangle area = Area();
++        if (IncludeFarEdges)
++        {
++            return point.X >= area.X && point.X <= area.Right && point.Y >= area.Y && point.Y <= area.Bottom;
++        }
++        return area.Contains(point.ToPoint());
++    }
++
++    protected override void DrawSelf(SpriteBatch spriteBatch)
++    {
++        Rectangle area = Area();
++        bool hovered = ContainsPoint(Main.MouseScreen);
++        if (hovered)
++        {
++            Main.LocalPlayer.mouseInterface = true;
++            WhileHovered?.Invoke();
++            if (OnPress != null && Main.mouseLeft && Main.mouseLeftRelease)
++            {
++                if (ConsumesClick)
++                {
++                    Main.mouseLeftRelease = false;
++                }
++                OnPress();
++            }
++            if (OnRightPress != null && Main.mouseRight && Main.mouseRightRelease)
++            {
++                Main.mouseRightRelease = false;
++                OnRightPress();
++            }
++        }
++        if (hovered != _hovered)
++        {
++            _hovered = hovered;
++            if (hovered)
++            {
++                SoundEngine.PlaySound(12);
++            }
++        }
++        DrawIcon(spriteBatch, area, hovered);
++        if (hovered && Tooltip != null && !Main.mouseText)
++        {
++            Main.instance.MouseTextNoOverride(Tooltip(), 0, 0);
++        }
++    }
++}
++
++/// <summary>A screen holding one icon button, drawn from the legacy method it replaces.</summary>
++public class UIIconButtonScreen : UIGameScreen
++{
++    public readonly UIIconButton Button;
++
++    /// <summary>Runs before the button is handled each frame (e.g. a legacy side effect).</summary>
++    public Action BeforeUpdate;
++
++    public UIIconButtonScreen(UIIconButton button)
++    {
++        Button = button;
++    }
++
++    public override void OnInitialize()
++    {
++        Append(Button);
++    }
++
++    public override void UpdateState()
++    {
++        BeforeUpdate?.Invoke();
++    }
++
++    /// <summary>Called by the legacy method in place of its body; false: run the legacy body.</summary>
++    public bool Draw()
++    {
++        InGamePreview.Update();
++        if (!UIInventorySlots.Enabled)
++        {
++            return false;
++        }
++        GameScreens.Draw(this, Main.spriteBatch);
++        return true;
++    }
++}
