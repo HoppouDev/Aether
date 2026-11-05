@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/Aether/UI/Game/UIMiscEquipSlots.cs
-@@ -0,0 +1,102 @@
+@@ -0,0 +1,112 @@
 +using Microsoft.Xna.Framework;
 +using Terraria;
 +using Terraria.GameContent;
@@ -21,7 +21,14 @@
 +
 +    private int _top;
 +
-+    private string _layoutKey;
++    // What the slots were last built for.
++    private bool _built;
++
++    private int _builtWidth;
++
++    private int _builtTop;
++
++    private float _builtScale;
 +
 +    /// <summary>Called by Main.DrawInventory in place of the page's slot loop; false: draw the legacy one.</summary>
 +    public static bool Draw(int top)
@@ -38,11 +45,14 @@
 +
 +    public override void UpdateState()
 +    {
-+        string key = Main.screenWidth + " " + _top + " " + Main.inventoryScale;
-+        if (key != _layoutKey)
++        if (!_built || _builtWidth != Main.screenWidth || _builtTop != _top || _builtScale != Main.inventoryScale)
 +        {
-+            _layoutKey = key;
++            _built = true;
++            _builtWidth = Main.screenWidth;
++            _builtTop = _top;
++            _builtScale = Main.inventoryScale;
 +            Build();
++            Recalculate();
 +        }
 +    }
 +

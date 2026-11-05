@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/Aether/UI/Menu/MenuScreens.cs
-@@ -0,0 +1,177 @@
+@@ -0,0 +1,192 @@
 +using System;
 +using System.Collections.Generic;
 +using Microsoft.Xna.Framework;
@@ -66,6 +66,9 @@
 +
 +    private static UserInterface _ui;
 +
++    // The UI size the current screen was laid out for.
++    private static Vector2 _laidOutSize;
++
 +    public static bool Owns(int menuMode)
 +    {
 +        return Factories.ContainsKey(menuMode);
@@ -111,10 +114,22 @@
 +        {
 +            _ui = new UserInterface();
 +        }
-+        // Use() recalculates the layout whenever it switches instances, i.e. every frame here, which
-+        // picks up resolution and text changes.
-+        _ui.Use();
-+        _ui.SetState(screen);
++        // Not Use(): it recalculates on every switch of instance, i.e. twice a frame here (the second
++        // time for Main.MenuUI). The layout is recalculated when a screen opens (SetState) and when
++        // the UI's size changes; items that change size (new text) recalculate themselves.
++        UserInterface.ActiveInstance = _ui;
++        CalculatedStyle dimensions = _ui.GetDimensions();
++        Vector2 size = new Vector2(dimensions.Width, dimensions.Height);
++        if (_ui.CurrentState != screen)
++        {
++            _ui.SetState(screen);
++            _laidOutSize = size;
++        }
++        else if (size != _laidOutSize)
++        {
++            _laidOutSize = size;
++            _ui.Recalculate();
++        }
 +        bool backPressed = UILinkPointNavigator.Shortcuts.BackButtonInUse && !UILinkPointNavigator.Shortcuts.BackButtonLock;
 +        screen.UpdateState();
 +        if (Main.menuMode == mode)
@@ -138,7 +153,7 @@
 +            _ui.Draw(spriteBatch, gameTime);
 +            MenuPreview.DrawOverlay(spriteBatch);
 +        }
-+        previous.Use();
++        UserInterface.ActiveInstance = previous;
 +        return true;
 +    }
 +

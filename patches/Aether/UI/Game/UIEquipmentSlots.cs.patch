@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/Aether/UI/Game/UIEquipmentSlots.cs
-@@ -0,0 +1,185 @@
+@@ -0,0 +1,204 @@
 +using Microsoft.Xna.Framework;
 +using Microsoft.Xna.Framework.Graphics;
 +using Terraria;
@@ -26,7 +26,20 @@
 +
 +    private int _slotCount;
 +
-+    private string _layoutKey;
++    // What the slots were last built for.
++    private bool _built;
++
++    private int _builtWidth;
++
++    private int _builtTop;
++
++    private int _builtSlotCount;
++
++    private float _builtScale;
++
++    private bool _builtDemonHeart;
++
++    private bool _builtMasterMode;
 +
 +    private bool _demonHeart;
 +
@@ -69,11 +82,17 @@
 +        _savedBack = Main.inventoryBack;
 +        _demonHeart = player.CanDemonHeartAccessoryBeShown();
 +        _masterMode = player.CanMasterModeAccessoryBeShown();
-+        string key = Main.screenWidth + " " + _top + " " + _slotCount + " " + Main.inventoryScale + " " + _demonHeart + " " + _masterMode;
-+        if (key != _layoutKey)
++        if (!_built || _builtWidth != Main.screenWidth || _builtTop != _top || _builtSlotCount != _slotCount || _builtScale != Main.inventoryScale || _builtDemonHeart != _demonHeart || _builtMasterMode != _masterMode)
 +        {
-+            _layoutKey = key;
++            _built = true;
++            _builtWidth = Main.screenWidth;
++            _builtTop = _top;
++            _builtSlotCount = _slotCount;
++            _builtScale = Main.inventoryScale;
++            _builtDemonHeart = _demonHeart;
++            _builtMasterMode = _masterMode;
 +            Build();
++            Recalculate();
 +        }
 +        _defenseRow = _slotCount - 1 - (Main._settingsButtonIsPushedToSide ? 1 : 0);
 +        _advisorRow = Main.HasSpaceForControllerAchievementAdvisor ? (_defenseRow - 1) : (-1);

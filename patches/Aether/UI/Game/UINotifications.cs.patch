@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/Aether/UI/Game/UINotifications.cs
-@@ -0,0 +1,295 @@
+@@ -0,0 +1,306 @@
 +using System.Collections.Generic;
 +using Microsoft.Xna.Framework;
 +using Microsoft.Xna.Framework.Graphics;
@@ -130,8 +130,11 @@
 +
 +    private readonly UIJoinRequestButton _reject = new UIJoinRequestButton(reject: true);
 +
++    private readonly UIJoinRequestButton[] _buttons;
++
 +    public UIJoinRequestPopup()
 +    {
++        _buttons = new UIJoinRequestButton[2] { _accept, _reject };
 +        Append(_accept);
 +        Append(_reject);
 +    }
@@ -180,7 +183,7 @@
 +        InGamePopups.PlayerWantsToJoinGamePopup popup = Popup;
 +        Rectangle area = GetDimensions().ToRectangle();
 +        Utils.DrawBorderString(spriteBatch, Text, area.Center.ToVector2() + new Vector2(10f, 0f), new Color(Main.mouseTextColor, Main.mouseTextColor, Main.mouseTextColor / 5, Main.mouseTextColor) * popup.Opacity, popup.Scale * 1.1f * 0.9f, 0.5f, 0.4f);
-+        foreach (UIJoinRequestButton button in new UIJoinRequestButton[2] { _accept, _reject })
++        foreach (UIJoinRequestButton button in _buttons)
 +        {
 +            if (Pressed(button))
 +            {
@@ -230,6 +233,11 @@
 +
 +    private readonly Dictionary<IInGameNotification, UINotificationPopup> _popups = new Dictionary<IInGameNotification, UINotificationPopup>();
 +
++    // Reused every frame, to forget the popups of notifications that are gone.
++    private readonly HashSet<IInGameNotification> _current = new HashSet<IInGameNotification>();
++
++    private readonly List<IInGameNotification> _gone = new List<IInGameNotification>();
++
 +    /// <summary>Called by Main.DrawInterface_13_AchievementCompletePopups in place of the tracker's drawing; false: draw that.</summary>
 +    public static bool Draw()
 +    {
@@ -250,10 +258,10 @@
 +        }
 +        Vector2 anchor = new Vector2(Main.screenWidth / 2, bottom);
 +        RemoveAllChildren();
-+        HashSet<IInGameNotification> current = new HashSet<IInGameNotification>();
++        _current.Clear();
 +        foreach (IInGameNotification notification in InGameNotificationsTracker._notifications)
 +        {
-+            current.Add(notification);
++            _current.Add(notification);
 +            UINotificationPopup popup = PopupFor(notification);
 +            if (popup.Place(anchor))
 +            {
@@ -265,17 +273,20 @@
 +                break;
 +            }
 +        }
-+        List<IInGameNotification> gone = new List<IInGameNotification>();
-+        foreach (IInGameNotification notification in _popups.Keys)
++        if (_popups.Count > _current.Count)
 +        {
-+            if (!current.Contains(notification))
++            _gone.Clear();
++            foreach (IInGameNotification notification in _popups.Keys)
 +            {
-+                gone.Add(notification);
++                if (!_current.Contains(notification))
++                {
++                    _gone.Add(notification);
++                }
 +            }
-+        }
-+        foreach (IInGameNotification notification in gone)
-+        {
-+            _popups.Remove(notification);
++            foreach (IInGameNotification notification in _gone)
++            {
++                _popups.Remove(notification);
++            }
 +        }
 +        Recalculate();
 +    }

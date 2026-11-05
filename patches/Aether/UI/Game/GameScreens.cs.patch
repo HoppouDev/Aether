@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/Aether/UI/Game/GameScreens.cs
-@@ -0,0 +1,49 @@
+@@ -0,0 +1,76 @@
 +using System.Collections.Generic;
 +using Microsoft.Xna.Framework;
 +using Microsoft.Xna.Framework.Graphics;
@@ -15,38 +15,65 @@
 +/// as it was; every screen has its own UserInterface (several are drawn each frame). Like the title
 +/// menu's MenuScreens, they hand UserInterface.ActiveInstance back afterwards, since vanilla code uses
 +/// it to mean its own UIs.
++/// <para>
++/// A screen's layout is recalculated when it opens and when the UI's size changes (resolution, UI
++/// scale), not every frame: a screen that moves or rebuilds its elements recalculates them itself
++/// (usually at the end of <see cref="UIGameScreen.UpdateState" />). Elements that are placed while
++/// drawing and hit-test themselves don't need it.
++/// </para>
 +/// </summary>
 +public static class GameScreens
 +{
-+    private static readonly Dictionary<UIGameScreen, UserInterface> Interfaces = new Dictionary<UIGameScreen, UserInterface>();
++    private class Host
++    {
++        public readonly UserInterface UI = new UserInterface();
++
++        public Vector2 Size;
++    }
++
++    private static readonly Dictionary<UIGameScreen, Host> Hosts = new Dictionary<UIGameScreen, Host>();
 +
 +    /// <summary>Updates and draws screen; call from the legacy draw it replaces, in UI zoom.</summary>
 +    public static void Draw(UIGameScreen screen, SpriteBatch spriteBatch)
 +    {
 +        UserInterface previous = UserInterface.ActiveInstance;
-+        if (!Interfaces.TryGetValue(screen, out var ui))
++        if (!Hosts.TryGetValue(screen, out var host))
 +        {
-+            ui = new UserInterface();
-+            Interfaces[screen] = ui;
++            host = new Host();
++            Hosts[screen] = host;
 +        }
-+        // Use() recalculates the layout whenever it switches instances, i.e. every frame here.
-+        ui.Use();
-+        ui.SetState(screen);
++        UserInterface ui = host.UI;
++        // Not Use(): it recalculates on every switch of instance, which here is twice a frame per
++        // screen (and the second time, for whatever UI was active before).
++        UserInterface.ActiveInstance = ui;
++        CalculatedStyle dimensions = ui.GetDimensions();
++        Vector2 size = new Vector2(dimensions.Width, dimensions.Height);
++        if (ui.CurrentState != screen)
++        {
++            // SetState lays the screen out.
++            ui.SetState(screen);
++            host.Size = size;
++        }
++        else if (size != host.Size)
++        {
++            host.Size = size;
++            ui.Recalculate();
++        }
 +        // Some pieces (the notification popups) are also drawn on the title menu, before the
 +        // in-game interface has ever set its game time.
 +        GameTime gameTime = Main._drawInterfaceGameTime ?? Main.gameTimeCache;
 +        screen.UpdateState();
 +        ui.Update(gameTime);
 +        ui.Draw(spriteBatch, gameTime);
-+        previous.Use();
++        UserInterface.ActiveInstance = previous;
 +    }
 +
 +    /// <summary>Drops screen, so its next Draw opens it afresh (input reset, rebuilt).</summary>
 +    public static void Close(UIGameScreen screen)
 +    {
-+        if (Interfaces.TryGetValue(screen, out var ui))
++        if (Hosts.TryGetValue(screen, out var host))
 +        {
-+            ui.SetState(null);
++            host.UI.SetState(null);
 +        }
 +    }
 +}

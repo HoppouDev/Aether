@@ -47,6 +47,10 @@ Pieces move to retained mode one at a time, each through a small hook at the top
 - `GameScreens.Draw(screen, spriteBatch)` updates and draws a `UIGameScreen` in Aether's own `UserInterface`, handing `UserInterface.ActiveInstance` back afterwards as the title menu does (vanilla uses it for `Main.InGameUI`).
   Call it from the legacy method, which already runs inside the layer's UI-zoom `SpriteBatch` (`Main.screenWidth` and the mouse are in UI coordinates there), so positions match the legacy code's.
   Per-frame legacy work goes in `UIGameScreen.UpdateState()`, which runs before input, for the same reason as the menu screens.
+- Layout is recalculated when a screen opens and when the UI's size changes (resolution, UI scale), not every frame: `GameScreens` and `MenuScreens` switch `UserInterface.ActiveInstance` directly rather than with `Use()`, which recalculates on every switch (twice a frame per screen, the second time for vanilla's own UI).
+  So a screen that moves, resizes or rebuilds elements must recalculate them itself (usually `Recalculate()` at the end of `UpdateState`, or after a rebuild, as `UIEquipmentSlots` and `UIMenuScreen.Rebuild` do; `UIMenuItem` recalculates itself when its text changes).
+  Elements that are placed while drawing and hit-test themselves (crafting icons, NPC chat buttons) don't need it.
+  Avoid per-frame allocations in screens (collections, closures, string keys): keep them in fields.
 - Keep the legacy method's state and side effects where other code reads them: e.g. `IngameOptions.category`, `IngameOptions._GUIHover` (used by `IngameOptions.MouseOver`), `player.mouseInterface` over the window, and the gamepad link points and `UILinkPointNavigator.Shortcuts` counts the legacy code set (vanilla's gamepad pages for that UI read them).
 - Migrated: the settings window (`IngameOptions.Draw` → `UIIngameOptions`, with `IngameOptions.Open` resetting it), including its per-language layouts, sliders (`UIMenuSlider` with the legacy bar scale and HSL ramps) and the UI-scale slider that only applies on release.
   `UIIngameOptions.ShowLegacy` switches back to the legacy window, for comparison.
