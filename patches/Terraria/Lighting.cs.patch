@@ -9,3 +9,28 @@
  
      public static float GlobalBrightness { get; set; }
  
+@@ -106,6 +106,24 @@
+         TimeLogger.Lighting.AddTime(fromTimestamp);
+     }
+ 
++    internal static void PrepareInitialWorldView(Rectangle area)
++    {
++        Main.render = true;
++        UpdateGlobalBrightness();
++        if (UsingNewLighting)
++        {
++            NewEngine.PrepareInitialWorldView(area);
++            return;
++        }
++
++        // Start the legacy scan, then process through the phase that publishes
++        // the completed lighting arrays.
++        Main.renderCount = LegacyLighting.RenderPhases;
++        LegacyEngine.ProcessArea(area);
++        LegacyEngine.ProcessArea(area);
++        LegacyEngine.ProcessArea(area);
++    }
++
+     private static void UpdateGlobalBrightness()
+     {
+         GlobalBrightness = 1.2f;

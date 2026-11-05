@@ -97,3 +97,24 @@
              ProcessBlur();
              Present();
              Main.renderCount = 2;
+@@ -107,6 +168,20 @@
+         IncrementState();
+     }
+ 
++    internal void PrepareInitialWorldView(Rectangle area)
++    {
++        // A blur left over from an earlier scene must keep its own buffer.
++        if (ReferenceEquals(_blurMap, _workingLightMap))
++        {
++            _workingLightMap = new LightMap();
++        }
++        ProcessScan(area);
++        ProcessBlur();
++        Present();
++        _state = EngineState.MinimapUpdate;
++        Main.renderCount = 2;
++    }
++
+     private void IncrementState()
+     {
+         _state = (EngineState)((int)(_state + 1) % 4);
