@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/Aether/UI/Game/InGamePreview.cs
-@@ -0,0 +1,125 @@
+@@ -0,0 +1,143 @@
 +using System;
 +using Microsoft.Xna.Framework.Input;
 +using Terraria;
@@ -16,7 +16,7 @@
 +/// container to test with, wherever you are), and Ctrl+Shift+G / Ctrl+Shift+S talk to the nearest
 +/// town NPC and open the Guide's crafting slot / a shop (the Merchant's stock), and Ctrl+Shift+U gives a few
 +/// timed buffs (Well Fed, Ironskin, Regeneration, Swiftness) and Ctrl+Shift+I crafting materials (wood,
-+/// gel, stone).
++/// gel, stone), and Ctrl+Shift+N brings the nearest town NPC over and talks to it.
 +/// </summary>
 +public static class InGamePreview
 +{
@@ -33,6 +33,8 @@
 +    private static bool _buffKeyWasDown;
 +
 +    private static bool _itemKeyWasDown;
++
++    private static bool _talkKeyWasDown;
 +
 +    public static bool IsEnabled => Program.LaunchParameters.ContainsKey("-aetherscreens");
 +
@@ -110,6 +112,22 @@
 +            Main.LocalPlayer.QuickSpawnItem(new EntitySource_DebugCommand(), 3, 99);
 +        }
 +        _itemKeyWasDown = itemKey;
++        bool talkKey = chord && Main.keyState.IsKeyDown(Keys.N);
++        if (talkKey && !_talkKeyWasDown)
++        {
++            TalkToNearestTownNPC();
++            if (Main.LocalPlayer.talkNPC >= 0)
++            {
++                // Next to the player, so the conversation doesn't end at once for being out of range.
++                NPC npc = Main.npc[Main.LocalPlayer.talkNPC];
++                npc.position = Main.LocalPlayer.position + new Microsoft.Xna.Framework.Vector2(48f, 0f);
++                npc.velocity = Microsoft.Xna.Framework.Vector2.Zero;
++                Main.playerInventory = false;
++                Main.npcChatText = Main.npc[Main.LocalPlayer.talkNPC].GetChat();
++                SoundEngine.PlaySound(24);
++            }
++        }
++        _talkKeyWasDown = talkKey;
 +        _guideKeyWasDown = guideKey;
 +        _shopKeyWasDown = shopKey;
 +        if (bankKey && !_bankKeyWasDown)

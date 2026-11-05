@@ -1,0 +1,69 @@
+--- a/Terraria/GameContent/UI/NPCChatPanel.cs
++++ b/Terraria/GameContent/UI/NPCChatPanel.cs
+@@ -21,15 +21,15 @@
+ 
+     private int textBlinkerState;
+ 
+-    private List<NPCInteraction> _interactions = new List<NPCInteraction>();
++    internal List<NPCInteraction> _interactions = new List<NPCInteraction>();
+ 
+-    private TextDisplayCache _textDisplayCache = new TextDisplayCache();
++    internal TextDisplayCache _textDisplayCache = new TextDisplayCache();
+ 
+-    private int _neededInteractionLines;
++    internal int _neededInteractionLines;
+ 
+     public const int AllowedInteractionsPerLine = 4;
+ 
+-    private int _lastHovered = -1;
++    internal int _lastHovered = -1;
+ 
+     private Player LocalPlayer => Main.LocalPlayer;
+ 
+@@ -51,6 +51,10 @@
+ 
+     public void Draw()
+     {
++        if (Aether.UI.Game.UINpcChat.Draw(this))
++        {
++            return;
++        }
+         if (!CanHoldConversation())
+         {
+             Close();
+@@ -161,7 +165,7 @@
+         _lastHovered = num2;
+     }
+ 
+-    private void PrepareInteractions()
++    internal void PrepareInteractions()
+     {
+         _interactions.Clear();
+         foreach (NPCInteraction item in NPCInteractions.All)
+@@ -175,7 +179,7 @@
+         _neededInteractionLines = (int)Math.Ceiling((float)count / 4f);
+     }
+ 
+-    private void PrepareVirtualKeyboard()
++    internal void PrepareVirtualKeyboard()
+     {
+         int num = 120 + _textDisplayCache.AmountOfLines * 30 + 30;
+         num -= 235;
+@@ -187,7 +191,7 @@
+         UIVirtualKeyboard.OffsetDown = num;
+     }
+ 
+-    private void PrepareText()
++    internal void PrepareText()
+     {
+         string chatTextToShow = Main.npcChatText;
+         OverrideChatTextWithShenanigans(ref chatTextToShow);
+@@ -214,7 +218,7 @@
+         }
+     }
+ 
+-    private void DrawText(Color textColor, Rectangle textArea)
++    internal void DrawText(Color textColor, Rectangle textArea)
+     {
+         Vector2 vector = textArea.TopLeft() + new Vector2(20f, 20f);
+         DynamicSpriteFont value = FontAssets.MouseText.Value;
