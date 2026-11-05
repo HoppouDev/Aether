@@ -1,0 +1,75 @@
+--- a/Terraria/UI/InGamePopups.cs
++++ b/Terraria/UI/InGamePopups.cs
+@@ -12,11 +12,11 @@
+ {
+     public class AchievementUnlockedPopup : IInGameNotification
+     {
+-        private Achievement _theAchievement;
++        internal Achievement _theAchievement;
+ 
+-        private Asset<Texture2D> _achievementTexture;
++        internal Asset<Texture2D> _achievementTexture;
+ 
+-        private Asset<Texture2D> _achievementBorderTexture;
++        internal Asset<Texture2D> _achievementBorderTexture;
+ 
+         private const int _iconSize = 64;
+ 
+@@ -26,17 +26,17 @@
+ 
+         private int _iconIndex;
+ 
+-        private Rectangle _achievementIconFrame;
++        internal Rectangle _achievementIconFrame;
+ 
+-        private string _title;
++        internal string _title;
+ 
+-        private int _ingameDisplayTimeLeft;
++        internal int _ingameDisplayTimeLeft;
+ 
+-        public bool ShouldBeRemoved { get; private set; }
++        public bool ShouldBeRemoved { get; internal set; }
+ 
+         public object CreationObject { get; private set; }
+ 
+-        private float Scale
++        internal float Scale
+         {
+             get
+             {
+@@ -52,7 +52,7 @@
+             }
+         }
+ 
+-        private float Opacity
++        internal float Opacity
+         {
+             get
+             {
+@@ -150,13 +150,13 @@
+ 
+     public class PlayerWantsToJoinGamePopup : IInGameNotification
+     {
+-        private int _timeLeft;
++        internal int _timeLeft;
+ 
+         private const int _timeLeftMax = 1800;
+ 
+-        private UserJoinToServerRequest _request;
++        internal UserJoinToServerRequest _request;
+ 
+-        private float Scale
++        internal float Scale
+         {
+             get
+             {
+@@ -172,7 +172,7 @@
+             }
+         }
+ 
+-        private float Opacity
++        internal float Opacity
+         {
+             get
+             {

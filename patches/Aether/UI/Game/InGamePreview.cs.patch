@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/Aether/UI/Game/InGamePreview.cs
-@@ -0,0 +1,318 @@
+@@ -0,0 +1,332 @@
 +using System;
 +using Microsoft.Xna.Framework.Input;
 +using Terraria;
@@ -8,6 +8,7 @@
 +using Terraria.DataStructures;
 +using Terraria.GameContent;
 +using Terraria.ID;
++using Terraria.UI;
 +
 +namespace Aether.UI.Game;
 +
@@ -26,7 +27,8 @@
 +/// <item>K adds banner kills (a claimable slime and zombie banner);</item>
 +/// <item>O places a dresser beside the player (in the world: use a test world) and opens its clothes window;</item>
 +/// <item>V cycles the life and mana style, and J sets 333/500 life (with life fruit) and 77/200 mana;</item>
-+/// <item>X kills the player, and E shows invasion progress (in turn: partway, a wave, cleared).</item>
++/// <item>X kills the player, and E shows invasion progress (in turn: partway, a wave, cleared);</item>
++/// <item>A shows an achievement unlocked popup (without unlocking it).</item>
 +/// </list>
 +/// </summary>
 +public static class InGamePreview
@@ -52,6 +54,10 @@
 +    private static bool _invasionKeyWasDown;
 +
 +    private static int _invasionReports;
++
++    private static bool _popupKeyWasDown;
++
++    private static int _popups;
 +
 +    private static bool _buffKeyWasDown;
 +
@@ -195,6 +201,14 @@
 +            }
 +        }
 +        _invasionKeyWasDown = invasionKey;
++        bool popupKey = chord && Main.keyState.IsKeyDown(Keys.A);
++        if (popupKey && !_popupKeyWasDown)
++        {
++            // Only the popup: nothing is unlocked.
++            string[] names = new string[3] { "TIMBER", "BENCHED", "OBTAIN_HAMMER" };
++            InGameNotificationsTracker.AddCompleted(Main.Achievements.GetAchievement(names[_popups++ % names.Length]));
++        }
++        _popupKeyWasDown = popupKey;
 +        bool buffKey = chord && Main.keyState.IsKeyDown(Keys.U);
 +        if (buffKey && !_buffKeyWasDown)
 +        {

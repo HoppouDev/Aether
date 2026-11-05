@@ -1,0 +1,11 @@
+--- a/Terraria/UI/InGameNotificationsTracker.cs
++++ b/Terraria/UI/InGameNotificationsTracker.cs
+@@ -10,7 +10,7 @@
+ 
+ public class InGameNotificationsTracker
+ {
+-    private static List<IInGameNotification> _notifications = new List<IInGameNotification>();
++    internal static List<IInGameNotification> _notifications = new List<IInGameNotification>();
+ 
+     public static void Initialize()
+     {

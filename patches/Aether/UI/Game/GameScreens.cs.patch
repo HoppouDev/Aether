@@ -1,7 +1,8 @@
 --- /dev/null
 +++ b/Aether/UI/Game/GameScreens.cs
-@@ -0,0 +1,45 @@
+@@ -0,0 +1,49 @@
 +using System.Collections.Generic;
++using Microsoft.Xna.Framework;
 +using Microsoft.Xna.Framework.Graphics;
 +using Terraria;
 +using Terraria.UI;
@@ -31,9 +32,12 @@
 +        // Use() recalculates the layout whenever it switches instances, i.e. every frame here.
 +        ui.Use();
 +        ui.SetState(screen);
++        // Some pieces (the notification popups) are also drawn on the title menu, before the
++        // in-game interface has ever set its game time.
++        GameTime gameTime = Main._drawInterfaceGameTime ?? Main.gameTimeCache;
 +        screen.UpdateState();
-+        ui.Update(Main._drawInterfaceGameTime);
-+        ui.Draw(spriteBatch, Main._drawInterfaceGameTime);
++        ui.Update(gameTime);
++        ui.Draw(spriteBatch, gameTime);
 +        previous.Use();
 +    }
 +
