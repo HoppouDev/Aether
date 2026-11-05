@@ -1,0 +1,427 @@
+--- /dev/null
++++ b/Aether/UI/Game/UICrafting.cs
+@@ -0,0 +1,424 @@
++using System;
++using System.Collections.Generic;
++using Microsoft.Xna.Framework;
++using Microsoft.Xna.Framework.Graphics;
++using ReLogic.Graphics;
++using Terraria;
++using Terraria.Audio;
++using Terraria.GameContent;
++using Terraria.GameContent.UI;
++using Terraria.GameInput;
++using Terraria.Localization;
++using Terraria.UI;
++using Terraria.UI.Gamepad;
++
++namespace Aether.UI.Game;
++
++/// <summary>
++/// A crafting item icon (a recipe's result or ingredient, context 22), placed by its list each frame;
++/// the list decides what hovering and clicking it does.
++/// </summary>
++public class UICraftingIcon : UIElement
++{
++    public UICraftingIcon()
++    {
++        IgnoresMouseInteraction = true;
++    }
++
++    /// <summary>Whether the mouse is on an icon at position and scale (edges included, as in the legacy loops).</summary>
++    public static bool IsHovered(Vector2 position, float scale)
++    {
++        if (Main.mouseX >= position.X && (float)Main.mouseX <= position.X + (float)TextureAssets.InventoryBack.Width() * scale && Main.mouseY >= position.Y && (float)Main.mouseY <= position.Y + (float)TextureAssets.InventoryBack.Height() * scale)
++        {
++            return !PlayerInput.IgnoreMouseInterface;
++        }
++        return false;
++    }
++
++    /// <summary>Draws item with a background of the given brightness (0 to 255).</summary>
++    public void DrawItem(SpriteBatch spriteBatch, ref Item item, Vector2 position, double backAlpha, Color lightColor = default(Color))
++    {
++        Left.Set(position.X, 0f);
++        Top.Set(position.Y, 0f);
++        Color saved = Main.inventoryBack;
++        byte alpha = (byte)Math.Max(0.0, backAlpha);
++        Main.inventoryBack = new Color(alpha, alpha, alpha, alpha);
++        ItemSlot.Draw(spriteBatch, ref item, 22, position, lightColor);
++        Main.inventoryBack = saved;
++    }
++}
++
++/// <summary>A screen whose icons are pooled and placed while drawing (the crafting lists scroll and animate).</summary>
++public abstract class UICraftingScreen : UIGameScreen
++{
++    private readonly List<UICraftingIcon> _icons = new List<UICraftingIcon>();
++
++    private int _used;
++
++    protected UICraftingIcon NextIcon()
++    {
++        if (_used >= _icons.Count)
++        {
++            UICraftingIcon icon = new UICraftingIcon();
++            _icons.Add(icon);
++            Append(icon);
++        }
++        return _icons[_used++];
++    }
++
++    protected abstract void DrawIcons(SpriteBatch spriteBatch);
++
++    protected override void DrawChildren(SpriteBatch spriteBatch)
++    {
++        _used = 0;
++        DrawIcons(spriteBatch);
++    }
++
++    /// <summary>Called by the legacy method in place of its body; false: run the legacy body.</summary>
++    protected bool DrawScreen()
++    {
++        InGamePreview.Update();
++        if (!UIInventorySlots.Enabled)
++        {
++            return false;
++        }
++        GameScreens.Draw(this, Main.spriteBatch);
++        return true;
++    }
++}
++
++/// <summary>
++/// The classic crafting list (CraftingUI.DrawRecipesList): available recipes in a column that scrolls
++/// to the focused one, which shrinks the further a recipe is from it; then the focused recipe's
++/// ingredients beside it.
++/// </summary>
++public class UIRecipeList : UICraftingScreen
++{
++    public static readonly UIRecipeList Instance = new UIRecipeList();
++
++    private int _adjY;
++
++    private int _middleY;
++
++    private Color _tipColor;
++
++    public static bool Draw(int adjY, int middleY, Color craftingTipColor)
++    {
++        Instance._adjY = adjY;
++        Instance._middleY = middleY;
++        Instance._tipColor = craftingTipColor;
++        return Instance.DrawScreen();
++    }
++
++    protected override void DrawIcons(SpriteBatch spriteBatch)
++    {
++        CraftingUI crafting = Main.craftingUI;
++        float[] recipeY = CraftingUI.availableRecipeY;
++        UILinkPointNavigator.Shortcuts.CRAFT_CurrentRecipeBig = -1;
++        UILinkPointNavigator.Shortcuts.CRAFT_CurrentRecipeSmall = -1;
++        if (Main.numAvailableRecipes > 0)
++        {
++            string text = (CraftingUI.RecipeFilterHack != null) ? CraftingUI.RecipeFilterHack.GetWindowDescription() : Lang.inter[25].Value;
++            spriteBatch.DrawString(FontAssets.MouseText.Value, text, new Vector2(76f, 414 + _adjY), _tipColor, 0f, default(Vector2), 1f, SpriteEffects.None, 0f);
++        }
++        crafting.AdjustRecipeOffsets();
++        for (int i = 0; i < Recipe.maxRecipes; i++)
++        {
++            if (i >= Main.numAvailableRecipes || Math.Abs(recipeY[i]) > (float)_middleY)
++            {
++                continue;
++            }
++            // Recipes shrink away from the focused one (all small while fast-scrolling).
++            float scale = Math.Max(0.75f, 100f / (Math.Abs(recipeY[i]) + 100f));
++            if (Main.PipsFastScroll)
++            {
++                scale = 0.75f;
++            }
++            Main.inventoryScale = scale;
++            crafting.GetItemSlotColors(_middleY, 100f, i, out var backAlpha, out var lightColor);
++            Vector2 position = new Vector2((int)(46f - 26f * scale), (int)(410f + recipeY[i] * scale - 30f * scale + (float)_adjY));
++            UICraftingIcon icon = NextIcon();
++            if (!Main.LocalPlayer.creativeInterface && UICraftingIcon.IsHovered(position, scale))
++            {
++                Main.HoverOverCraftingItemButton(i);
++            }
++            if (Main.numAvailableRecipes <= 0)
++            {
++                continue;
++            }
++            if (i == Main.focusRecipe)
++            {
++                UILinkPointNavigator.Shortcuts.CRAFT_CurrentRecipeSmall = 0;
++                if (PlayerInput.SettingsForUI.HighlightThingsForMouse)
++                {
++                    ItemSlot.DrawGoldBGForCraftingMaterial = true;
++                }
++            }
++            else
++            {
++                UILinkPointNavigator.Shortcuts.CRAFT_CurrentRecipeSmall = -1;
++            }
++            icon.DrawItem(spriteBatch, ref Main.recipe[Main.availableRecipe[i]].createItem, position, backAlpha - 50.0, lightColor);
++        }
++        Main.inventoryScale = 0.6f;
++        if (Main.numAvailableRecipes <= 0)
++        {
++            return;
++        }
++        UILinkPointNavigator.Shortcuts.CRAFT_CurrentRecipeBig = -1;
++        UILinkPointNavigator.Shortcuts.CRAFT_CurrentRecipeSmall = -1;
++        for (int j = 0; j < Recipe.maxRequirements; j++)
++        {
++            Recipe recipe = Main.recipe[Main.availableRecipe[Main.focusRecipe]];
++            Item ingredient = recipe.requiredItem[j];
++            if (ingredient.type == 0)
++            {
++                UILinkPointNavigator.Shortcuts.CRAFT_CurrentIngredientsCount = j + 1;
++                break;
++            }
++            // Ingredients fade out while the list scrolls away from the focused recipe.
++            double backAlpha = (float)(Main.inventoryBack.A + 50) - Math.Abs(recipeY[Main.focusRecipe]) * 2f;
++            if (backAlpha == 0.0)
++            {
++                break;
++            }
++            Vector2 position = new Vector2(80 + j * 40, 380 + _adjY);
++            if (UICraftingIcon.IsHovered(position, Main.inventoryScale))
++            {
++                Main.craftingHide = true;
++                Main.LocalPlayer.mouseInterface = true;
++                ItemSlot.HoverOverrideClick(ingredient, 22);
++                CraftingUI.SetRecipeMaterialDisplayName(recipe, ingredient);
++            }
++            UILinkPointNavigator.Shortcuts.CRAFT_CurrentRecipeSmall = 1 + j;
++            NextIcon().DrawItem(spriteBatch, ref ingredient, position, backAlpha - 50.0);
++        }
++    }
++}
++
++/// <summary>
++/// The classic crafting grid (CraftingUI.DrawRecipesGrid): every available recipe in rows, with up and
++/// down buttons; clicking one focuses it in the list and closes the grid.
++/// </summary>
++public class UIRecipeGrid : UICraftingScreen
++{
++    public static readonly UIRecipeGrid Instance = new UIRecipeGrid();
++
++    private const int Step = 42;
++
++    private const int GridLeft = 310;
++
++    private const int GridTop = 340;
++
++    public static bool Draw()
++    {
++        return Instance.DrawScreen();
++    }
++
++    private static bool ArrowHovered(int x, int y)
++    {
++        if (Main.mouseX >= x && Main.mouseX <= x + TextureAssets.CraftUpButton.Width() && Main.mouseY >= y && Main.mouseY <= y + TextureAssets.CraftUpButton.Height())
++        {
++            return !PlayerInput.IgnoreMouseInterface;
++        }
++        return false;
++    }
++
++    protected override void DrawIcons(SpriteBatch spriteBatch)
++    {
++        UILinkPointNavigator.Shortcuts.CRAFT_CurrentRecipeBig = -1;
++        UILinkPointNavigator.Shortcuts.CRAFT_CurrentRecipeSmall = -1;
++        Main.inventoryScale = 0.75f;
++        int perRow = (Main.screenWidth - GridLeft - 280) / Step;
++        int rows = (Main.screenHeight - GridTop - 20) / Step;
++        UILinkPointNavigator.Shortcuts.CRAFT_IconsPerRow = perRow;
++        UILinkPointNavigator.Shortcuts.CRAFT_IconsPerColumn = rows;
++        int count = Main.numAvailableRecipes;
++        if (Main.recStart > count - perRow * rows)
++        {
++            Main.recStart = Math.Max(0, count - perRow * rows);
++        }
++        int arrowX = GridLeft - 20;
++        int arrowY = GridTop + 2;
++        if (Main.recStart > 0)
++        {
++            if (ArrowHovered(arrowX, arrowY))
++            {
++                Main.LocalPlayer.mouseInterface = true;
++                if (Main.mouseLeftRelease && Main.mouseLeft)
++                {
++                    Main.recStart = Math.Max(0, Main.recStart - perRow);
++                    SoundEngine.PlaySound(12);
++                    Main.mouseLeftRelease = false;
++                }
++            }
++            spriteBatch.Draw(TextureAssets.CraftUpButton.Value, new Vector2(arrowX, arrowY), new Color(200, 200, 200, 200));
++        }
++        if (Main.recStart < count - perRow * rows)
++        {
++            arrowY += 20;
++            if (ArrowHovered(arrowX, arrowY))
++            {
++                Main.LocalPlayer.mouseInterface = true;
++                if (Main.mouseLeftRelease && Main.mouseLeft)
++                {
++                    Main.recStart += perRow;
++                    SoundEngine.PlaySound(12);
++                    if (Main.recStart > count - perRow)
++                    {
++                        Main.recStart = count - perRow;
++                    }
++                    Main.mouseLeftRelease = false;
++                }
++            }
++            spriteBatch.Draw(TextureAssets.CraftDownButton.Value, new Vector2(arrowX, arrowY), new Color(200, 200, 200, 200));
++        }
++        int column = 0;
++        int row = 0;
++        for (int i = Main.recStart; i < Recipe.maxRecipes && i < Main.numAvailableRecipes; i++)
++        {
++            Vector2 position = new Vector2(GridLeft + column * Step, GridTop + row * Step);
++            if (UICraftingIcon.IsHovered(position, Main.inventoryScale))
++            {
++                Main.LocalPlayer.mouseInterface = true;
++                if (Main.mouseLeftRelease && Main.mouseLeft)
++                {
++                    Main.focusRecipe = i;
++                    Main.PipsFastScroll = true;
++                    Main.PipsUseGrid = false;
++                    SoundEngine.PlaySound(12);
++                    Main.mouseLeftRelease = false;
++                    if (PlayerInput.UsingGamepadUI)
++                    {
++                        UILinkPointNavigator.ChangePage(9);
++                        Main.LockCraftingForThisCraftClickDuration();
++                    }
++                }
++                Main.craftingHide = true;
++                Item result = Main.recipe[Main.availableRecipe[i]].createItem;
++                Main.HoverItem = result.Clone();
++                ItemSlot.MouseHover(22);
++                Main.hoverItemName = result.Name + ((result.stack > 1) ? (" (" + result.stack + ")") : "");
++            }
++            UILinkPointNavigator.Shortcuts.CRAFT_CurrentRecipeBig = i - Main.recStart;
++            NextIcon().DrawItem(spriteBatch, ref Main.recipe[Main.availableRecipe[i]].createItem, position, Main.inventoryBack.A);
++            if (++column >= perRow)
++            {
++                column = 0;
++                if (++row >= rows)
++                {
++                    break;
++                }
++            }
++        }
++    }
++}
++
++/// <summary>
++/// The two crafting toggles beside the list: open the crafting grid (right-click switches between the
++/// classic and the modern grid) and craft from nearby chests. Drawn wherever the caller puts them.
++/// </summary>
++public static class CraftingToggles
++{
++    private static Point _gridToggle;
++
++    private static int _gridLinkPoint;
++
++    private static Point _nearbyToggle;
++
++    private static int _nearbyLinkPoint;
++
++    // A 30×30 area centred on the toggle, mouse strictly inside.
++    private static Rectangle Around(Point center)
++    {
++        return new Rectangle(center.X - 14, center.Y - 14, 29, 29);
++    }
++
++    private static readonly UIIconButtonScreen GridToggle = new UIIconButtonScreen(new UIIconButton
++    {
++        Area = () => Around(_gridToggle),
++        ConsumesClick = false,
++        WhileHovered = delegate
++        {
++            Main.instance.MouseTextNoOverride(Language.GetTextValue(CraftingUI.CraftingWindowTextTipKey), 0, 0);
++        },
++        OnPress = delegate
++        {
++            if (!Main.TryChangePipsPage(Main.PipPage.Recipes))
++            {
++                if (Player.Settings.CraftingGridControl == Player.Settings.CraftingGridMode.Classic)
++                {
++                    NewCraftingUI.Close(quiet: true, returnToInventory: true);
++                    Main.PipsUseGrid = !Main.PipsUseGrid;
++                }
++                else
++                {
++                    Main.PipsUseGrid = false;
++                    bool wasVisible = CraftingUI.AnyAdvancedGridVisible;
++                    NewCraftingUI.ToggleInInventory();
++                    if (wasVisible)
++                    {
++                        UILinkPointNavigator.ChangePoint(11001);
++                    }
++                }
++                Main.mouseLeftRelease = false;
++            }
++            SoundEngine.PlaySound(12);
++        },
++        OnRightPress = delegate
++        {
++            SoundEngine.PlaySound(12);
++            Player.Settings.CraftingGridControl = (Player.Settings.CraftingGridControl == Player.Settings.CraftingGridMode.Classic) ? Player.Settings.CraftingGridMode.Modern : Player.Settings.CraftingGridMode.Classic;
++        },
++        DrawIcon = delegate(SpriteBatch spriteBatch, Rectangle area, bool hovered)
++        {
++            UILinkPointNavigator.SetPosition(_gridLinkPoint, _gridToggle.ToVector2());
++            if (Main.PipsCurrentPage == Main.PipPage.Recipes)
++            {
++                Utils.DrawSelectedCraftingBarIndicator(spriteBatch, _gridToggle.X, _gridToggle.Y);
++            }
++            int frame = (Main.PipsCurrentPage == Main.PipPage.Recipes && Main.PipsUseGrid) ? 0 : (NewCraftingUI.Visible ? 4 : 2);
++            Texture2D texture = TextureAssets.CraftToggle[frame + (hovered ? 1 : 0)].Value;
++            spriteBatch.Draw(texture, _gridToggle.ToVector2(), null, Color.White, 0f, texture.Size() / 2f, 1f, SpriteEffects.None, 0f);
++        }
++    });
++
++    private static readonly UIIconButtonScreen NearbyToggle = new UIIconButtonScreen(new UIIconButton
++    {
++        Area = () => Around(_nearbyToggle),
++        ConsumesClick = false,
++        WhileHovered = delegate
++        {
++            Main.instance.MouseTextNoOverride(Language.GetTextValue(Player.Settings.CraftFromNearbyChests ? "GameUI.CraftFromNearbyChestsOn" : "GameUI.CraftFromNearbyChestsOff"), 0, 0);
++        },
++        OnPress = delegate
++        {
++            Player.Settings.CraftFromNearbyChests = !Player.Settings.CraftFromNearbyChests;
++            NewCraftingUI.RefreshGrid();
++            SoundEngine.PlaySound(12);
++            Main.SaveSettings();
++        },
++        DrawIcon = delegate(SpriteBatch spriteBatch, Rectangle area, bool hovered)
++        {
++            UILinkPointNavigator.SetPosition(_nearbyLinkPoint, _nearbyToggle.ToVector2());
++            Texture2D texture = TextureAssets.ChestCraft[2 - Player.Settings.CraftFromNearbyChests.ToInt() * 2 + (hovered ? 1 : 0)].Value;
++            spriteBatch.Draw(texture, _nearbyToggle.ToVector2(), null, Color.White, 0f, texture.Size() / 2f, 1f, SpriteEffects.None, 0f);
++        }
++    });
++
++    /// <summary>Called by CraftingUI.DrawGridToggle after it drops a stale recipe filter.</summary>
++    public static bool DrawGridToggle(int x, int y, int gamepadPointId)
++    {
++        _gridToggle = new Point(x, y);
++        _gridLinkPoint = gamepadPointId;
++        return GridToggle.Draw();
++    }
++
++    /// <summary>Called by CraftingUI.DrawCraftFromNearbyChestsToggle in place of its body.</summary>
++    public static bool DrawNearbyToggle(int x, int y, int gamepadPointId)
++    {
++        _nearbyToggle = new Point(x, y);
++        _nearbyLinkPoint = gamepadPointId;
++        return NearbyToggle.Draw();
++    }
++}

@@ -1,0 +1,64 @@
+--- a/Terraria/UI/CraftingUI.cs
++++ b/Terraria/UI/CraftingUI.cs
+@@ -160,6 +160,10 @@
+ 
+     public void DrawRecipesList(SpriteBatch spriteBatch, int adjY, int middleY, Color craftingTipColor)
+     {
++        if (Aether.UI.Game.UIRecipeList.Draw(adjY, middleY, craftingTipColor))
++        {
++            return;
++        }
+         UILinkPointNavigator.Shortcuts.CRAFT_CurrentRecipeBig = -1;
+         UILinkPointNavigator.Shortcuts.CRAFT_CurrentRecipeSmall = -1;
+         if (numAvailableRecipes > 0)
+@@ -270,6 +274,10 @@
+         {
+             _lastFilter = null;
+         }
++        if (Aether.UI.Game.CraftingToggles.DrawGridToggle(craftX, craftY, gamepadPointId))
++        {
++            return;
++        }
+         UILinkPointNavigator.SetPosition(gamepadPointId, new Vector2(craftX, craftY));
+         bool flag = mouseX > craftX - 15 && mouseX < craftX + 15 && mouseY > craftY - 15 && mouseY < craftY + 15 && !PlayerInput.IgnoreMouseInterface;
+         if (Main.PipsCurrentPage == Main.PipPage.Recipes)
+@@ -335,6 +343,10 @@
+ 
+     public static void DrawCraftFromNearbyChestsToggle(SpriteBatch spriteBatch, int toggleNearbyX, int toggleNearbyY, int gamepadPointId)
+     {
++        if (Aether.UI.Game.CraftingToggles.DrawNearbyToggle(toggleNearbyX, toggleNearbyY, gamepadPointId))
++        {
++            return;
++        }
+         UILinkPointNavigator.SetPosition(gamepadPointId, new Vector2(toggleNearbyX, toggleNearbyY));
+         bool flag = mouseX > toggleNearbyX - 15 && mouseX < toggleNearbyX + 15 && mouseY > toggleNearbyY - 15 && mouseY < toggleNearbyY + 15 && !PlayerInput.IgnoreMouseInterface;
+         int num = 2 - Player.Settings.CraftFromNearbyChests.ToInt() * 2 + flag.ToInt();
+@@ -355,7 +367,7 @@
+         Main.DoStatefulTickSound(ref Main.nearbyCraftingMouseOver, flag);
+     }
+ 
+-    private void GetItemSlotColors(int middleY, float fadeInValue, int recipeIndex, out double inventoryAlpha, out Color inventoryColor2)
++    internal void GetItemSlotColors(int middleY, float fadeInValue, int recipeIndex, out double inventoryAlpha, out Color inventoryColor2)
+     {
+         inventoryAlpha = inventoryBack.A + 50;
+         double num = 255.0;
+@@ -368,7 +380,7 @@
+         inventoryColor2 = new Color((byte)num, (byte)num, (byte)num, (byte)num);
+     }
+ 
+-    private void AdjustRecipeOffsets()
++    internal void AdjustRecipeOffsets()
+     {
+         DrawRecipes_AdjustRecipeOffsetSnappy();
+     }
+@@ -445,6 +457,10 @@
+ 
+     public void DrawRecipesGrid(SpriteBatch spriteBatch)
+     {
++        if (Aether.UI.Game.UIRecipeGrid.Draw())
++        {
++            return;
++        }
+         UILinkPointNavigator.Shortcuts.CRAFT_CurrentRecipeBig = -1;
+         UILinkPointNavigator.Shortcuts.CRAFT_CurrentRecipeSmall = -1;
+         int num = 42;

@@ -1,10 +1,11 @@
 --- /dev/null
 +++ b/Aether/UI/Game/InGamePreview.cs
-@@ -0,0 +1,113 @@
+@@ -0,0 +1,125 @@
 +using System;
 +using Microsoft.Xna.Framework.Input;
 +using Terraria;
 +using Terraria.Audio;
++using Terraria.DataStructures;
 +
 +namespace Aether.UI.Game;
 +
@@ -14,7 +15,8 @@
 +/// retained and legacy versions (for comparing them), Ctrl+Shift+B opens the player's piggy bank (a
 +/// container to test with, wherever you are), and Ctrl+Shift+G / Ctrl+Shift+S talk to the nearest
 +/// town NPC and open the Guide's crafting slot / a shop (the Merchant's stock), and Ctrl+Shift+U gives a few
-+/// timed buffs (Well Fed, Ironskin, Regeneration, Swiftness).
++/// timed buffs (Well Fed, Ironskin, Regeneration, Swiftness) and Ctrl+Shift+I crafting materials (wood,
++/// gel, stone).
 +/// </summary>
 +public static class InGamePreview
 +{
@@ -29,6 +31,8 @@
 +    private static bool _shopKeyWasDown;
 +
 +    private static bool _buffKeyWasDown;
++
++    private static bool _itemKeyWasDown;
 +
 +    public static bool IsEnabled => Program.LaunchParameters.ContainsKey("-aetherscreens");
 +
@@ -98,6 +102,14 @@
 +            }
 +        }
 +        _buffKeyWasDown = buffKey;
++        bool itemKey = chord && Main.keyState.IsKeyDown(Keys.I);
++        if (itemKey && !_itemKeyWasDown)
++        {
++            Main.LocalPlayer.QuickSpawnItem(new EntitySource_DebugCommand(), 9, 99);
++            Main.LocalPlayer.QuickSpawnItem(new EntitySource_DebugCommand(), 23, 30);
++            Main.LocalPlayer.QuickSpawnItem(new EntitySource_DebugCommand(), 3, 99);
++        }
++        _itemKeyWasDown = itemKey;
 +        _guideKeyWasDown = guideKey;
 +        _shopKeyWasDown = shopKey;
 +        if (bankKey && !_bankKeyWasDown)
