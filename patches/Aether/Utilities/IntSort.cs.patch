@@ -1,0 +1,51 @@
+--- /dev/null
++++ b/Aether/Utilities/IntSort.cs
+@@ -0,0 +1,48 @@
++namespace Aether.Utilities;
++
++/// <summary>
++/// Sorting that doesn't allocate, for code that sorts every frame: Mono's Array.Sort&lt;T&gt; makes a
++/// comparison delegate on every call.
++/// </summary>
++public static class IntSort
++{
++    /// <summary>Sorts keys[index .. index + length) ascending, in place (heap sort).</summary>
++    public static void Sort(int[] keys, int index, int length)
++    {
++        for (int i = length / 2 - 1; i >= 0; i--)
++        {
++            SiftDown(keys, index, i, length);
++        }
++        for (int end = length - 1; end > 0; end--)
++        {
++            int top = keys[index];
++            keys[index] = keys[index + end];
++            keys[index + end] = top;
++            SiftDown(keys, index, 0, end);
++        }
++    }
++
++    private static void SiftDown(int[] keys, int index, int root, int length)
++    {
++        while (true)
++        {
++            int child = root * 2 + 1;
++            if (child >= length)
++            {
++                return;
++            }
++            if (child + 1 < length && keys[index + child + 1] > keys[index + child])
++            {
++                child++;
++            }
++            if (keys[index + root] >= keys[index + child])
++            {
++                return;
++            }
++            int swap = keys[index + root];
++            keys[index + root] = keys[index + child];
++            keys[index + child] = swap;
++            root = child;
++        }
++    }
++}

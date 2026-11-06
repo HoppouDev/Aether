@@ -1,0 +1,11 @@
+--- a/Terraria/TimeLogger.cs
++++ b/Terraria/TimeLogger.cs
+@@ -80,7 +80,7 @@
+             }
+             if (usedCount > 0)
+             {
+-                Array.Sort(_sort, 0, usedCount);
++                Aether.Utilities.IntSort.Sort(_sort, 0, usedCount);
+                 median = Quantile(_sort, usedCount, 0.5f);
+                 p90 = Quantile(_sort, usedCount, 0.9f);
+                 max = Quantile(_sort, usedCount, 1f);
