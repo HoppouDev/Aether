@@ -681,6 +681,7 @@ def test_fna_is_built_again_when_its_patch_changes(repo, monkeypatch):
         if command[:2] == ["git", "clone"]:
             Path(command[-1]).mkdir(parents=True)
         if command[:2] == ["dotnet", "build"]:
+            assert cwd is not None
             write_files(
                 Path(cwd) / fna.FNA_OUTPUT_DIR,
                 {name: b"fna" for name in fna.FNA_OUTPUTS},
