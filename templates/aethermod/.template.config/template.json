@@ -24,16 +24,16 @@
 		"game-version": {
 			"type": "parameter",
 			"datatype": "string",
-			"description": "Terraria version constraint written to depends.terraria.",
-			"defaultValue": "1.4.5.8",
-			"replaces": "1.4.5.8"
+			"description": "Terraria dependency constraint. Defaults to the selected client DLL version when packaging.",
+			"defaultValue": "@terraria-version@",
+			"replaces": "@terraria-version@"
 		},
 		"aether-version": {
 			"type": "parameter",
 			"datatype": "string",
-			"description": "Aether version constraint written to depends.aether.",
-			"defaultValue": ">=0.1.0",
-			"replaces": ">=0.1.0"
+			"description": "Aether dependency constraint. Defaults to the selected client build version when packaging.",
+			"defaultValue": "@aether-version@",
+			"replaces": "@aether-version@"
 		}
 	},
 	"postActions": [

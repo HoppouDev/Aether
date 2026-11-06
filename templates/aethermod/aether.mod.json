@@ -16,7 +16,7 @@
 	"mixins": ["ModProjectName.Mixins.StartupMixin"],
 
 	"depends": {
-		"aether": ">=0.1.0",
-		"terraria": "1.4.5.8"
+		"aether": "@aether-version@",
+		"terraria": "@terraria-version@"
 	}
 }

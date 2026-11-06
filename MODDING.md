@@ -29,7 +29,9 @@ IDE and command-line builds use the local client automatically after setup.
 
 The archive appears under `bin/Debug/net10.0/`.
 Use `-t:InstallMod` to package and install into the mod repo's `.aether/saves/Mods`, or set `-p:AetherSaveDirectory=/path/to/save-profile` to install elsewhere.
-Pass `--game-version` or `--aether-version` when generating the project to override its Terraria or Aether version constraint.
+The template's optional `--game-version` and `--aether-version` arguments override the Terraria and Aether dependency constraints.
+Omit either option to have `PackMod` record the exact version from the selected client build.
+The template leaves a placeholder for each omitted option in the project manifest and resolves it in the packaged manifest.
 Quote constraints that contain operators or spaces, such as `--aether-version ">=0.1.0 <0.2"`.
 
 A generated mod repo can build, install, and launch in one step.

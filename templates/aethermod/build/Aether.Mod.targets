@@ -33,14 +33,35 @@
       Text="aether.mod.json points to '$(ModEntryAssembly)', but the project builds '$(TargetFileName)'." />
   </Target>
 
-  <Target Name="PackMod" DependsOnTargets="Build">
+  <Target Name="ResolveModManifest" DependsOnTargets="ValidateAetherReferences">
+    <!-- Encode the leading @ so dotnet new substitutes the tokens in the manifest only. -->
+    <PropertyGroup>
+      <ResolveAetherVersion>$(ModManifest.Contains('&#64;aether-version@'))</ResolveAetherVersion>
+      <ResolveTerrariaVersion>$(ModManifest.Contains('&#64;terraria-version@'))</ResolveTerrariaVersion>
+    </PropertyGroup>
+    <Error Condition="'$(ResolveAetherVersion)' == 'True' And !Exists('$(AetherClientDirectory)/Aether.version')"
+      Text="Rebuild the selected Aether client to generate Aether.version, or set an explicit aether dependency in aether.mod.json." />
+    <GetAssemblyIdentity AssemblyFiles="$(AetherClientDirectory)/Terraria.dll" Condition="'$(ResolveTerrariaVersion)' == 'True'">
+      <Output TaskParameter="Assemblies" ItemName="TerrariaAssemblyIdentity" />
+    </GetAssemblyIdentity>
+    <PropertyGroup>
+      <ResolvedModManifest>$(ModManifest)</ResolvedModManifest>
+      <AetherBuildVersion Condition="'$(ResolveAetherVersion)' == 'True'">$([System.IO.File]::ReadAllText('$(AetherClientDirectory)/Aether.version').Trim())</AetherBuildVersion>
+      <TerrariaBuildVersion Condition="'$(ResolveTerrariaVersion)' == 'True'">@(TerrariaAssemblyIdentity->'%(Version)')</TerrariaBuildVersion>
+      <ResolvedModManifest Condition="'$(ResolveAetherVersion)' == 'True'">$(ResolvedModManifest.Replace('&#64;aether-version@', '$(AetherBuildVersion)'))</ResolvedModManifest>
+      <ResolvedModManifest Condition="'$(ResolveTerrariaVersion)' == 'True'">$(ResolvedModManifest.Replace('&#64;terraria-version@', '$(TerrariaBuildVersion)'))</ResolvedModManifest>
+    </PropertyGroup>
+  </Target>
+
+  <Target Name="PackMod" DependsOnTargets="Build;ResolveModManifest">
     <PropertyGroup>
       <ModStaging>$(IntermediateOutputPath)mod-package/</ModStaging>
       <ModArchive>$(TargetDir)$(AssemblyName).aethermod</ModArchive>
     </PropertyGroup>
     <RemoveDir Directories="$(ModStaging)" />
     <MakeDir Directories="$(ModStaging)" />
-    <Copy SourceFiles="$(ModManifestPath);$(TargetPath);$(ProjectDepsFilePath)" DestinationFolder="$(ModStaging)" />
+    <WriteLinesToFile File="$(ModStaging)aether.mod.json" Lines="$([MSBuild]::Escape('$(ResolvedModManifest)'))" Overwrite="true" />
+    <Copy SourceFiles="$(TargetPath);$(ProjectDepsFilePath)" DestinationFolder="$(ModStaging)" />
     <Copy SourceFiles="$(MSBuildProjectDirectory)/icon.png" DestinationFolder="$(ModStaging)"
       Condition="Exists('$(MSBuildProjectDirectory)/icon.png')" />
     <ItemGroup>

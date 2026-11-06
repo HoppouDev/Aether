@@ -62,6 +62,7 @@ $saveDir = Join-Path $PSScriptRoot '.aether/saves'
 
 if ($managed -and (
     -not (Test-Path -LiteralPath (Join-Path $clientBuild 'Aether.Bootstrap.dll') -PathType Leaf) -or
+    -not (Test-Path -LiteralPath (Join-Path $clientBuild 'Aether.version') -PathType Leaf) -or
     -not (Test-Path -LiteralPath (Join-Path $clientBuild 'Aether.Modding.dll') -PathType Leaf) -or
     -not (Test-Path -LiteralPath (Join-Path $clientBuild 'Terraria.dll') -PathType Leaf)
 )) {

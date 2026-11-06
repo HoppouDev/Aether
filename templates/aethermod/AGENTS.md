@@ -15,6 +15,8 @@ This is a standalone .NET 10 mod for Aether.
 - Keep C# sources under `src/` and use exact mixin signatures for the Terraria versions in `depends`.
 - Add required mods to `depends` by manifest ID with a version constraint, such as `"shared-library": ">=1.2 <2"`.
   Aether checks these constraints on launch.
+- Leave the generated Aether and Terraria version placeholders in place to use exact versions from the local client when packaging.
+  Set a literal version or range to target a different version.
 - Keep the local Aether checkout path and game binaries out of Git and the mod archive.
 
 `PackMod` copies the manifest to the archive root and preserves files under `resources/`.
