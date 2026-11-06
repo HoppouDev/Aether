@@ -1,0 +1,17 @@
+--- a/Terraria/Collision.cs
++++ b/Terraria/Collision.cs
+@@ -4380,7 +4380,13 @@
+ 
+     public static List<Point> GetTilesIn(Vector2 TopLeft, Vector2 BottomRight)
+     {
+-        List<Point> list = new List<Point>();
++        return GetTilesIn(TopLeft, BottomRight, new List<Point>());
++    }
++
++    /// <summary>GetTilesIn into list (cleared first), for callers that check every frame.</summary>
++    public static List<Point> GetTilesIn(Vector2 TopLeft, Vector2 BottomRight, List<Point> list)
++    {
++        list.Clear();
+         Point point = TopLeft.ToTileCoordinates();
+         Point point2 = BottomRight.ToTileCoordinates();
+         int num = Utils.Clamp(point.X, 0, Main.maxTilesX - 1);

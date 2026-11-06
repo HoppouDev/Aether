@@ -1,0 +1,22 @@
+--- a/Terraria/GameContent/PressurePlateHelper.cs
++++ b/Terraria/GameContent/PressurePlateHelper.cs
+@@ -48,12 +48,17 @@
+         }
+     }
+ 
++    // The tiles the player was in and is in, refilled every update.
++    private static readonly List<Point> _tilesWas = new List<Point>();
++
++    private static readonly List<Point> _tilesNow = new List<Point>();
++
+     public static void UpdatePlayerPosition(Player player)
+     {
+         Point p = new Point(1, 1);
+         Vector2 vector = p.ToVector2();
+-        List<Point> tilesIn = Collision.GetTilesIn(PlayerLastPosition[player.whoAmI] + vector, PlayerLastPosition[player.whoAmI] + player.Size - vector);
+-        List<Point> tilesIn2 = Collision.GetTilesIn(player.TopLeft + vector, player.BottomRight - vector);
++        List<Point> tilesIn = Collision.GetTilesIn(PlayerLastPosition[player.whoAmI] + vector, PlayerLastPosition[player.whoAmI] + player.Size - vector, _tilesWas);
++        List<Point> tilesIn2 = Collision.GetTilesIn(player.TopLeft + vector, player.BottomRight - vector, _tilesNow);
+         Rectangle hitbox = player.Hitbox;
+         hitbox.Inflate(-p.X, -p.Y);
+         Rectangle hitbox2 = player.Hitbox;
