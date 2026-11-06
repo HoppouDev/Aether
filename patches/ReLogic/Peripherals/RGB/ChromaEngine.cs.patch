@@ -1,0 +1,41 @@
+--- a/ReLogic/Peripherals/RGB/ChromaEngine.cs
++++ b/ReLogic/Peripherals/RGB/ChromaEngine.cs
+@@ -193,7 +193,7 @@
+             _hotkeys.UpdateAll(num);
+             _shaderSelector.Update(num);
+             _lastTime = totalTime;
+-            ThreadPool.QueueUserWorkItem((object context) =>
++            ThreadPool.UnsafeQueueUserWorkItem((object context) =>
+             {
+                 ((ChromaEngine)context).Draw();
+             }, this);
+@@ -208,6 +208,8 @@
+         }
+     }
+ 
++    private readonly List<RgbDevice> _devicesAtDetail = new List<RgbDevice>();
++
+     private void Draw()
+     {
+         lock (_updateLock)
+@@ -220,7 +222,19 @@
+                     ICollection<ShaderOperation> shaders = _shaderSelector.AtDetailLevel(detail);
+                     foreach (RgbDeviceGroup value in _deviceGroups.Values)
+                     {
+-                        _pipeline.Process(value.Where((RgbDevice device) => device.PreferredLevelOfDetail == detail), shaders, _lastTime);
++                        // The group's devices at this detail level, without a LINQ query per group per tick.
++                        _devicesAtDetail.Clear();
++                        foreach (RgbDevice device in value)
++                        {
++                            if (device.PreferredLevelOfDetail == detail)
++                            {
++                                _devicesAtDetail.Add(device);
++                            }
++                        }
++                        if (_devicesAtDetail.Count > 0)
++                        {
++                            _pipeline.Process(_devicesAtDetail, shaders, _lastTime);
++                        }
+                     }
+                 }
+             }
