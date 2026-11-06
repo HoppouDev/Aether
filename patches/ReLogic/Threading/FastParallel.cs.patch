@@ -1,0 +1,107 @@
+--- a/ReLogic/Threading/FastParallel.cs
++++ b/ReLogic/Threading/FastParallel.cs
+@@ -1,4 +1,5 @@
+ using System;
++using System.Collections.Generic;
+ using System.Threading;
+ 
+ namespace ReLogic.Threading;
+@@ -7,18 +8,23 @@
+ {
+     private class RangeTask
+     {
+-        private readonly ParallelForAction _action;
++        private ParallelForAction _action;
+ 
+-        private readonly int _fromInclusive;
++        private int _fromInclusive;
+ 
+-        private readonly int _toExclusive;
++        private int _toExclusive;
+ 
+-        private readonly object _context;
++        private object _context;
+ 
+-        private readonly CountdownEvent _countdown;
++        private CountdownEvent _countdown;
+ 
+         public RangeTask(ParallelForAction action, int fromInclusive, int toExclusive, object context, CountdownEvent countdown)
+         {
++            Set(action, fromInclusive, toExclusive, context, countdown);
++        }
++
++        public void Set(ParallelForAction action, int fromInclusive, int toExclusive, object context, CountdownEvent countdown)
++        {
+             _action = action;
+             _fromInclusive = fromInclusive;
+             _toExclusive = toExclusive;
+@@ -36,6 +42,24 @@
+         }
+     }
+ 
++    // What a For call reuses instead of allocating: For returns only once every range has run, so
++    // they're free again by the next call. Kept per thread and per nesting depth, since a range
++    // can run on the calling thread and call For again.
++    private class Pool
++    {
++        public readonly CountdownEvent Countdown = new CountdownEvent(1);
++
++        public RangeTask[] Tasks = new RangeTask[0];
++    }
++
++    [ThreadStatic]
++    private static List<Pool> _pools;
++
++    [ThreadStatic]
++    private static int _depth;
++
++    private static readonly WaitCallback InvokeTaskCallback = InvokeTask;
++
+     public static bool ForceTasksOnCallingThread { get; set; }
+ 
+     static FastParallel()
+@@ -59,7 +83,18 @@
+         Thread.CurrentThread.Priority = ThreadPriority.Highest;
+         int num3 = num / num2;
+         int num4 = num % num2;
+-        CountdownEvent countdownEvent = new CountdownEvent(num2);
++        List<Pool> pools = _pools ??= new List<Pool>();
++        if (_depth == pools.Count)
++        {
++            pools.Add(new Pool());
++        }
++        Pool pool = pools[_depth++];
++        if (pool.Tasks.Length < num2)
++        {
++            Array.Resize(ref pool.Tasks, num2);
++        }
++        CountdownEvent countdownEvent = pool.Countdown;
++        countdownEvent.Reset(num2);
+         int num5 = toExclusive;
+         for (int num6 = num2 - 1; num6 >= 0; num6--)
+         {
+@@ -71,19 +106,22 @@
+             num5 -= num7;
+             int num8 = num5;
+             int toExclusive2 = num8 + num7;
+-            RangeTask rangeTask = new RangeTask(callback, num8, toExclusive2, context, countdownEvent);
++            RangeTask rangeTask = pool.Tasks[num6] ??= new RangeTask(callback, num8, toExclusive2, context, countdownEvent);
++            rangeTask.Set(callback, num8, toExclusive2, context, countdownEvent);
+             if (num6 < 1)
+             {
+                 InvokeTask(rangeTask);
+             }
+             else
+             {
+-                ThreadPool.QueueUserWorkItem(InvokeTask, rangeTask);
++                // No ExecutionContext to capture for the ranges.
++                ThreadPool.UnsafeQueueUserWorkItem(InvokeTaskCallback, rangeTask);
+             }
+         }
+         while (countdownEvent.CurrentCount != 0)
+         {
+         }
++        _depth--;
+         Thread.CurrentThread.Priority = priority;
+     }
+ 
