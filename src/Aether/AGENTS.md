@@ -107,3 +107,9 @@ Started with `-aethercontrol [PORT]` (`./aether run|launch|screens --control POR
   `alloc [FRAMES]` measures main-thread allocations (overall and per retained screen) and `menu MODE` switches title-menu screens.
   If the main thread stops updating for 10 s (a hang, or a crash showing its error dialog), waiting commands fail instead of blocking, and are skipped if it recovers.
 - Clients: `./aether control` (`tools/aether/control.py`) and the `aether-game` MCP server (`tools/aether/mcp_server.py`, FastMCP, registered in `.mcp.json`); `.agents/skills/aether-game/SKILL.md` is the guide for agents.
+
+## Allocation-free helpers (`Utilities/`)
+
+Code that runs every frame shouldn't allocate (the garbage collector's pauses show as stutters); find what does with the allocation profiler (`--profile`, then the control command `profile`).
+`IntSort.Sort` sorts without Mono's per-call comparison delegate, and `EnumNames<T>.Of` caches enum names (`ToString()` allocates every call; prefer `nameof` for constants).
+Common fixes in the game code: reuse one object or list instead of making one per call (as `TileDrawing` does with its `TileDrawInfo`), add single-argument overloads for `params` methods called every frame, cache delegates made from lambdas, and queue thread-pool work with `UnsafeQueueUserWorkItem` and a cached callback.
