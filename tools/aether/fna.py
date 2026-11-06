@@ -3,6 +3,7 @@
 The game ships an older FNA (26.3) with mismatched natives; Aether builds FNA itself from the
 pinned commit and uses the matching native libraries (SDL3, FNA3D, FAudio, Theorafile) from
 FNA's fnalibs and fnalibs-apple builds, so managed and native code come from the same release on every platform.
+Aether's few changes to FNA's code (tools/fna.patch) are applied to the checkout before building.
 """
 
 import json
@@ -19,6 +20,8 @@ FNA_PROJECT = "FNA.Core.csproj"
 # Where FNA_PROJECT builds (its TargetFramework), relative to the FNA checkout.
 FNA_OUTPUT_DIR = Path("bin") / "Release" / "net8.0"
 FNA_OUTPUTS = ("FNA.dll", "FNA.dll.config")
+# In the checkout: the hash of the tools/fna.patch it was built with.
+FNA_PATCH_STAMP = ".aether-patch"
 
 
 def load_fna_json() -> dict:
@@ -26,11 +29,20 @@ def load_fna_json() -> dict:
 
 
 def build_fna(pinned: dict, dest: Path) -> None:
-    """Builds FNA.dll (+ its dllmap config) from the pinned commit into dest, cached by commit."""
+    """Builds FNA.dll (+ its dllmap config) from the pinned commit and tools/fna.patch into dest.
+
+    Cached by commit; a checkout built with another version of the patch is built again.
+    """
     commit = pinned["commit"]
     cache = paths.FNA_CACHE / commit
     out = cache / FNA_OUTPUT_DIR
-    if not all((out / name).is_file() for name in FNA_OUTPUTS):
+    stamp = cache / FNA_PATCH_STAMP
+    patch = sha256_file(paths.FNA_PATCH)
+    if (
+        not all((out / name).is_file() for name in FNA_OUTPUTS)
+        or not stamp.is_file()
+        or stamp.read_text() != patch
+    ):
         if cache.exists():
             shutil.rmtree(cache)
         log(f"building FNA {pinned['version']} ({commit[:10]})…")
@@ -59,11 +71,13 @@ def build_fna(pinned: dict, dest: Path) -> None:
             raise AetherError(
                 f"FNA tag {pinned['version']} is {head[:10]}, but tools/fna.json pins {commit[:10]}."
             )
+        run(["git", "apply", str(paths.FNA_PATCH)], cwd=cache, capture_output=True)
         run(
             ["dotnet", "build", FNA_PROJECT, "-c", "Release", "-p:NuGetAudit=false"],
             cwd=cache,
             capture_output=True,
         )
+        stamp.write_text(patch)
     for name in FNA_OUTPUTS:
         shutil.copyfile(out / name, dest / name)
 

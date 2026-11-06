@@ -1,6 +1,7 @@
 import json
 import os
 import re
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -649,14 +650,53 @@ def test_profile_env_rejects(monkeypatch, platform, depth, message):
         profiler.profiler_env(platform, depth)
 
 
-def test_build_needs_fnas_net_build(repo, monkeypatch):
+def test_fna_is_built_again_when_its_patch_changes(repo, monkeypatch):
     from aether import fna
 
-    monkeypatch.setattr(game, "load_fna_json", lambda: {"commit": "abc"})
-    built = paths.FNA_CACHE / "abc" / fna.FNA_OUTPUT_DIR / "FNA.dll"
-    write_files(built.parent, {"FNA.dll": b"fna for .net"})
-    write_files(paths.LIB, {"FNA.dll": b"fna for .net framework"})
-    with pytest.raises(AetherError, match="aether setup"):
-        game.require_net_fna()
-    (paths.LIB / "FNA.dll").write_bytes(b"fna for .net")
-    game.require_net_fna()
+    patch = repo.root / "tools" / "fna.patch"
+    patch.write_text("one")
+    monkeypatch.setattr(paths, "FNA_PATCH", patch)
+    monkeypatch.setattr(paths, "FNA_CACHE", repo.root / ".aether" / "fna")
+    commands = []
+
+    def run(command, cwd=None, capture_output=False):
+        commands.append(command[:2])
+        if command[:2] == ["git", "clone"]:
+            Path(command[-1]).mkdir(parents=True)
+        if command[:2] == ["dotnet", "build"]:
+            write_files(
+                Path(cwd) / fna.FNA_OUTPUT_DIR,
+                {name: b"fna" for name in fna.FNA_OUTPUTS},
+            )
+        stdout = "abc\n" if command[1] == "rev-parse" else ""
+        return subprocess.CompletedProcess(command, 0, stdout=stdout)
+
+    monkeypatch.setattr(fna, "run", run)
+    paths.LIB.mkdir()
+    pin = {"version": "26.11", "commit": "abc"}
+    fna.build_fna(pin, paths.LIB)
+    assert ["git", "apply"] in commands
+    assert (paths.LIB / "FNA.dll").read_bytes() == b"fna"
+    commands.clear()
+    fna.build_fna(pin, paths.LIB)
+    assert commands == []
+    patch.write_text("two")
+    fna.build_fna(pin, paths.LIB)
+    assert ["git", "apply"] in commands
+
+
+def test_fna_patch_fits_the_pinned_fna():
+    real = Path(__file__).resolve().parents[1]
+    commit = json.loads((real / "tools" / "fna.json").read_text())["commit"]
+    checkout = real / ".aether" / "fna" / commit
+    if not (checkout / ".git").exists():
+        pytest.skip("no FNA checkout (./aether setup)")
+    patch = str(real / "tools" / "fna.patch")
+
+    def fits(*flags):
+        command = ["git", "apply", "--check", *flags, patch]
+        result = subprocess.run(command, cwd=checkout, capture_output=True, check=False)
+        return result.returncode == 0
+
+    # Applied already, or not yet.
+    assert fits("--reverse") or fits()

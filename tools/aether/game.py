@@ -23,7 +23,6 @@ out in .aether/run/ with symlinks; `aether build --target` publishes it self-con
 target's runtime and copies everything into dist/<target>/ (which therefore contains game files).
 """
 
-import filecmp
 import os
 import shutil
 import subprocess
@@ -31,7 +30,7 @@ import sys
 from pathlib import Path
 
 from . import paths
-from .fna import FNA_OUTPUT_DIR, load_fna_json
+from .fna import build_fna, load_fna_json
 from .pinning import load_base_json
 from .steam import platform_pin
 from .terrain import stage_linux_backend
@@ -175,21 +174,16 @@ def run_dotnet(command: list[str], what: str) -> None:
         )
 
 
-def require_net_fna() -> None:
-    """Refuses lib/'s FNA if it's the .NET Framework build from before the move to .NET 10."""
-    fna = load_fna_json()
-    built = paths.FNA_CACHE / fna["commit"] / FNA_OUTPUT_DIR / "FNA.dll"
-    if not built.is_file() or not filecmp.cmp(
-        built, paths.LIB / "FNA.dll", shallow=False
-    ):
-        raise AetherError(
-            "lib/FNA.dll isn't FNA's .NET build; run `./aether setup` to rebuild it."
-        )
+def update_fna() -> None:
+    """Builds lib/'s FNA again if the pin or tools/fna.patch changed since (cached otherwise)."""
+    if not paths.LIB.is_dir():
+        raise AetherError("lib/ is missing; run `./aether setup` first.")
+    build_fna(load_fna_json(), paths.LIB)
 
 
 def build_client(configuration: str, platform: str) -> Path:
     """Builds Terraria.csproj (and ReLogic) and returns the client folder."""
-    require_net_fna()
+    update_fna()
     log(f"building the client ({configuration}, {platform})…")
     run_dotnet(build_command(configuration), "build")
     client = output_dir(configuration)

@@ -88,7 +88,7 @@ dotnet build -c Debug
 
 | Path | Committed? | What it is |
 | --- | --- | --- |
-| `aether`, `pyproject.toml`, `uv.lock`, `tools/` | yes | Patch workflow CLI: a uv project (typer) whose package is `tools/aether/` (`cli.py` commands, `decompile.py` recipe, `fna.py` FNA build and natives, `steamworks.py` the 64-bit Steamworks.NET, `game.py` building, run folders and `dist/` targets, `control.py` and `mcp_server.py` the control-socket client and FastMCP server, `profiler.py` and `profiler/aether_profiler.c` the allocation profiler, `steam.py` SteamCMD, `update.py`, `patches.py` diff/apply, `guard.py` commit guard, `tree.py`, `pinning.py`, `paths.py`, `util.py`); `./aether` runs it with `uv run`. Plus the pinned base (`tools/base.json`), FNA (`tools/fna.json`) and Steamworks.NET (`tools/steamworks.json`). |
+| `aether`, `pyproject.toml`, `uv.lock`, `tools/` | yes | Patch workflow CLI: a uv project (typer) whose package is `tools/aether/` (`cli.py` commands, `decompile.py` recipe, `fna.py` FNA build and natives, `steamworks.py` the 64-bit Steamworks.NET, `game.py` building, run folders and `dist/` targets, `control.py` and `mcp_server.py` the control-socket client and FastMCP server, `profiler.py` and `profiler/aether_profiler.c` the allocation profiler, `steam.py` SteamCMD, `update.py`, `patches.py` diff/apply, `guard.py` commit guard, `tree.py`, `pinning.py`, `paths.py`, `util.py`); `./aether` runs it with `uv run`. Plus the pinned base (`tools/base.json`), FNA (`tools/fna.json`, and Aether's patch to it, `tools/fna.patch`) and Steamworks.NET (`tools/steamworks.json`). |
 | `patches/` | yes | Aether itself: the client's changes to the game, as unified diffs mirroring `src/`. |
 | `.mcp.json`, `.agents/skills/` | yes | The `aether-game` MCP server registration and the agent skill for driving the game (`aether-game`). |
 | `prek.toml`, `rumdl.toml`, `cog.toml` | yes | Git hooks (patch guard, basic checks, rumdl, conventional-pre-commit, cocogitto) and their configs. |
@@ -100,8 +100,9 @@ dotnet build -c Debug
 
 ## Dependencies and embedded resources
 
-- **FNA** is pinned to one release in `tools/fna.json` (26.11): `setup` builds `FNA.Core.csproj` (its .NET build, whose `FNADllMap` reads `FNA.dll.config` to find the native libraries) from that commit (cached in `.aether/fna/`) and downloads the matching native libraries (`fnalibs` and `fnalibs-apple`) from FNA's `fnalibs-dailies` CI build, verifying every file's hash.
+- **FNA** is pinned to one release in `tools/fna.json` (26.11): `setup` builds `FNA.Core.csproj` (its .NET build, whose `FNADllMap` reads `FNA.dll.config` to find the native libraries) from that commit with `tools/fna.patch` applied (cached in `.aether/fna/`; `build` builds it again when the patch changes) and downloads the matching native libraries (`fnalibs` and `fnalibs-apple`) from FNA's `fnalibs-dailies` CI build, verifying every file's hash.
   The game's own FNA (26.3) is only used to decompile, so `.base/` doesn't depend on the FNA version.
+  The patch keeps 26.3's leniency the game depends on: a disposed `SoundEffectInstance` reports `Stopped` and ignores `Stop`/`Pause` (26.11 throws, and Terraria disposes finished instances it still holds, so their sounds stopped playing).
   CI artifacts expire after 90 days; the pinned run (from 2026-11-03) expires around 2027-02-01, so re-pin before then or mirror the libraries.
 - At startup, `LinuxLaunch.Main` resolves missing assemblies from a file of that name next to the client, else from the client's own manifest resources (by suffix `<AssemblyName>.dll`), loading them into .NET's default load context.
   So the `lib/` DLLs (except FNA, which is copied next to the client) are referenced with `Private=False` (not copied to the output) and embedded under their original names (`Terraria.Libraries.ReLogic.ReLogic.dll`, etc.).

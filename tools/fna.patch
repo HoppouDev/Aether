@@ -1,0 +1,36 @@
+diff --git a/src/Audio/SoundEffectInstance.cs b/src/Audio/SoundEffectInstance.cs
+index 0481f45..3d63f78 100644
+--- a/src/Audio/SoundEffectInstance.cs
++++ b/src/Audio/SoundEffectInstance.cs
+@@ -115,9 +115,12 @@ namespace Microsoft.Xna.Framework.Audio
+ 		{
+ 			get
+ 			{
++				/* Aether: a disposed instance is stopped, as in FNA 26.3 (the game's).
++				 * Terraria keeps the instances it disposes and queries them again.
++				 */
+ 				if (IsDisposed)
+ 				{
+-					throw new ObjectDisposedException(GetType().Name, "This object has already been disposed.");
++					return SoundState.Stopped;
+ 				}
+ 				if (	!isDynamic &&
+ 					handle != IntPtr.Zero &&
+@@ -407,7 +410,7 @@ namespace Microsoft.Xna.Framework.Audio
+ 		{
+ 			if (IsDisposed)
+ 			{
+-				throw new ObjectDisposedException(GetType().Name, "This object has already been disposed.");
++				return; /* Aether: see State */
+ 			}
+ 			if (handle != IntPtr.Zero && State == SoundState.Playing)
+ 			{
+@@ -444,7 +447,7 @@ namespace Microsoft.Xna.Framework.Audio
+ 		{
+ 			if (IsDisposed)
+ 			{
+-				throw new ObjectDisposedException(GetType().Name, "This object has already been disposed.");
++				return; /* Aether: see State */
+ 			}
+ 			if (handle == IntPtr.Zero)
+ 			{

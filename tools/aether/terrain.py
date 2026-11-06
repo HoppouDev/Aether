@@ -8,7 +8,13 @@ import tempfile
 from pathlib import Path
 
 from . import paths
-from .fna import FNA_OUTPUT_DIR, FNA_OUTPUTS, FNA_PROJECT, load_fna_json
+from .fna import (
+    FNA_OUTPUT_DIR,
+    FNA_OUTPUTS,
+    FNA_PATCH_STAMP,
+    FNA_PROJECT,
+    load_fna_json,
+)
 from .util import AetherError, log
 
 SOURCES = paths.REPO / "tools" / "terrain"
@@ -21,8 +27,12 @@ def build_backend() -> Path:
     if not (source / "lib" / "FNA3D" / "CMakeLists.txt").is_file():
         raise AetherError("Run ./aether setup to obtain the pinned FNA source.")
     digest = hashlib.sha256(pin.encode())
-    # The FNA build it bundles (a .NET Framework one before the move to .NET 10).
+    # The FNA build it bundles (a .NET Framework one before the move to .NET 10), and
+    # the version of Aether's patch to FNA that the checkout it copies has applied.
     digest.update(FNA_PROJECT.encode())
+    stamp = source / FNA_PATCH_STAMP
+    if stamp.is_file():
+        digest.update(stamp.read_bytes())
     for file in sorted(SOURCES.rglob("*")):
         if file.is_file():
             digest.update(file.relative_to(SOURCES).as_posix().encode())

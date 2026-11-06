@@ -12,6 +12,8 @@ PATCHES = REPO / "patches"
 STATE = REPO / ".aether"
 BASE_JSON = REPO / "tools" / "base.json"
 FNA_JSON = REPO / "tools" / "fna.json"
+# Aether's changes to FNA's code, applied before building it.
+FNA_PATCH = REPO / "tools" / "fna.patch"
 STEAMWORKS_JSON = REPO / "tools" / "steamworks.json"
 # Self-contained builds per target (`aether build --target`); they contain game files.
 DIST = REPO / "dist"
