@@ -871,7 +871,22 @@
          int num = -1;
          Vector2 vector = new Vector2(screenWidth - 162, yPos);
          vector.X += 82f;
-@@ -43787,6 +43864,7 @@
+@@ -43779,6 +43856,14 @@
+         return num;
+     }
+ 
++    private static string _signHoverText;
++
++    private static DynamicSpriteFont _signHoverFont;
++
++    private static string[] _signHoverLines;
++
++    private static int _signHoverLineAmount;
++
+     public void DrawMouseOver()
+     {
+         PlayerInput.SetZoom_World();
+@@ -43787,6 +43872,7 @@
          PlayerInput.SetZoom_UI();
          if (!LocalPlayer.ghost && LocalPlayer.spectating < 0)
          {
@@ -879,7 +894,24 @@
              ResourceSetsManager.TryToHoverOverResources();
          }
          AchievementAdvisor.DrawMouseHover();
-@@ -44095,6 +44173,7 @@
+@@ -43851,7 +43937,15 @@
+         HoverOverNPCs(mouseRectangle);
+         if (!mouseText && signHover != -1 && sign[signHover] != null && !player[myPlayer].mouseInterface && !string.IsNullOrWhiteSpace(sign[signHover].text))
+         {
+-            string[] array = Utils.WordwrapString(sign[signHover].text, FontAssets.MouseText.Value, 460, 10, out var lineAmount);
++            // Wrapped again only when the text (or font) changes, not every frame it's hovered.
++            if ((object)sign[signHover].text != _signHoverText || FontAssets.MouseText.Value != _signHoverFont)
++            {
++                _signHoverText = sign[signHover].text;
++                _signHoverFont = FontAssets.MouseText.Value;
++                _signHoverLines = Utils.WordwrapString(_signHoverText, _signHoverFont, 460, 10, out _signHoverLineAmount);
++            }
++            string[] array = _signHoverLines;
++            int lineAmount = _signHoverLineAmount;
+             spriteBatch.End();
+             spriteBatch.Begin(SpriteSortMode.Deferred, null, null, null, null, null, _uiScaleMatrix);
+             PlayerInput.SetZoom_UI();
+@@ -44095,6 +44189,7 @@
  
      protected void GUIBarsDrawInner()
      {
@@ -887,7 +919,7 @@
          ResourceSetsManager.Draw();
          spriteBatch.End();
          spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.PointClamp, DepthStencilState.None, RasterizerState.CullCounterClockwise, null, UIScaleMatrix);
-@@ -44118,6 +44197,10 @@
+@@ -44118,6 +44213,10 @@
  
      public void DrawInterface_Resources_Buffs()
      {
@@ -898,7 +930,7 @@
          PipsUseGrid = false;
          int num = -1;
          int num2 = 11;
-@@ -44252,7 +44335,7 @@
+@@ -44252,7 +44351,7 @@
          if (mouseX < x + TextureAssets.Buff[num].Width() && mouseY < y + TextureAssets.Buff[num].Height() && mouseX > x && mouseY > y && !PlayerInput.IgnoreMouseInterface)
          {
              drawBuffText = buffSlotOnPlayer;
@@ -907,7 +939,7 @@
              bool flag = mouseRight && mouseRightRelease;
              if (PlayerInput.UsingGamepad)
              {
-@@ -44273,7 +44356,7 @@
+@@ -44273,7 +44372,7 @@
          }
          else
          {
@@ -916,7 +948,7 @@
          }
          if (buffAlpha[buffSlotOnPlayer] > 1f)
          {
-@@ -44512,6 +44595,10 @@
+@@ -44512,6 +44611,10 @@
          {
              return;
          }
@@ -927,7 +959,7 @@
          string text = Lang.inter[37].Value;
          if (player[myPlayer].inventory[player[myPlayer].selectedItem].Name != null && player[myPlayer].inventory[player[myPlayer].selectedItem].Name != "")
          {
-@@ -44526,12 +44613,12 @@
+@@ -44526,12 +44629,12 @@
              {
                  if (hotbarScale[i] < 1f)
                  {
@@ -942,7 +974,7 @@
              }
              float num2 = hotbarScale[i];
              int num3 = (int)(20f + 22f * (1f - num2));
-@@ -44638,6 +44725,10 @@
+@@ -44638,6 +44741,10 @@
              CancelHairWindow();
              return;
          }
@@ -953,7 +985,7 @@
          Hairstyles.UpdateUnlocks();
          int count = Hairstyles.AvailableHairstyles.Count;
          int num = screenHeight / 2 + 60;
-@@ -45144,6 +45235,10 @@
+@@ -45144,6 +45251,10 @@
              CancelClothesWindow();
              return;
          }
@@ -964,7 +996,7 @@
          int num = 477;
          int num2 = 163;
          int num3 = num / 2;
-@@ -46212,6 +46307,7 @@
+@@ -46212,6 +46323,7 @@
          }
          else if (cursorOverride != -1)
          {
@@ -972,7 +1004,7 @@
              Microsoft.Xna.Framework.Color color = new Microsoft.Xna.Framework.Color((int)((float)(int)cursorColor.R * 0.2f), (int)((float)(int)cursorColor.G * 0.2f), (int)((float)(int)cursorColor.B * 0.2f), (int)((float)(int)cursorColor.A * 0.5f));
              Microsoft.Xna.Framework.Color white = cursorColor;
              bool flag = true;
-@@ -46246,11 +46342,11 @@
+@@ -46246,11 +46358,11 @@
              }
              if (flag)
              {
@@ -986,7 +1018,7 @@
              }
          }
          else if (SmartCursorIsUsed)
-@@ -46265,6 +46361,10 @@
+@@ -46265,6 +46377,10 @@
  
      private static void DrawInterface_35_YouDied()
      {
@@ -997,7 +1029,7 @@
          if (!player[myPlayer].dead)
          {
              return;
-@@ -46544,6 +46644,10 @@
+@@ -46544,6 +46660,10 @@
  
      public static void DrawSettingButton(ref bool mouseOver, ref float scale, int posX, int posY, string text, string textSizeMatcher, Action clickAction)
      {
@@ -1008,7 +1040,7 @@
          Vector2 vector = FontAssets.MouseText.Value.MeasureString(textSizeMatcher);
          Vector2 vector2 = FontAssets.MouseText.Value.MeasureString(text);
          Vector2 vector3 = FontAssets.DeathText.Value.MeasureString(text);
-@@ -46698,7 +46802,7 @@
+@@ -46698,7 +46818,7 @@
  
      private static void DrawInterface_24_InterfaceLogic2()
      {
@@ -1017,7 +1049,7 @@
          if (invAlpha > 240f)
          {
              invAlpha = 240f;
-@@ -47153,6 +47257,7 @@
+@@ -47153,6 +47273,7 @@
  
      private static void DrawInterface_13_AchievementCompletePopups()
      {
@@ -1025,7 +1057,7 @@
          InGameNotificationsTracker.DrawInGame(spriteBatch);
      }
  
-@@ -47828,6 +47933,7 @@
+@@ -47828,6 +47949,7 @@
              num4 += 50f;
          }
          Microsoft.Xna.Framework.Color color = new Microsoft.Xna.Framework.Color(100, 100, 100, mouseTextColor);
@@ -1033,7 +1065,7 @@
          for (int i = 0; i < 12; i++)
          {
              string text2 = "";
-@@ -48256,6 +48362,10 @@
+@@ -48256,6 +48378,10 @@
              {
                  continue;
              }
@@ -1044,7 +1076,7 @@
              GetInfoAccIconPosition(num3, startX, out var X, out var Y);
              if (num >= 0)
              {
-@@ -48367,6 +48477,10 @@
+@@ -48367,6 +48493,10 @@
                  spriteBatch.DrawString(FontAssets.MouseText.Value, text2, new Vector2(X + num27, Y + 74 + num29 * i + num28 + 48), color3, 0f, default, scale, SpriteEffects.None, 0f);
              }
          }
@@ -1055,7 +1087,7 @@
          if (!string.IsNullOrEmpty(text))
          {
              if (playerInventory)
-@@ -48389,7 +48503,7 @@
+@@ -48389,7 +48519,7 @@
          }
      }
  
@@ -1064,7 +1096,7 @@
      {
          if (!playerInventory)
          {
-@@ -48452,6 +48566,10 @@
+@@ -48452,6 +48582,10 @@
          {
              return;
          }
@@ -1075,7 +1107,7 @@
          int num = 0;
          Player player = Main.player[myPlayer];
          int[] builderAccStatus = Main.player[myPlayer].builderAccStatus;
-@@ -48693,7 +48811,7 @@
+@@ -48693,7 +48827,7 @@
          UILinkPointNavigator.Shortcuts.BUILDERACCCOUNT = num;
      }
  
@@ -1084,7 +1116,7 @@
      {
          blockReplaceIcons = 1;
          torchGodIcons = (plr.unlockedBiomeTorches ? 1 : 0);
-@@ -48808,6 +48926,10 @@
+@@ -48808,6 +48942,10 @@
  
      public static void DrawInvasionProgress()
      {
@@ -1095,7 +1127,7 @@
          if (invasionProgress == -1)
          {
              return;
-@@ -48818,15 +48940,15 @@
+@@ -48818,15 +48956,15 @@
          }
          if (!gamePaused && invasionProgressDisplayLeft > 0)
          {
@@ -1114,7 +1146,7 @@
          }
          if (invasionProgressMode == 0)
          {
-@@ -49097,6 +49219,7 @@
+@@ -49097,6 +49235,7 @@
  
      public static void DrawCursor(Vector2 bonus, bool smart = false)
      {
@@ -1122,7 +1154,7 @@
          if (gameMenu && alreadyGrabbingSunOrMoon)
          {
              return;
-@@ -49118,7 +49241,7 @@
+@@ -49118,7 +49257,7 @@
              {
                  return;
              }
@@ -1131,7 +1163,7 @@
              Vector2 t2 = Vector2.Zero;
              bool flag2 = smart;
              if (flag2)
-@@ -49154,16 +49277,16 @@
+@@ -49154,16 +49293,16 @@
              {
                  color = Microsoft.Xna.Framework.Color.White;
                  int num4 = 15;
@@ -1152,7 +1184,7 @@
          ParticleSystem_OverCursor.Draw(spriteBatch);
      }
  
-@@ -49179,6 +49302,7 @@
+@@ -49179,6 +49318,7 @@
  
      public static Vector2 DrawThickCursor(bool smart = false)
      {
@@ -1160,7 +1192,7 @@
          if (ThickMouse)
          {
              bool showGamepadCursor = PlayerInput.SettingsForUI.ShowGamepadCursor;
-@@ -49243,7 +49367,7 @@
+@@ -49243,7 +49383,7 @@
                          origin = TextureAssets.Cursors[num].Value.Size() / 2f;
                      }
                  }
@@ -1169,7 +1201,7 @@
              }
              return new Vector2(2f);
          }
-@@ -49281,7 +49405,7 @@
+@@ -49281,7 +49421,7 @@
          menuMode = 5000;
      }
  
@@ -1178,7 +1210,7 @@
      {
          return () =>
          {
-@@ -49317,60 +49441,8 @@
+@@ -49317,60 +49457,8 @@
          return " -" + argumentName + " " + text;
      }
  
@@ -1240,7 +1272,7 @@
          if (WorldGen.remixWorldGen)
          {
              logoRotation += logoRotationSpeed * 4E-05f;
-@@ -49487,6 +49559,73 @@
+@@ -49487,6 +49575,73 @@
                  logoScaleSpeed--;
              }
          }
@@ -1314,7 +1346,7 @@
          Microsoft.Xna.Framework.Color color2 = new Microsoft.Xna.Framework.Color((byte)((float)(int)color.R * ((float)LogoA / 255f)), (byte)((float)(int)color.G * ((float)LogoA / 255f)), (byte)((float)(int)color.B * ((float)LogoA / 255f)), (byte)((float)(int)color.A * ((float)LogoA / 255f)));
          Microsoft.Xna.Framework.Color color3 = new Microsoft.Xna.Framework.Color((byte)((float)(int)color.R * ((float)LogoB / 255f)), (byte)((float)(int)color.G * ((float)LogoB / 255f)), (byte)((float)(int)color.B * ((float)LogoB / 255f)), (byte)((float)(int)color.A * ((float)LogoB / 255f)));
          if (noTrapsWorld)
-@@ -49495,18 +49634,18 @@
+@@ -49495,18 +49650,18 @@
          }
          if (playOldTile)
          {
@@ -1339,7 +1371,7 @@
          }
          if (dayTime && !WorldGen.remixWorldGen)
          {
-@@ -49574,7 +49713,10 @@
+@@ -49574,7 +49729,10 @@
              GamepadMainMenuHandler.CanRun = true;
          }
          DrawInterface_13_AchievementCompletePopups();
@@ -1351,7 +1383,7 @@
          {
              array9[0] = Lang.menu[102].Value;
              num2 = 200;
-@@ -52202,7 +52344,7 @@
+@@ -52202,7 +52360,7 @@
          selectedMenu2 = -1;
          focusMenu = -1;
          bool flag7 = mouseLeft && !PlayerInput.UsingGamepad;
@@ -1360,7 +1392,7 @@
          {
              grabColorSlider = 0;
              hBar = -1f;
-@@ -52955,7 +53097,7 @@
+@@ -52955,7 +53113,7 @@
              {
                  if (menuItemScale[num111] < 1f)
                  {
@@ -1369,7 +1401,7 @@
                  }
                  if (menuItemScale[num111] > 1f)
                  {
-@@ -52964,7 +53106,7 @@
+@@ -52964,7 +53122,7 @@
              }
              else if ((double)menuItemScale[num111] > 0.8)
              {
@@ -1378,7 +1410,7 @@
              }
          }
          if (flag4)
-@@ -53000,7 +53142,7 @@
+@@ -53000,7 +53158,7 @@
          {
              Microsoft.Xna.Framework.Color white = Microsoft.Xna.Framework.Color.White;
              byte b2 = 0;
@@ -1387,7 +1419,7 @@
              float num113 = (float)fadeCounter / 120f * 255f;
              if (quickSplash)
              {
-@@ -53046,19 +53188,19 @@
+@@ -53046,19 +53204,19 @@
          FrameSkipMode = (FrameSkipMode)frameSkipMode;
      }
  
@@ -1410,7 +1442,7 @@
      {
          SoundEngine.PlaySound(11);
          menuMode = 0;
-@@ -53066,7 +53208,7 @@
+@@ -53066,7 +53224,7 @@
          Netplay.ServerPassword = "";
      }
  
@@ -1419,7 +1451,7 @@
      {
          Netplay.ServerPassword = passwordCandidate;
          HostAndPlay();
-@@ -53129,7 +53271,7 @@
+@@ -53129,7 +53287,7 @@
          menuMode = 10;
      }
  
@@ -1428,7 +1460,7 @@
      {
          if (SocialAPI.Network != null)
          {
-@@ -53142,7 +53284,7 @@
+@@ -53142,7 +53300,7 @@
          Netplay.ServerPassword = "";
      }
  
@@ -1437,7 +1469,7 @@
      {
          if (string.IsNullOrWhiteSpace(text))
          {
-@@ -53156,7 +53298,7 @@
+@@ -53156,7 +53314,7 @@
          return true;
      }
  
@@ -1446,7 +1478,7 @@
      {
          Netplay.ListenPort = ushort.Parse(candidatePort);
          autoPass = false;
-@@ -53272,84 +53414,84 @@
+@@ -53272,84 +53430,84 @@
              }
              if (SkyManager.Instance[key] != null && SkyManager.Instance[key].IsActive())
              {
@@ -1551,7 +1583,7 @@
          }
          slimeRain = false;
          slimeRainTime = 0.0;
-@@ -53414,10 +53556,10 @@
+@@ -53414,10 +53572,10 @@
          }
      }
  
@@ -1564,7 +1596,7 @@
          {
              result = true;
          }
-@@ -53506,7 +53648,7 @@
+@@ -53506,7 +53664,7 @@
          plr.voiceVariant = variantOrder[num];
      }
  
@@ -1573,7 +1605,7 @@
      {
          CycleClothingStyle_Inner(plr);
          while (!IsValidPlayerStyle(plr))
-@@ -53643,7 +53785,7 @@
+@@ -53643,7 +53801,7 @@
              _isAsyncLoadComplete = true;
          }
          spriteBatch.Begin();
@@ -1582,7 +1614,7 @@
          Microsoft.Xna.Framework.Color white = Microsoft.Xna.Framework.Color.White;
          byte b = 0;
          int num3 = 90;
-@@ -53734,11 +53876,7 @@
+@@ -53734,11 +53892,7 @@
          {
              DrawSplash_LoadingFlower(white);
          }
@@ -1595,7 +1627,7 @@
          spriteBatch.End();
      }
  
-@@ -58565,13 +58703,13 @@
+@@ -58565,13 +58719,13 @@
          {
              waterTarget.UpdateContent(RenderWater);
          }
@@ -1611,7 +1643,7 @@
          {
              wallTarget.UpdateContent(RenderWallsAndBlacks);
              tileTarget.UpdateContent(RenderTiles);
-@@ -60670,7 +60808,7 @@
+@@ -60670,7 +60824,7 @@
              {
                  if (cloudBGActive > 0f)
                  {
@@ -1620,7 +1652,7 @@
                      if (cloudBGAlpha > 1f)
                      {
                          cloudBGAlpha = 1f;
-@@ -60678,7 +60816,7 @@
+@@ -60678,7 +60832,7 @@
                  }
                  else
                  {
@@ -1629,7 +1661,7 @@
                      if (cloudBGAlpha < 0f)
                      {
                          cloudBGAlpha = 0f;
-@@ -62977,7 +63115,9 @@
+@@ -62977,7 +63131,9 @@
              _isDrawingOrUpdating = true;
              DetailedFPS.Begin(DetailedFPS.OperationCategory.Draw);
              EnsureRenderTargetContent();
@@ -1640,7 +1672,7 @@
              if (OnPostDraw != null)
              {
                  OnPostDraw(gameTime);
-@@ -63003,7 +63143,7 @@
+@@ -63003,7 +63159,7 @@
          {
              flag = true;
          }
@@ -1649,7 +1681,7 @@
          {
              while (true)
              {
-@@ -63023,7 +63163,7 @@
+@@ -63023,7 +63179,7 @@
              }
          }
          DetailedFPS.Begin(DetailedFPS.OperationCategory.Present);
@@ -1658,7 +1690,7 @@
          {
              flag = true;
              NewRuntimeMethods.GC_Collect(2, GCCollectionMode.Optimized, blocking: false);
-@@ -63035,6 +63175,11 @@
+@@ -63035,6 +63191,11 @@
  
      private void DoDraw(GameTime gameTime)
      {
@@ -1670,7 +1702,7 @@
          if (showSplash)
          {
              TimeLogger.StartTimestamp fromTimestamp = TimeLogger.Start();
-@@ -63045,11 +63190,14 @@
+@@ -63045,11 +63206,14 @@
          TimeLogger.StartTimestamp fromTimestamp2 = TimeLogger.Start();
          int num = renderCount;
          DebugVisualizer.PreDraw();
@@ -1688,7 +1720,7 @@
          MenuUI.IsVisible = gameMenu && menuMode == 888;
          InGameUI.IsVisible = !gameMenu && InGameUI.CurrentState != null;
          PlayerInput.UpdateMainMouse();
-@@ -63177,16 +63325,30 @@
+@@ -63177,16 +63341,30 @@
              _rainbowBoulderMusicFramesCounter--;
          }
          ClearHoverItem();
@@ -1721,7 +1753,7 @@
              if (renderNow)
              {
                  renderCount = 99;
-@@ -63201,7 +63363,7 @@
+@@ -63201,7 +63379,7 @@
              }
              renderNow = false;
          }
@@ -1730,7 +1762,7 @@
          {
              waterTarget.UpdateContent(() =>
              {
-@@ -63251,7 +63413,7 @@
+@@ -63251,7 +63429,7 @@
          {
              num4 = 1;
          }
@@ -1739,7 +1771,7 @@
          if (gameMenu)
          {
              num5 *= 20f;
-@@ -63367,6 +63529,20 @@
+@@ -63367,6 +63545,20 @@
                  Terraria.Graphics.Effects.Filters.Scene.Deactivate("Sepia");
              }
          }
@@ -1760,7 +1792,7 @@
          bool flag2 = Terraria.Graphics.Effects.Filters.Scene.CanCapture() || ForegroundSunlightEffects;
          bool flag3 = (!drawToScreen && !mapFullscreen && !onlyDrawFancyUI && Lighting.NotRetro) & flag2;
          if (flag3)
-@@ -63491,7 +63667,10 @@
+@@ -63491,7 +63683,10 @@
              return;
          }
          onlyDrawFancyUI = false;
@@ -1772,7 +1804,7 @@
          spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, DefaultSamplerState, DepthStencilState.None, Rasterizer, null, Transform);
          if (mapFullscreen)
          {
-@@ -63564,16 +63743,9 @@
+@@ -63564,16 +63759,9 @@
          }
          Overlays.Scene.Draw(spriteBatch, RenderLayers.Background);
          ScreenDarkness.DrawBack(spriteBatch);
@@ -1792,7 +1824,7 @@
          PlayerInput.SetZoom_World();
          DoDraw_WallsTilesNPCs();
          Overlays.Scene.Draw(spriteBatch, RenderLayers.TilesAndNPCs);
-@@ -63612,7 +63784,7 @@
+@@ -63612,7 +63800,7 @@
          DrawCachedNPCs(DrawCacheNPCsOverPlayers, behindTiles: false);
          if (!gamePaused)
          {
@@ -1801,7 +1833,7 @@
              if (essScale > 1f)
              {
                  essDir = -1;
-@@ -63625,6 +63797,17 @@
+@@ -63625,6 +63813,17 @@
              }
          }
          DrawItems();
@@ -1819,7 +1851,7 @@
          DrawRain();
          try
          {
-@@ -63861,6 +64044,30 @@
+@@ -63861,6 +64060,30 @@
          }
      }
  
@@ -1850,7 +1882,7 @@
      private static void DrawLensFlare()
      {
          PlayerInput.SetZoom_Background();
-@@ -63998,9 +64205,7 @@
+@@ -63998,9 +64221,7 @@
              }
          }
          instance.CameraModifiers.ApplyTo(ref screenPosition);
@@ -1861,7 +1893,7 @@
      }
  
      public static void DebugCameraPan(bool left, bool right, bool up, bool down)
-@@ -65345,73 +65550,91 @@
+@@ -65345,73 +65566,91 @@
          {
              scAdj = 0f;
          }
@@ -1883,13 +1915,13 @@
 -            bgDelay++;
 -        }
 -        else if (preferredBGStyleForPlayer != bgStyle)
--        {
--            DrawBG_HandleBackgroundTransition(preferredBGStyleForPlayer);
--        }
--        else if (bgDelay > 0)
 +        int transitionSteps = Aether.Graphics.VisualAnimationTime.WholeTicks;
 +        for (int transitionStep = 0; transitionStep < transitionSteps; transitionStep++)
          {
+-            DrawBG_HandleBackgroundTransition(preferredBGStyleForPlayer);
+-        }
+-        else if (bgDelay > 0)
+-        {
 -            bgDelay--;
 -        }
 -        if (gameMenu)
@@ -1988,7 +2020,7 @@
          try
          {
              DrawSurfaceBG(parentSpriteBatchBeginner);
-@@ -65426,6 +65649,7 @@
+@@ -65426,6 +65665,7 @@
              {
                  throw;
              }
@@ -1996,7 +2028,7 @@
              TimeLogger.DrawException(e);
          }
      }
-@@ -65681,7 +65905,7 @@
+@@ -65681,7 +65921,7 @@
  
      public void DrawInfernoRings()
      {
@@ -2005,7 +2037,7 @@
          for (int i = 0; i < 255; i++)
          {
              if (!player[i].active || player[i].outOfRange || !player[i].inferno || player[i].dead)
-@@ -67754,7 +67978,7 @@
+@@ -67754,7 +67994,7 @@
      {
          bool flag = false;
          Form form = null;
@@ -2014,7 +2046,7 @@
          {
              form = Control.FromHandle(instance.Window.Handle);
              screenMaximized = form.WindowState == FormWindowState.Maximized;
-@@ -67785,7 +68009,7 @@
+@@ -67785,7 +68025,7 @@
                      TryPickingDefaultUIScale(800f);
                  }
              }
@@ -2023,7 +2055,7 @@
              {
                  form.MinimumSize = new Size(0, 0);
                  if (!fullscreen && !flag3)
-@@ -67824,7 +68048,7 @@
+@@ -67824,7 +68064,7 @@
          else
          {
              PlayerInput.RawMouseScale = Vector2.One;
@@ -2032,7 +2064,7 @@
              {
                  form.MinimumSize = new Size(minScreenW, minScreenH);
                  if (flag)
-@@ -67839,7 +68063,7 @@
+@@ -67839,7 +68079,7 @@
              num4 = graphics.GraphicsDevice.Viewport.Height;
              flag2 = graphics.PreferredBackBufferWidth != graphics.GraphicsDevice.Viewport.Width || graphics.PreferredBackBufferHeight != graphics.GraphicsDevice.Viewport.Height;
          }
@@ -2041,7 +2073,7 @@
          {
              if (form.ClientSize.Width < graphics.PreferredBackBufferWidth)
              {
-@@ -67884,7 +68108,7 @@
+@@ -67884,7 +68124,7 @@
              PendingResolutionWidth = screenWidth;
              PendingResolutionHeight = screenHeight;
              PlayerInput.CacheOriginalScreenDimensions();
@@ -2050,7 +2082,7 @@
              {
                  if (screenBorderless)
                  {
-@@ -67909,9 +68133,10 @@
+@@ -67909,9 +68149,10 @@
              instance._needsMenuUIRecalculation = true;
              Console.WriteLine(Language.GetTextValue("Misc.ResolutionChanged", width, height));
          }
