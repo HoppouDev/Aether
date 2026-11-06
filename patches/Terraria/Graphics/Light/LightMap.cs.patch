@@ -1,0 +1,50 @@
+--- a/Terraria/Graphics/Light/LightMap.cs
++++ b/Terraria/Graphics/Light/LightMap.cs
+@@ -90,24 +90,33 @@
+         _random.NextSeed();
+     }
+ 
++    // The blur's two passes, made once: lambdas here would be new delegates on every blur.
++    private ParallelForAction _blurColumns;
++
++    private ParallelForAction _blurRows;
++
+     private void BlurPass()
+     {
+-        FastParallel.For(0, Width, (int start, int end, object context) =>
++        FastParallel.For(0, Width, _blurColumns ??= BlurColumns);
++        FastParallel.For(0, Height, _blurRows ??= BlurRows);
++    }
++
++    private void BlurColumns(int start, int end, object context)
++    {
++        for (int i = start; i < end; i++)
+         {
+-            for (int i = start; i < end; i++)
+-            {
+-                BlurLine(IndexOf(i, 0), IndexOf(i, Height - 1 - NonVisiblePadding), 1);
+-                BlurLine(IndexOf(i, Height - 1), IndexOf(i, NonVisiblePadding), -1);
+-            }
+-        });
+-        FastParallel.For(0, Height, (int start, int end, object context) =>
++            BlurLine(IndexOf(i, 0), IndexOf(i, Height - 1 - NonVisiblePadding), 1);
++            BlurLine(IndexOf(i, Height - 1), IndexOf(i, NonVisiblePadding), -1);
++        }
++    }
++
++    private void BlurRows(int start, int end, object context)
++    {
++        for (int i = start; i < end; i++)
+         {
+-            for (int i = start; i < end; i++)
+-            {
+-                BlurLine(IndexOf(0, i), IndexOf(Width - 1 - NonVisiblePadding, i), Height);
+-                BlurLine(IndexOf(Width - 1, i), IndexOf(NonVisiblePadding, i), -Height);
+-            }
+-        });
++            BlurLine(IndexOf(0, i), IndexOf(Width - 1 - NonVisiblePadding, i), Height);
++            BlurLine(IndexOf(Width - 1, i), IndexOf(NonVisiblePadding, i), -Height);
++        }
+     }
+ 
+     private void BlurLine(int startIndex, int endIndex, int stride)
