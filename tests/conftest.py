@@ -99,6 +99,7 @@ def repo(tmp_path, monkeypatch) -> Repo:
     (root / "tools" / "base.json").write_text(json.dumps(pinned))
     for name, rel in {
         "REPO": ".",
+        "CLIENT": "client",
         "SRC": "src",
         "BASE": ".base",
         "LIB": "lib",

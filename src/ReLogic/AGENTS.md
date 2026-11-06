@@ -2,7 +2,7 @@
 
 The engine layer between Terraria and FNA: asset loading, fonts, RGB peripherals, platform services and small utilities.
 It ships inside `Terraria.exe` as the embedded `Terraria.Libraries.ReLogic.ReLogic.dll`.
-Here it's decompiled from that DLL (Linux build) and compiled by `ReLogic/ReLogic.csproj`; `Terraria.csproj` embeds the result under the same name.
+Here it's decompiled from that DLL (Linux build) and compiled by `client/ReLogic/ReLogic.csproj`; `client/Terraria/Terraria.csproj` embeds the result under the same name.
 Edits here become `patches/ReLogic/…` like any other `src/` edit.
 
 ## Rules for editing
@@ -11,7 +11,7 @@ Edits here become `patches/ReLogic/…` like any other `src/` edit.
   Code here can't use `Terraria.*` types; expose a hook (event, interface, delegate) that Terraria fills in instead.
 - It's a separate assembly: `internal` members on either side aren't visible to the other (the only `InternalsVisibleTo` is for `ReLogic.Tests`).
   Changing a public signature means patching every caller in `src/Terraria/` in the same change.
-- ReLogic references only FNA, Newtonsoft.Json, Ionic.Zip.CF and SteelSeriesEngineWrapper (from `lib/`); adding a dependency means adding it to `ReLogic/ReLogic.csproj`.
+- ReLogic references only FNA, Newtonsoft.Json, Ionic.Zip.CF and SteelSeriesEngineWrapper (from `lib/`); adding a dependency means adding it to `client/ReLogic/ReLogic.csproj`.
 - The base is the **Linux** build, which hard-wires `Platform.Current = new LinuxPlatform()`; Aether patches it to pick the platform at runtime (see [OS/AGENTS.md](OS/AGENTS.md)).
   `WindowsPlatform`, `OS/Windows/WindowService` and `Localization/IME/Windows/` assume XNA's WinForms window and stay unused.
 

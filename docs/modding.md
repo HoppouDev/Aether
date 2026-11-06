@@ -8,6 +8,7 @@ Changes are applied in memory for the current run.
 
 Build the client with `./aether build`.
 Reference `Aether.Modding.dll` and, if you use Terraria types, `Terraria.dll` from the bootstrap output.
+The default Debug client output is `client/Bootstrap/bin/Debug/net10.0/`.
 Keep those references out of the mod archive.
 Use an assembly name unique to your mod.
 
@@ -56,9 +57,10 @@ For an existing built checkout, set `AETHER_ROOT` or use the Git-ignored `.aethe
 
 For an existing mod repo, copy the template launchers to the project root and ignore `.aether/` and `.aether-root` in Git.
 The launcher calls the project's `InstallMod` target.
+If your mod was generated before the client projects moved under `client/`, update its launchers and `build/Aether.Mod.targets` from the template.
 On Linux and macOS, run `chmod +x aether` after copying.
 
-Build the [startup example](examples/StartupMod/StartupMod.csproj) with the following command.
+Build the [startup example](../examples/StartupMod/StartupMod.csproj) with the following command.
 
 ```sh
 dotnet build examples/StartupMod/StartupMod.csproj -t:PackMod

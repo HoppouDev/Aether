@@ -30,7 +30,7 @@ def test_project_files_and_patches_are_allowed(staged):
                 "tools/aether/x.py": "print()\n",
                 "patches/Terraria/Main.cs.patch": "--- a/Terraria/Main.cs\n+++ b/Terraria/Main.cs\n",
                 "src/Terraria/AGENTS.md": "docs\n",
-                "Terraria.csproj": "<Project />\n",
+                "client/Terraria/Terraria.csproj": "<Project />\n",
             }
         )
         == []

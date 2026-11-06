@@ -5,6 +5,7 @@ import sys
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
+CLIENT = REPO / "client"  # tracked .NET projects
 SRC = REPO / "src"  # editable tree: .base/ + patches/
 BASE = REPO / ".base"  # pristine decompile
 LIB = REPO / "lib"  # DLLs extracted from Terraria.exe, plus FNA.dll

@@ -41,7 +41,7 @@ Notes on the game's modules live in `AGENTS.md` files under `src/Terraria/`; rea
   Reformatting or renaming produces huge patches that break on every regeneration.
 - **Versions:** `tools/base.json` pins the build the base is decompiled from (`game_version`, Linux depot manifest, `Terraria.exe` sha256, plus the macOS/Windows manifests), and `setup` checks the exe against it.
   `patches/GAME_VERSION` records the game version the patches are known to apply to; it's committed with them.
-  `diff` sets it to the base's version (patches made against the base apply to it by definition), and so does an `apply` or `setup` in which every patch applies; `status` and `diff --check` report when the two differ. ilspycmd is pinned in `dotnet-tools.json`.
+  `diff` sets it to the base's version (patches made against the base apply to it by definition), and so does an `apply` or `setup` in which every patch applies; `status` and `diff --check` report when the two differ. ilspycmd is pinned in `.config/dotnet-tools.json`.
   The decompile recipe lives in `tools/aether/decompile.py` (`build_base`; libraries in `PATCHABLE_LIBRARIES` are decompiled too, into `src/<name>/`): net40 reference assemblies plus the extracted DLLs (not the game's Mono `mscorlib`, which makes ILSpy emit `MathF.PI`), `--nested-directories -p`, leading tabs → 4 spaces, CRLF → LF for resources.
   Changing the recipe changes `.base/`; bump `recipe` in `base.json`, regenerate, and refresh all patches.
 - The game location defaults to `aether download`'s copy in `.aether/game/` if there is one, otherwise `~/.local/share/Steam/steamapps/common/Terraria`; override it with `--game-dir` or `$TERRARIA_DIR`.
@@ -53,7 +53,7 @@ Notes on the game's modules live in `AGENTS.md` files under `src/Terraria/`; rea
 ## Build and run
 
 ```bash
-dotnet build Bootstrap/Aether.Bootstrap.csproj -c Debug
+dotnet build Aether.slnx -c Debug
 ```
 
 - Targets **.NET 10** (`net10.0`, `Microsoft.NET.Sdk`; `RollForward` lets a newer runtime run it), on every OS: Mono and .NET Framework, which the game's own builds use, aren't involved.
@@ -61,7 +61,7 @@ dotnet build Bootstrap/Aether.Bootstrap.csproj -c Debug
   These are normal for decompiled code, so don't "fix" them unless you're already editing that code.
   The game's XNA-era code (its WinForms window, used only when `Program.IsXna`) compiles against stand-ins in `src/Aether/Compat/` that throw if reached, and `ReLogic`'s XNA-only Windows platform classes are deleted: Windows runs on FNA through `FnaWindowsPlatform`.
   On .NET, `Thread.Abort` doesn't exist (the LAN broadcast thread stops cooperatively), and `Stopwatch` counts nanoseconds on Linux where Mono counted 100 ns ticks (the frame limiter converts its deltas to seconds directly).
-- The client output is `Bootstrap/bin/Debug/net10.0/` with the `Aether.Bootstrap` apphost (`Aether.Bootstrap.exe` on Windows), `Terraria.dll`, the mod API, runtime metadata, FNA and supporting libraries.
+- The client output is `client/Bootstrap/bin/Debug/net10.0/` with the `Aether.Bootstrap` apphost (`Aether.Bootstrap.exe` on Windows), `Terraria.dll`, the mod API, runtime metadata, FNA and supporting libraries.
   **Run it with `./aether run`** (build + launch; `--release`, `--save-dir`, `--real-saves`, `--platform-dir`; arguments after `--` go to the game; Steam must be running), or separately with `./aether build` and `./aether launch` (runs whichever of the Debug/Release builds is newer).
   It needs the .NET 10 runtime installed (the SDK has it), and rebuilds `.aether/run/` around the client with **Aether's FNA** (`lib/FNA.dll` and the matching natives in `lib/fnalibs*/`), which replaces each build's older FNA 26.3 and its SDL3/FNA3D/FAudio:
   - **Linux:** the client with every native library next to it (`lib/fnalibs/lib64/` over the game's Steam and file-dialog libraries from its `lib64/`), plus symlinks to the Linux build's `Content/` and other files; none of its Mono runtime (MonoKickstart, Mono's `*.dll`s, its `Terraria.exe` and FNA).
@@ -79,7 +79,7 @@ dotnet build Bootstrap/Aether.Bootstrap.csproj -c Debug
   The macOS apphost isn't signed when published elsewhere: on Apple silicon, sign the bundle on a Mac (`codesign --force --deep -s - Terraria.app`) before running it.
   `dist/` contains the game's files: it's gitignored and for playing on your own machines, not for distributing.
 - The bootstrap discovers local mod archives before loading the client.
-  See [the mod authoring guide](MODDING.md).
+  See [the mod authoring guide](docs/modding.md).
 - The client exe has no headless mode: `Main.dedServ` is only set in the separate server build, so any runtime test opens a game window.
   To drive that window without focusing it or sending system input, start it with `--control PORT` and use `./aether control` or the `aether-game` MCP server (see `.agents/skills/aether-game/SKILL.md`).
 - **Finding allocations:** `--profile` (Linux; with `--control`) has .NET load Aether's allocation profiler at startup (`CORECLR_PROFILER*`), a CoreCLR profiler (`ICorProfilerCallback3`) compiled from `tools/aether/profiler/aether_profiler.c` into `.aether/profiler/` (needs `cc`).
@@ -94,7 +94,10 @@ dotnet build Bootstrap/Aether.Bootstrap.csproj -c Debug
 | `patches/` | yes | Aether itself: the client's changes to the game, as unified diffs mirroring `src/`. |
 | `.mcp.json`, `.agents/skills/` | yes | The `aether-game` MCP server registration and the agent skill for driving the game (`aether-game`). |
 | `prek.toml`, `rumdl.toml`, `cog.toml` | yes | Git hooks (patch guard, basic checks, rumdl, conventional-pre-commit, cocogitto) and their configs. |
-| `Terraria.csproj`, `ReLogic/ReLogic.csproj`, `dotnet-tools.json` | yes | Project files (`Terraria.csproj` compiles `src/**/*.cs` except `src/ReLogic/`, references `lib/` and the ReLogic project, embeds `src/Resources/*`; `ReLogic.csproj` builds `ReLogic.dll` from `src/ReLogic/`) and the pinned ilspycmd. |
+| `Aether.slnx`, `client/` | yes | .NET solution and projects for the bootstrap, mod API, Terraria and ReLogic. The Terraria and ReLogic projects compile the generated game sources under `src/`. |
+| `.config/dotnet-tools.json` | yes | The pinned ilspycmd local tool. |
+| `docs/`, `examples/`, `templates/` | yes | Mod authoring guide, sample mod and standalone project template. |
+| `assets/source/` | yes | Editable artwork for repository assets. |
 | `src/` | only `AGENTS.md` | Editable tree: `Aether/` (Aether's own code, all added files), `Terraria/` (game code, one folder per namespace), `ReLogic/` (Re-Logic's framework: assets, fonts, RGB, OS layer), `BCrypt/`, `nativefiledialog.cs`, `Properties/` (bundled third-party source, assembly attributes) and `Resources/` (embedded data files, each named after its exact manifest resource name). |
 | `.base/` | no | Pristine decompile, same shape as `src/`. |
 | `dist/` | no | `./aether build --target` output: one self-contained, playable folder per OS (contains game files). |
@@ -111,7 +114,7 @@ dotnet build Bootstrap/Aether.Bootstrap.csproj -c Debug
   FNA is copied next to the client.
   `Aether.NativeLibraries` also looks next to the client for native dependencies such as `libsteam_api.so` and `libnfd.so`.
   The game's background pass that JITs every method skips what needs a library .NET can't load (the WeGame SDK is 32-bit); the .NET Framework builds of the embedded libraries also need the `System.IO.Packaging` and `System.Security.Permissions` packages (and `CaptureCamera`'s XNA path `System.Drawing.Common`, which loads but is never called).
-  ReLogic is the exception: it's built from `src/ReLogic/` by `ReLogic/ReLogic.csproj`, and `Terraria.csproj`'s `EmbedReLogic` target embeds that build under the same name.
+  ReLogic is the exception: it's built from `src/ReLogic/` by `client/ReLogic/ReLogic.csproj`, and `client/Terraria/Terraria.csproj`'s `EmbedReLogic` target embeds that build under the same name.
   To add or replace a library, update both the `Reference` and the `EmbeddedResource` in the csproj, and `LIBRARY_RESOURCES` in `tools/aether/decompile.py` if it comes from the game.
 - Embedded data files are loaded by exact name through `GetManifestResourceStream`/`Utils.ReadEmbeddedResource`.
   Names like `Terraria.Localization.Content.de-DE.json` look culture-specific to MSBuild, which is why the `src/Resources/*` item has `WithCulture="false"`.
@@ -150,6 +153,6 @@ dotnet build Bootstrap/Aether.Bootstrap.csproj -c Debug
 | `Terraria/IO/` | Player/world files, config, resource packs: [src/Terraria/IO/AGENTS.md](src/Terraria/IO/AGENTS.md) |
 | `Terraria/Social/` | Steam / WeGame platform integration: [src/Terraria/Social/AGENTS.md](src/Terraria/Social/AGENTS.md) |
 | `Aether/` | Aether's own code (new files, hooked into the game): the retained-mode title menu and in-game UI: [src/Aether/AGENTS.md](src/Aether/AGENTS.md) |
-| `ReLogic/` | Re-Logic's framework library (assets, fonts, RGB, OS layer), built by `ReLogic/ReLogic.csproj`: [src/ReLogic/AGENTS.md](src/ReLogic/AGENTS.md) |
+| `ReLogic/` | Re-Logic's framework library (assets, fonts, RGB, OS layer), built by `client/ReLogic/ReLogic.csproj`: [src/ReLogic/AGENTS.md](src/ReLogic/AGENTS.md) |
 
 Smaller namespaces without their own notes: `Audio/` (`SoundEngine`), `GameInput/` (`PlayerInput`, keybind profiles), `Map/`, `Chat/` (chat commands and tags), `Initializers/` (startup registration: assets, chat tags, net modules, screen effects), `Testing/` (debug commands, state snapshots, replay tooling), `Achievements/`, `DataStructures/`, `Utilities/`, `Server/`.

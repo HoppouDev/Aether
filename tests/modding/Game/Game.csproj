@@ -7,6 +7,6 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="../../../src/Aether/NativeLibraries.cs" Link="NativeLibraries.cs" />
-    <ProjectReference Include="../../../Modding/Aether.Modding.csproj" />
+    <ProjectReference Include="../../../client/Modding/Aether.Modding.csproj" />
   </ItemGroup>
 </Project>

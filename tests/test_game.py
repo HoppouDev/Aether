@@ -399,7 +399,7 @@ def test_publish_command_is_self_contained_per_runtime(tmp_path):
 
 def test_one_anycpu_build_for_every_os():
     """`aether run` runs the framework-dependent build on any OS: nothing may pin it."""
-    csproj = (paths.REPO / "Terraria.csproj").read_text()
+    csproj = (paths.CLIENT / "Terraria" / "Terraria.csproj").read_text()
     assert "PlatformTarget" not in csproj
     assert "RuntimeIdentifier" not in csproj
     assert "<TargetFramework>net10.0</TargetFramework>" in csproj

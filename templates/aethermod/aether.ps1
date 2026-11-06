@@ -52,12 +52,16 @@ if (-not [IO.Path]::IsPathRooted($clientRoot)) {
 }
 $clientRoot = (Resolve-Path -LiteralPath $clientRoot).ProviderPath
 $launcher = Join-Path $clientRoot 'aether.ps1'
+$bootstrap = Join-Path $clientRoot 'client/Bootstrap'
+if (-not (Test-Path -LiteralPath (Join-Path $bootstrap 'Aether.Bootstrap.csproj') -PathType Leaf)) {
+    $bootstrap = Join-Path $clientRoot 'Bootstrap'
+}
 if (-not (Test-Path -LiteralPath $launcher -PathType Leaf) -or
-    -not (Test-Path -LiteralPath (Join-Path $clientRoot 'Bootstrap/Aether.Bootstrap.csproj') -PathType Leaf)) {
+    -not (Test-Path -LiteralPath (Join-Path $bootstrap 'Aether.Bootstrap.csproj') -PathType Leaf)) {
     throw 'The Aether checkout needs a mod-capable revision with the bootstrap project.'
 }
 
-$clientBuild = Join-Path $clientRoot "Bootstrap/bin/$configuration/net10.0"
+$clientBuild = Join-Path $bootstrap "bin/$configuration/net10.0"
 $saveDir = Join-Path $PSScriptRoot '.aether/saves'
 
 if ($managed -and (

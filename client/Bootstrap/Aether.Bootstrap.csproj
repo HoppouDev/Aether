@@ -5,12 +5,12 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <RollForward>Major</RollForward>
-    <AetherProjectMetadata>$([System.IO.File]::ReadAllText('$(MSBuildProjectDirectory)/../pyproject.toml'))</AetherProjectMetadata>
+    <AetherProjectMetadata>$([System.IO.File]::ReadAllText('$(MSBuildProjectDirectory)/../../pyproject.toml'))</AetherProjectMetadata>
     <Version>$([System.Text.RegularExpressions.Regex]::Match('$(AetherProjectMetadata)', '(?m)^version\s*=\s*"([^"]+)"').Groups[1].Value)</Version>
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="../Terraria.csproj" />
+    <ProjectReference Include="../Terraria/Terraria.csproj" />
     <ProjectReference Include="../Modding/Aether.Modding.csproj" />
     <PackageReference Include="Mono.Cecil" Version="0.11.6" />
   </ItemGroup>

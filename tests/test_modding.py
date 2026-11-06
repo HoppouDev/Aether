@@ -24,7 +24,9 @@ MIXINS = ["TargetMixin", "ITargetAccess", "ITargetFactory"]
 @pytest.fixture(scope="module")
 def game_fixture(tmp_path_factory):
     launcher_dir = Path(
-        os.environ.get("AETHER_BOOTSTRAP_TEST_DIR", ROOT / "Bootstrap" / CONFIG)
+        os.environ.get(
+            "AETHER_BOOTSTRAP_TEST_DIR", ROOT / "client" / "Bootstrap" / CONFIG
+        )
     )
     executable = "Aether.Bootstrap.exe" if os.name == "nt" else "Aether.Bootstrap"
     if not (launcher_dir / executable).is_file():

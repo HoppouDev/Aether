@@ -88,7 +88,7 @@ CONFIGURATIONS = ("Debug", "Release")
 
 def output_dir(configuration: str) -> Path:
     """Where `dotnet build` puts the client (framework-dependent, for this OS)."""
-    return paths.REPO / "Bootstrap" / "bin" / configuration / TARGET_FRAMEWORK
+    return paths.CLIENT / "Bootstrap" / "bin" / configuration / TARGET_FRAMEWORK
 
 
 def latest_build() -> Path:
@@ -150,7 +150,7 @@ def build_command(configuration: str) -> list[str]:
     return [
         "dotnet",
         "build",
-        str(paths.REPO / "Bootstrap" / "Aether.Bootstrap.csproj"),
+        str(paths.CLIENT / "Bootstrap" / "Aether.Bootstrap.csproj"),
         "-c",
         configuration,
         *DOTNET_FLAGS,
@@ -161,7 +161,7 @@ def publish_command(configuration: str, runtime: str, dest: Path) -> list[str]:
     return [
         "dotnet",
         "publish",
-        str(paths.REPO / "Bootstrap" / "Aether.Bootstrap.csproj"),
+        str(paths.CLIENT / "Bootstrap" / "Aether.Bootstrap.csproj"),
         "-c",
         configuration,
         "-r",

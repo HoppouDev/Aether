@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="client/Bootstrap/Aether.Bootstrap.csproj" />
+  <Project Path="client/Modding/Aether.Modding.csproj" />
+  <Project Path="client/ReLogic/ReLogic.csproj" />
+  <Project Path="client/Terraria/Terraria.csproj" />
+</Solution>

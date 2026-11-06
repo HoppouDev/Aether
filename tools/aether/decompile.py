@@ -39,7 +39,7 @@ PATCHABLE_LIBRARIES = {"ReLogic.dll": "ReLogic"}
 
 
 def ilspy(*cmd_args: str, **kwargs) -> subprocess.CompletedProcess:
-    """Runs the ilspycmd version pinned in dotnet-tools.json."""
+    """Runs the ilspycmd version pinned in .config/dotnet-tools.json."""
     return run(
         ["dotnet", "ilspycmd", "--disable-updatecheck", *cmd_args],
         cwd=paths.REPO,
@@ -84,7 +84,7 @@ def reference_assemblies_dir() -> Path:
     if found is None:
         log("restoring .NET Framework 4.0 reference assemblies…")
         run(
-            ["dotnet", "restore", str(paths.REPO / "Terraria.csproj")],
+            ["dotnet", "restore", str(paths.CLIENT / "Terraria" / "Terraria.csproj")],
             capture_output=True,
         )
         found = find()

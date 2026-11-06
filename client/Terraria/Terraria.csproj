@@ -19,8 +19,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="src/**/*.cs" Exclude="src/ReLogic/**" />
-    <ProjectReference Include="Modding/Aether.Modding.csproj" />
+    <Compile Include="../../src/**/*.cs" Exclude="../../src/ReLogic/**" />
+    <ProjectReference Include="../Modding/Aether.Modding.csproj" />
   </ItemGroup>
 
   <!-- Third-party libraries in lib/, extracted by ./aether setup from the embedded resources of
@@ -29,39 +29,39 @@
     <!-- FNA is copied next to the client (it isn't embedded), with the dllmap its FNADllMap
          reads to find the native libraries. -->
     <Reference Include="FNA">
-      <HintPath>lib/FNA.dll</HintPath>
+      <HintPath>../../lib/FNA.dll</HintPath>
     </Reference>
-    <None Include="lib/FNA.dll.config" CopyToOutputDirectory="PreserveNewest" Link="FNA.dll.config" />
+    <None Include="../../lib/FNA.dll.config" CopyToOutputDirectory="PreserveNewest" Link="FNA.dll.config" />
     <Reference Include="Ionic.Zip.CF">
-      <HintPath>lib/Ionic.Zip.CF.dll</HintPath>
+      <HintPath>../../lib/Ionic.Zip.CF.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="Newtonsoft.Json">
-      <HintPath>lib/Newtonsoft.Json.dll</HintPath>
+      <HintPath>../../lib/Newtonsoft.Json.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="SteelSeriesEngineWrapper">
-      <HintPath>lib/SteelSeriesEngineWrapper.dll</HintPath>
+      <HintPath>../../lib/SteelSeriesEngineWrapper.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="RailSDK.Net">
-      <HintPath>lib/RailSDK.Net.dll</HintPath>
+      <HintPath>../../lib/RailSDK.Net.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="Steamworks.NET">
-      <HintPath>lib/Steamworks.NET.dll</HintPath>
+      <HintPath>../../lib/Steamworks.NET.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="CsvHelper">
-      <HintPath>lib/CsvHelper.dll</HintPath>
+      <HintPath>../../lib/CsvHelper.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="MP3Sharp">
-      <HintPath>lib/MP3Sharp.dll</HintPath>
+      <HintPath>../../lib/MP3Sharp.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="NVorbis">
-      <HintPath>lib/NVorbis.dll</HintPath>
+      <HintPath>../../lib/NVorbis.dll</HintPath>
       <Private>False</Private>
     </Reference>
   </ItemGroup>
@@ -79,21 +79,21 @@
   <!-- The game resolves these at runtime from its own manifest resources (see LinuxLaunch.Main),
        so they are embedded under the same names the original executable uses. -->
   <ItemGroup>
-    <EmbeddedResource Include="lib/Ionic.Zip.CF.dll" LogicalName="Terraria.Libraries.DotNetZip.Ionic.Zip.CF.dll" />
-    <EmbeddedResource Include="lib/Newtonsoft.Json.dll" LogicalName="Terraria.Libraries.JSON.NET.Newtonsoft.Json.dll" />
-    <EmbeddedResource Include="lib/CsvHelper.dll" LogicalName="Terraria.Libraries.CsvHelper.CsvHelper.dll" />
-    <EmbeddedResource Include="lib/NVorbis.dll" LogicalName="Terraria.Libraries.NVorbis.NVorbis.dll" />
-    <EmbeddedResource Include="lib/System.ValueTuple.dll" LogicalName="Terraria.Libraries.NVorbis.System.ValueTuple.dll" />
-    <EmbeddedResource Include="lib/MP3Sharp.dll" LogicalName="Terraria.Libraries.MP3Sharp.MP3Sharp.dll" />
-    <EmbeddedResource Include="lib/Steamworks.NET.dll" LogicalName="Terraria.Libraries.Steamworks.NET.Linux.Steamworks.NET.dll" />
-    <EmbeddedResource Include="lib/RailSDK.Net.dll" LogicalName="Terraria.Libraries.RailSDK.Linux.RailSDK.Net.dll" />
-    <EmbeddedResource Include="lib/SteelSeriesEngineWrapper.dll" LogicalName="Terraria.Libraries.SteelSeries.SteelSeriesEngineWrapper.dll" />
+    <EmbeddedResource Include="../../lib/Ionic.Zip.CF.dll" LogicalName="Terraria.Libraries.DotNetZip.Ionic.Zip.CF.dll" />
+    <EmbeddedResource Include="../../lib/Newtonsoft.Json.dll" LogicalName="Terraria.Libraries.JSON.NET.Newtonsoft.Json.dll" />
+    <EmbeddedResource Include="../../lib/CsvHelper.dll" LogicalName="Terraria.Libraries.CsvHelper.CsvHelper.dll" />
+    <EmbeddedResource Include="../../lib/NVorbis.dll" LogicalName="Terraria.Libraries.NVorbis.NVorbis.dll" />
+    <EmbeddedResource Include="../../lib/System.ValueTuple.dll" LogicalName="Terraria.Libraries.NVorbis.System.ValueTuple.dll" />
+    <EmbeddedResource Include="../../lib/MP3Sharp.dll" LogicalName="Terraria.Libraries.MP3Sharp.MP3Sharp.dll" />
+    <EmbeddedResource Include="../../lib/Steamworks.NET.dll" LogicalName="Terraria.Libraries.Steamworks.NET.Linux.Steamworks.NET.dll" />
+    <EmbeddedResource Include="../../lib/RailSDK.Net.dll" LogicalName="Terraria.Libraries.RailSDK.Linux.RailSDK.Net.dll" />
+    <EmbeddedResource Include="../../lib/SteelSeriesEngineWrapper.dll" LogicalName="Terraria.Libraries.SteelSeries.SteelSeriesEngineWrapper.dll" />
   </ItemGroup>
 
   <!-- ReLogic is built from src/ReLogic/ (so patches can change it) and embedded like the
        extracted libraries above. -->
   <ItemGroup>
-    <ProjectReference Include="ReLogic/ReLogic.csproj" Private="False" />
+    <ProjectReference Include="../ReLogic/ReLogic.csproj" Private="False" />
   </ItemGroup>
   <Target Name="EmbedReLogic" AfterTargets="ResolveProjectReferences">
     <ItemGroup>
@@ -105,6 +105,6 @@
        manifest resource name. WithCulture="false" stops MSBuild from treating names such as
        Terraria.Localization.Content.de-DE.json as satellite resources. -->
   <ItemGroup>
-    <EmbeddedResource Include="src/Resources/*" LogicalName="%(Filename)%(Extension)" WithCulture="false" />
+    <EmbeddedResource Include="../../src/Resources/*" LogicalName="%(Filename)%(Extension)" WithCulture="false" />
   </ItemGroup>
 </Project>

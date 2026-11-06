@@ -4,7 +4,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>Aether.Examples.StartupMod</AssemblyName>
     <GameVersion Condition="'$(GameVersion)' == ''">1.4.5.8</GameVersion>
-    <AetherClientDirectory Condition="'$(AetherClientDirectory)' == ''">../../Bootstrap/bin/Debug/net10.0</AetherClientDirectory>
+    <AetherClientDirectory Condition="'$(AetherClientDirectory)' == ''">../../client/Bootstrap/bin/Debug/net10.0</AetherClientDirectory>
     <EnableDynamicLoading>true</EnableDynamicLoading>
   </PropertyGroup>
   <ItemGroup>

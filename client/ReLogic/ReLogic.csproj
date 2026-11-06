@@ -13,24 +13,24 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="../src/ReLogic/**/*.cs" />
+    <Compile Include="../../src/ReLogic/**/*.cs" />
   </ItemGroup>
 
   <ItemGroup>
     <Reference Include="FNA">
-      <HintPath>../lib/FNA.dll</HintPath>
+      <HintPath>../../lib/FNA.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="Newtonsoft.Json">
-      <HintPath>../lib/Newtonsoft.Json.dll</HintPath>
+      <HintPath>../../lib/Newtonsoft.Json.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="SteelSeriesEngineWrapper">
-      <HintPath>../lib/SteelSeriesEngineWrapper.dll</HintPath>
+      <HintPath>../../lib/SteelSeriesEngineWrapper.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="Ionic.Zip.CF">
-      <HintPath>../lib/Ionic.Zip.CF.dll</HintPath>
+      <HintPath>../../lib/Ionic.Zip.CF.dll</HintPath>
       <Private>False</Private>
     </Reference>
   </ItemGroup>

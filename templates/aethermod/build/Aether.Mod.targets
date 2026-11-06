@@ -6,7 +6,10 @@
     <AetherRoot Condition="'$(AetherRoot)' == ''">.aether/client</AetherRoot>
     <AetherClientConfiguration Condition="'$(AETHER_CONFIGURATION)' != ''">$(AETHER_CONFIGURATION)</AetherClientConfiguration>
     <AetherClientConfiguration Condition="'$(AetherClientConfiguration)' == ''">Debug</AetherClientConfiguration>
-    <AetherClientDirectory Condition="'$(AetherClientDirectory)' == '' And '$(AetherRoot)' != ''">$([System.IO.Path]::GetFullPath('$(AetherRoot)', '$(MSBuildProjectDirectory)'))/Bootstrap/bin/$(AetherClientConfiguration)/net10.0</AetherClientDirectory>
+    <AetherRootPath>$([System.IO.Path]::GetFullPath('$(AetherRoot)', '$(MSBuildProjectDirectory)'))</AetherRootPath>
+    <AetherBootstrapPath>$(AetherRootPath)/client/Bootstrap</AetherBootstrapPath>
+    <AetherBootstrapPath Condition="!Exists('$(AetherBootstrapPath)/Aether.Bootstrap.csproj') And Exists('$(AetherRootPath)/Bootstrap/Aether.Bootstrap.csproj')">$(AetherRootPath)/Bootstrap</AetherBootstrapPath>
+    <AetherClientDirectory Condition="'$(AetherClientDirectory)' == ''">$(AetherBootstrapPath)/bin/$(AetherClientConfiguration)/net10.0</AetherClientDirectory>
     <AetherSaveDirectory Condition="'$(AetherSaveDirectory)' == ''">$(MSBuildProjectDirectory)/.aether/saves</AetherSaveDirectory>
   </PropertyGroup>
 

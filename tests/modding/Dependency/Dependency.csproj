@@ -4,7 +4,7 @@
     <AssemblyName>Aether.Tests.Dependency</AssemblyName>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="../../../Modding/Aether.Modding.csproj" />
+    <ProjectReference Include="../../../client/Modding/Aether.Modding.csproj" />
     <ProjectReference Include="../Private/Private.csproj" />
   </ItemGroup>
 </Project>

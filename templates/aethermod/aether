@@ -46,13 +46,17 @@ case "$client_root" in
     /*) ;;
     *) client_root="$mod_root/$client_root" ;;
 esac
-if [ ! -x "$client_root/aether" ] || [ ! -f "$client_root/Bootstrap/Aether.Bootstrap.csproj" ]; then
+bootstrap_dir=client/Bootstrap
+if [ ! -f "$client_root/$bootstrap_dir/Aether.Bootstrap.csproj" ]; then
+    bootstrap_dir=Bootstrap
+fi
+if [ ! -x "$client_root/aether" ] || [ ! -f "$client_root/$bootstrap_dir/Aether.Bootstrap.csproj" ]; then
     printf '%s\n' 'The Aether checkout needs a mod-capable revision with the bootstrap project.' >&2
     exit 1
 fi
 client_root=$(CDPATH= cd -- "$client_root" && pwd -P)
 
-client_build="$client_root/Bootstrap/bin/$configuration/net10.0"
+client_build="$client_root/$bootstrap_dir/bin/$configuration/net10.0"
 save_dir="$mod_root/.aether/saves"
 
 if [ "$managed" = true ] && { [ ! -f "$client_build/Aether.Bootstrap.dll" ] ||
