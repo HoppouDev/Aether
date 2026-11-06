@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/Aether/Testing/NativeProfiler.cs
-@@ -0,0 +1,66 @@
+@@ -0,0 +1,81 @@
 +using System;
 +using System.Runtime.InteropServices;
 +
@@ -13,57 +13,72 @@
 +/// allocation sites and the methods that allocate the most. The control server's <c>profile</c>
 +/// command drives it.
 +/// </summary>
-+public static class NativeProfiler
++public static unsafe class NativeProfiler
 +{
-+    // The library is preloaded, so its functions are in the process's global symbols.
-+    [DllImport("__Internal")]
-+    private static extern int aether_profiler_available();
++    private static bool _loaded;
 +
-+    [DllImport("__Internal")]
-+    private static extern void aether_profiler_start();
++    private static delegate* unmanaged<int> _available;
 +
-+    [DllImport("__Internal")]
-+    private static extern void aether_profiler_stop();
++    private static delegate* unmanaged<void> _start;
 +
-+    [DllImport("__Internal")]
-+    private static extern int aether_profiler_report([MarshalAs(UnmanagedType.LPStr)] string path, int top, int per);
++    private static delegate* unmanaged<void> _stop;
 +
-+    private static bool? _available;
++    private static delegate* unmanaged<byte*, int, int, int> _report;
 +
 +    /// <summary>Whether the profiler was loaded into the game.</summary>
 +    public static bool Available
 +    {
 +        get
 +        {
-+            if (!_available.HasValue)
++            if (!_loaded)
 +            {
-+                try
-+                {
-+                    _available = aether_profiler_available() != 0;
-+                }
-+                catch (Exception exception) when (exception is EntryPointNotFoundException || exception is DllNotFoundException)
-+                {
-+                    _available = false;
-+                }
++                _loaded = true;
++                Load();
 +            }
-+            return _available.Value;
++            return _available != null && _available() != 0;
++        }
++    }
++
++    // .NET loaded the profiler privately from CORECLR_PROFILER_PATH; loading the same path again
++    // gives the same library, whose exports this calls.
++    private static void Load()
++    {
++        string path = Environment.GetEnvironmentVariable("CORECLR_PROFILER_PATH");
++        if (string.IsNullOrEmpty(path) || !NativeLibrary.TryLoad(path, out var library))
++        {
++            return;
++        }
++        if (NativeLibrary.TryGetExport(library, "aether_profiler_available", out var available) && NativeLibrary.TryGetExport(library, "aether_profiler_start", out var start) && NativeLibrary.TryGetExport(library, "aether_profiler_stop", out var stop) && NativeLibrary.TryGetExport(library, "aether_profiler_report", out var report))
++        {
++            _available = (delegate* unmanaged<int>)available;
++            _start = (delegate* unmanaged<void>)start;
++            _stop = (delegate* unmanaged<void>)stop;
++            _report = (delegate* unmanaged<byte*, int, int, int>)report;
 +        }
 +    }
 +
 +    /// <summary>Forgets what was collected and starts collecting (call from the main thread, which the report tells apart).</summary>
 +    public static void Start()
 +    {
-+        aether_profiler_start();
++        _start();
 +    }
 +
 +    public static void Stop()
 +    {
-+        aether_profiler_stop();
++        _stop();
 +    }
 +
 +    /// <summary>Writes the top sites and methods to path, per frame over frames; false if it can't be written.</summary>
 +    public static bool Report(string path, int top, int frames)
 +    {
-+        return aether_profiler_report(path, top, frames) == 0;
++        IntPtr text = Marshal.StringToCoTaskMemUTF8(path);
++        try
++        {
++            return _report((byte*)text, top, frames) == 0;
++        }
++        finally
++        {
++            Marshal.FreeCoTaskMem(text);
++        }
 +    }
 +}

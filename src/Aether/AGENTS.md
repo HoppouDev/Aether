@@ -103,7 +103,7 @@ Started with `-aethercontrol [PORT]` (`./aether run|launch|screens --control POR
   Each command is an iterator that yields once per update, so smooth moves, drags, stick and trigger glides and waits span updates, and the reply comes when the command has finished.
   Screenshots read the back buffer in `Main.OnPostDraw`, optionally cropped and box-filtered.
   The command list is its doc comment.
-  `profile [FRAMES] [TOP] PATH` reports allocation call stacks when the game was started with the allocation profiler (`--profile`; `NativeProfiler` calls into it through `DllImport("__Internal")`: it's LD_PRELOADed, because MonoKickstart ignores `MONO_ENV_OPTIONS` and allocation tracking must be on before the runtime starts).
+  `profile [FRAMES] [TOP] PATH` reports allocation call stacks when the game was started with the allocation profiler (`--profile`; .NET loads it from `CORECLR_PROFILER_PATH` at startup, and `NativeProfiler` loads that same library again to call its exports; the report is written from a native thread of its own, since .NET refuses the profiler's metadata lookups from managed threads).
   `alloc [FRAMES]` measures main-thread allocations (overall and per retained screen) and `menu MODE` switches title-menu screens.
   If the main thread stops updating for 10 s (a hang, or a crash showing its error dialog), waiting commands fail instead of blocking, and are skipped if it recovers.
 - Clients: `./aether control` (`tools/aether/control.py`) and the `aether-game` MCP server (`tools/aether/mcp_server.py`, FastMCP, registered in `.mcp.json`); `.agents/skills/aether-game/SKILL.md` is the guide for agents.
@@ -111,5 +111,5 @@ Started with `-aethercontrol [PORT]` (`./aether run|launch|screens --control POR
 ## Allocation-free helpers (`Utilities/`)
 
 Code that runs every frame shouldn't allocate (the garbage collector's pauses show as stutters); find what does with the allocation profiler (`--profile`, then the control command `profile`).
-`IntSort.Sort` sorts without Mono's per-call comparison delegate, and `EnumNames<T>.Of` caches enum names (`ToString()` allocates every call; prefer `nameof` for constants).
+`IntSort.Sort` sorts ints in place without allocating, and `EnumNames<T>.Of` caches enum names (`ToString()` allocates every call; prefer `nameof` for constants).
 Common fixes in the game code: reuse one object or list instead of making one per call (as `TileDrawing` does with its `TileDrawInfo`), add single-argument overloads for `params` methods called every frame, cache delegates made from lambdas, and queue thread-pool work with `UnsafeQueueUserWorkItem` and a cached callback.

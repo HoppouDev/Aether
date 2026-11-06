@@ -80,9 +80,9 @@ dotnet build -c Debug
   `dist/` contains the game's files: it's gitignored and for playing on your own machines, not for distributing.
 - The client exe has no headless mode: `Main.dedServ` is only set in the separate server build, so any runtime test opens a game window.
   To drive that window without focusing it or sending system input, start it with `--control PORT` and use `./aether control` or the `aether-game` MCP server (see `.agents/skills/aether-game/SKILL.md`).
-- **Finding allocations:** `--profile` (Linux; with `--control`) preloads Aether's allocation profiler, a Mono profiler module compiled from `tools/aether/profiler/aether_profiler.c` into `.aether/profiler/` (needs `cc`).
+- **Finding allocations:** `--profile` (Linux; with `--control`) has .NET load Aether's allocation profiler at startup (`CORECLR_PROFILER*`), a CoreCLR profiler (`ICorProfilerCallback3`) compiled from `tools/aether/profiler/aether_profiler.c` into `.aether/profiler/` (needs `cc`).
   The control command `profile [FRAMES] [TOP] PATH` (MCP: `game_profile`) then records every managed allocation's class, size and call stack and writes the methods with the most bytes allocated under them and the top sites, per frame.
-  The runtime's allocation fast paths are off for a profiled run, so only compare profiled runs with each other.
+  Allocation tracking turns off the runtime's allocation fast paths for the whole run, so only compare profiled runs with each other.
 
 ## Layout
 

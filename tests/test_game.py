@@ -1,5 +1,6 @@
 import json
 import os
+import re
 from pathlib import Path
 
 import pytest
@@ -602,12 +603,50 @@ def test_screens_opens_the_gallery(repo, tmp_path, monkeypatch, argv, expected):
     assert seen == {"client": client, "args": expected}
 
 
-def test_profile_is_not_available_until_ported():
-    from aether.profiler import profiler_env
+def test_profile_env_loads_the_coreclr_profiler(monkeypatch, tmp_path):
+    from aether import profiler
+
+    library = tmp_path / "libaether-profiler.so"
+    monkeypatch.setattr(profiler, "build_profiler", lambda: library)
+    assert profiler.profiler_env("linux", 16) == {
+        "CORECLR_ENABLE_PROFILING": "1",
+        "CORECLR_PROFILER": profiler.CLSID,
+        "CORECLR_PROFILER_PATH": str(library),
+        "AETHER_PROFILER": "depth=16",
+    }
+
+
+def test_profiler_clsid_matches_the_source():
+    from aether import profiler
+
+    line = next(
+        line
+        for line in profiler.SOURCE.read_text().splitlines()
+        if "CLSID_AetherProfiler =" in line
+    )
+    numbers = [int(number, 16) for number in re.findall(r"0x([0-9A-Fa-f]+)", line)]
+    tail = "".join(f"{byte:02X}" for byte in numbers[3:])
+    assert (
+        profiler.CLSID
+        == f"{{{numbers[0]:08X}-{numbers[1]:04X}-{numbers[2]:04X}-{tail[:4]}-{tail[4:]}}}"
+    )
+
+
+@pytest.mark.parametrize(
+    ("platform", "depth", "message"),
+    [
+        ("windows", 16, "Linux only"),
+        ("linux", 0, "between 1 and 32"),
+        ("linux", 33, "between 1 and 32"),
+    ],
+)
+def test_profile_env_rejects(monkeypatch, platform, depth, message):
+    from aether import profiler
     from aether.util import AetherError
 
-    with pytest.raises(AetherError, match="isn't available yet"):
-        profiler_env("linux", 16)
+    monkeypatch.setattr(profiler, "build_profiler", lambda: pytest.fail("built"))
+    with pytest.raises(AetherError, match=message):
+        profiler.profiler_env(platform, depth)
 
 
 def test_build_needs_fnas_net_build(repo, monkeypatch):
