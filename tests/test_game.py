@@ -110,8 +110,8 @@ def builds(repo, tmp_path, monkeypatch):
         client,
         {
             "Terraria.dll": b"aether client",
-            "Terraria": b"\x7fELF apphost",
-            "Terraria.exe": b"MZ apphost",
+            "Aether.Bootstrap": b"\x7fELF apphost",
+            "Aether.Bootstrap.exe": b"MZ apphost",
             "Terraria.pdb": b"pdb",
             "Terraria.runtimeconfig.json": "{}",
             "FNA.dll": b"fna 26.11",
@@ -139,7 +139,7 @@ def test_linux_lays_the_client_out_with_its_natives(builds):
     game.prepare_run_dir("linux", linux, Path(), client, run_dir)
 
     assert_client(run_dir)
-    assert (run_dir / "Terraria").read_bytes() == b"\x7fELF apphost"
+    assert (run_dir / "Aether.Bootstrap").read_bytes() == b"\x7fELF apphost"
     assert (run_dir / "Content").is_symlink()
     assert (run_dir / "Content/Images/Item_1.xnb").read_bytes() == b"linux xnb"
     assert (run_dir / "open-folder").is_symlink()
@@ -345,8 +345,8 @@ def published(builds, monkeypatch):
 @pytest.mark.parametrize(
     ("target", "launcher", "client"),
     [
-        ("lin64", "Terraria", ""),
-        ("win64", "Terraria.exe", ""),
+        ("lin64", "Aether.Bootstrap", ""),
+        ("win64", "Aether.Bootstrap.exe", ""),
         (
             "mac64",
             "Terraria.app/Contents/MacOS/Terraria",
@@ -410,9 +410,9 @@ def test_one_anycpu_build_for_every_os():
 @pytest.mark.parametrize(
     ("platform", "launcher"),
     [
-        ("linux", "Terraria"),
+        ("linux", "Aether.Bootstrap"),
         ("macos", "Terraria.app/Contents/MacOS/Terraria"),
-        ("windows", "Terraria.exe"),
+        ("windows", "Aether.Bootstrap.exe"),
     ],
 )
 def test_launch_command(tmp_path, platform, launcher):
@@ -486,7 +486,7 @@ def test_latest_build_picks_the_newest_configuration(repo):
 
 def test_check_build_needs_this_os_apphost(tmp_path):
     client = tmp_path / "client"
-    write_files(client, {"Terraria.dll": b"dll", "Terraria": b"apphost"})
+    write_files(client, {"Terraria.dll": b"dll", "Aether.Bootstrap": b"apphost"})
     game.check_build(client, "linux")
     game.check_build(client, "macos")
     with pytest.raises(AetherError, match="built on another OS"):

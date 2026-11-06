@@ -87,7 +87,7 @@ CONFIGURATIONS = ("Debug", "Release")
 
 def output_dir(configuration: str) -> Path:
     """Where `dotnet build` puts the client (framework-dependent, for this OS)."""
-    return paths.REPO / "bin" / configuration / TARGET_FRAMEWORK
+    return paths.REPO / "Bootstrap" / "bin" / configuration / TARGET_FRAMEWORK
 
 
 def latest_build() -> Path:
@@ -104,7 +104,7 @@ def latest_build() -> Path:
 
 def apphost(platform: str) -> str:
     """The client's native launcher (the .NET apphost) on platform."""
-    return "Terraria.exe" if platform == "windows" else "Terraria"
+    return "Aether.Bootstrap.exe" if platform == "windows" else "Aether.Bootstrap"
 
 
 def check_build(client: Path, platform: str) -> None:
@@ -134,14 +134,14 @@ def resolve_target(target: str) -> list[str]:
 
 # No lingering MSBuild nodes or compiler server: they would inherit the captured output pipe and
 # keep it open after the build finishes.
-DOTNET_FLAGS = ("-nodeReuse:false", "-p:UseSharedCompilation=false")
+DOTNET_FLAGS = ("-m:1", "-nodeReuse:false", "-p:UseSharedCompilation=false")
 
 
 def build_command(configuration: str) -> list[str]:
     return [
         "dotnet",
         "build",
-        str(paths.REPO / "Terraria.csproj"),
+        str(paths.REPO / "Bootstrap" / "Aether.Bootstrap.csproj"),
         "-c",
         configuration,
         *DOTNET_FLAGS,
@@ -152,7 +152,7 @@ def publish_command(configuration: str, runtime: str, dest: Path) -> list[str]:
     return [
         "dotnet",
         "publish",
-        str(paths.REPO / "Terraria.csproj"),
+        str(paths.REPO / "Bootstrap" / "Aether.Bootstrap.csproj"),
         "-c",
         configuration,
         "-r",
@@ -182,7 +182,7 @@ def update_fna() -> None:
 
 
 def build_client(configuration: str, platform: str) -> Path:
-    """Builds Terraria.csproj (and ReLogic) and returns the client folder."""
+    """Builds the bootstrap and game and returns the client folder."""
     update_fna()
     log(f"building the client ({configuration}, {platform})…")
     run_dotnet(build_command(configuration), "build")
@@ -303,7 +303,7 @@ def prepare_linux(
 MAC_LAUNCHER = """#!/bin/sh
 # Aether: the client is in Contents/Client/ (with its natives and Content/ link).
 cd "$(dirname "$0")/../Client" || exit 1
-exec ./Terraria "$@"
+exec ./Aether.Bootstrap "$@"
 """
 
 
@@ -324,7 +324,7 @@ def prepare_macos(
     for entry in contents.iterdir():
         if entry.name == "MacOS":
             # The vanilla server's launcher and natives, as real files; the client's
-            # launcher replaced by a script that starts Contents/Client/Terraria.
+            # launcher replaced by a script that starts Contents/Client/Aether.Bootstrap.
             shutil.copytree(entry, out / "MacOS", symlinks=True)
             launcher = out / "MacOS" / "Terraria"
             launcher.unlink(missing_ok=True)

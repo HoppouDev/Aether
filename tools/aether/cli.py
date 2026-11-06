@@ -298,7 +298,7 @@ def build(
     game_dir: GameDirOption = None,
     platform_dir: PlatformDirOption = None,
 ) -> None:
-    """Build the client (Terraria.csproj with ReLogic), and optionally package it per OS.
+    """Build the bootstrap and game, and optionally package it per OS.
 
     The client is a .NET 10 app; a target folder publishes it self-contained for that OS
     (with the .NET runtime) and lays it out with the game's files, from the Linux build (the

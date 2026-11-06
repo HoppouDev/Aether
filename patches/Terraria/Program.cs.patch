@@ -54,7 +54,27 @@
              }
          }
      }
-@@ -240,7 +266,8 @@
+@@ -180,16 +206,13 @@
+     public static void LaunchGame(string[] args, bool monoArgs = false)
+     {
+         Thread.CurrentThread.Name = "Main Thread";
+-        if (monoArgs)
+-        {
+-            args = Utils.ConvertMonoArgsToDotNet(args);
+-        }
+         LogFNANativeLibVersions();
+-        LaunchParameters = Utils.ParseArguements(args);
+-        SavePath = (LaunchParameters.ContainsKey("-savedirectory") ? LaunchParameters["-savedirectory"] : Platform.Get<IPathService>().GetStoragePath("Terraria"));
++        LaunchParameters = Aether.Modding.ClientStartup.ParseArguments(args, monoArgs);
++        SavePath = Aether.Modding.ClientStartup.ResolveSavePath(LaunchParameters);
+         ThreadPool.SetMinThreads(8, 8);
+         InitializeConsoleOutput();
+         SetupLogging();
++        Aether.Modding.ClientStartup.InitializeMods?.Invoke();
+         Platform.Get<IWindowService>().SetQuickEditEnabled(enabled: false);
+         RunGame();
+     }
+@@ -240,7 +263,8 @@
      private static void LogFNANativeLibVersions()
      {
          Console.WriteLine(("SDL v" + SDL.SDL_GetVersion() + "." + SDL.SDL_GetRevision()) ?? "");

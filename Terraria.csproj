@@ -11,6 +11,7 @@
     <ImplicitUsings>disable</ImplicitUsings>
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
     <StartupObject>Terraria.LinuxLaunch</StartupObject>
+    <UseAppHost>false</UseAppHost>
     <!-- Sources live in src/ (base + patches); never glob .base/ or lib/. -->
     <EnableDefaultItems>False</EnableDefaultItems>
   </PropertyGroup>
@@ -22,6 +23,7 @@
 
   <ItemGroup>
     <Compile Include="src/**/*.cs" Exclude="src/ReLogic/**" />
+    <ProjectReference Include="Modding/Aether.Modding.csproj" />
   </ItemGroup>
 
   <!-- Third-party libraries in lib/, extracted by ./aether setup from the embedded resources of
