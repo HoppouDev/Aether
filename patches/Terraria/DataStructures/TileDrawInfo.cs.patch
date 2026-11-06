@@ -1,6 +1,6 @@
 --- a/Terraria/DataStructures/TileDrawInfo.cs
 +++ b/Terraria/DataStructures/TileDrawInfo.cs
-@@ -37,7 +37,13 @@
+@@ -37,9 +37,38 @@
  
      public Color glowColor;
  
@@ -15,3 +15,28 @@
  
      public Color finalColor;
  
+     public Color colorTint;
++
++    /// <summary>Clears everything but colorSlices, for reusing one instance for every tile (TileDrawing draws them one at a time).</summary>
++    public void Reset()
++    {
++        tileCache = null;
++        typeCache = 0;
++        tileFrameX = 0;
++        tileFrameY = 0;
++        drawTexture = null;
++        tileLight = default(Color);
++        tileTop = 0;
++        tileWidth = 0;
++        tileHeight = 0;
++        halfBrickHeight = 0;
++        addFrY = 0;
++        addFrX = 0;
++        tileSpriteEffect = SpriteEffects.None;
++        glowTexture = null;
++        glowSourceRect = default(Rectangle);
++        glowColor = default(Color);
++        finalColor = default(Color);
++        colorTint = default(Color);
++    }
+ }

@@ -83,8 +83,7 @@
 -            Main.tileBatch.SetLayer(Layer_OverTiles, 0);
 -        }
 -        else if (tileDrawInfo.tileTop + tileDrawInfo.tileHeight <= 16)
-+        if (_perspectivePlayer.dangerSense && IsTileDangerous(_perspectivePlayer, tileX, tileY, tileCache, typeCache))
-         {
+-        {
 -            Main.tileBatch.SetLayer(Layer_Tiles, 0);
 -        }
 -        else
@@ -96,7 +95,8 @@
 -        Rectangle empty = Rectangle.Empty;
 -        Color highlightColor = Color.Transparent;
 -        if (TileID.Sets.HasOutlines[tileDrawInfo.typeCache])
--        {
++        if (_perspectivePlayer.dangerSense && IsTileDangerous(_perspectivePlayer, tileX, tileY, tileCache, typeCache))
+         {
 -            GetTileOutlineInfo(tileX, tileY, tileDrawInfo.typeCache, ref tileDrawInfo.tileLight, ref highlightTexture, ref highlightColor);
 -        }
 -        if (_perspectivePlayer.dangerSense && IsTileDangerous(_perspectivePlayer, tileX, tileY, tileDrawInfo.tileCache, tileDrawInfo.typeCache))
@@ -190,7 +190,7 @@
                  if (_isActiveAndNotPaused && _rand.Next(480) == 0)
                  {
                      Color newColor = sightColor;
-@@ -971,11 +966,83 @@
+@@ -971,11 +966,90 @@
                  }
              }
          }
@@ -221,13 +221,13 @@
 +        {
 +            if (visible && TileDrawingBase.DrawOwnBlacks) drawBlackHelper.DrawBlack(x, y);
 +            return true;
-         }
--        tileDrawInfo.tileLight = DrawTiles_GetLightOverride(tileY, tileX, tileDrawInfo.tileCache, tileDrawInfo.typeCache, tileDrawInfo.tileFrameX, tileDrawInfo.tileFrameY, tileDrawInfo.tileLight);
++        }
 +        Color final = GetFinalLight(tile, type, light, Color.White);
 +        if (Aether.Graphics.Terrain.TerrainRendererHost.TryQueuePreparedPlainTile(x, y, tile, type, light, final)) return true;
 +        // A prepared binding can be invalidated while required effects execute.
 +        // Replay pure drawing only: the effects above must never run twice.
-+        TileDrawInfo fallback = new TileDrawInfo(false);
++        TileDrawInfo fallback = _fallbackDrawInfo;
++        fallback.Reset();
 +        fallback.tileCache = tile; fallback.typeCache = type; fallback.tileFrameX = frameX; fallback.tileFrameY = frameY;
 +        fallback.tileWidth = fallback.tileHeight = 16; fallback.drawTexture = texture;
 +        fallback.tileLight = light; fallback.finalColor = final; fallback.glowColor = Color.Transparent;
@@ -237,11 +237,17 @@
 +    }
 +
 +    private bool _tryCachedPlain;
++
++    // One TileDrawInfo per kind of draw, reused for every tile instead of one per tile per frame.
++    private readonly TileDrawInfo _drawInfo = new TileDrawInfo(false);
++
++    private readonly TileDrawInfo _fallbackDrawInfo = new TileDrawInfo(false);
 +    private readonly Vector3[] _terrainColorSlices = new Vector3[9];
 +
 +    private void DrawSingleTile(Vector2 screenPosition, Vector2 screenOffset, int tileX, int tileY)
 +    {
-+        TileDrawInfo tileDrawInfo = new TileDrawInfo(!_tryCachedPlain);
++        TileDrawInfo tileDrawInfo = _drawInfo;
++        tileDrawInfo.Reset();
 +        tileDrawInfo.tileCache = Main.tile[tileX, tileY];
 +        tileDrawInfo.typeCache = tileDrawInfo.tileCache.type;
 +        tileDrawInfo.tileFrameX = tileDrawInfo.tileCache.frameX;
@@ -263,7 +269,8 @@
 +        else
 +        {
 +            Main.tileBatch.SetLayer(Layer_BehindTiles, 0);
-+        }
+         }
+-        tileDrawInfo.tileLight = DrawTiles_GetLightOverride(tileY, tileX, tileDrawInfo.tileCache, tileDrawInfo.typeCache, tileDrawInfo.tileFrameX, tileDrawInfo.tileFrameY, tileDrawInfo.tileLight);
 +        tileDrawInfo.drawTexture = GetTileDrawTexture(tileDrawInfo.tileCache, tileX, tileY);
 +        Texture2D highlightTexture = null;
 +        Rectangle empty = Rectangle.Empty;
@@ -276,7 +283,7 @@
          bool flag = false;
          if (tileDrawInfo.glowTexture != null || Main.tileGlowMask[tileDrawInfo.typeCache] != -1 || Main.tileFlame[tileDrawInfo.typeCache])
          {
-@@ -1191,7 +1258,7 @@
+@@ -1191,7 +1265,7 @@
          }
          else
          {
@@ -285,7 +292,7 @@
          }
          if (Main.tileGlowMask[tileDrawInfo.tileCache.type] != -1)
          {
-@@ -1524,8 +1591,10 @@
+@@ -1524,8 +1598,10 @@
          return TextureAssets.CageTop[key.CageStyle].Value;
      }
  
@@ -297,7 +304,7 @@
          bool flag = !TileID.Sets.DontDrawTileSliced[drawData.tileCache.type];
          bool flag2 = !TileID.Sets.DontDrawTileSlopes[drawData.tileCache.type];
          if (drawData.typeCache == 380 || TileID.Sets.Platforms[drawData.typeCache])
-@@ -3548,7 +3617,7 @@
+@@ -3548,7 +3624,7 @@
          Vector2 position = default;
          if (drawData.tileLight.R > _highQualityLightingRequirement.R || drawData.tileLight.G > _highQualityLightingRequirement.G || drawData.tileLight.B > _highQualityLightingRequirement.B)
          {
@@ -306,7 +313,7 @@
              Lighting.GetColor9Slice(tileX, tileY, ref slices);
              Vector3 vector = drawData.tileLight.ToVector3();
              Vector3 tint = drawData.colorTint.ToVector3();
-@@ -3631,7 +3700,7 @@
+@@ -3631,7 +3707,7 @@
          }
          else if (drawData.tileLight.R > _mediumQualityLightingRequirement.R || drawData.tileLight.G > _mediumQualityLightingRequirement.G || drawData.tileLight.B > _mediumQualityLightingRequirement.B)
          {
@@ -315,7 +322,7 @@
              Lighting.GetColor4Slice(tileX, tileY, ref slices2);
              Vector3 vector2 = drawData.tileLight.ToVector3();
              Vector3 tint2 = drawData.colorTint.ToVector3();
-@@ -6697,7 +6766,7 @@
+@@ -6697,7 +6773,7 @@
          if (Main.sectionManager.AnyUnfinishedSections)
          {
              TimeLogger.StartTimestamp fromTimestamp = TimeLogger.Start();
@@ -324,7 +331,7 @@
              TimeLogger.SectionFraming.AddTime(fromTimestamp);
          }
          if (Main.sectionManager.AnyNeedRefresh)
-@@ -7824,14 +7893,15 @@
+@@ -7824,14 +7900,15 @@
          _gore[num2].velocity *= 0f;
      }
  
@@ -342,7 +349,7 @@
          if (Main.remixWorld)
          {
              if (!((double)y > Main.worldSurface))
-@@ -8301,7 +8371,7 @@
+@@ -8301,7 +8378,7 @@
                          float num15 = 0f;
                          if (!flag)
                          {
@@ -351,7 +358,7 @@
                          }
                          position3.X += num15 * 2f;
                          position3.Y += Math.Abs(num15) * 2f;
-@@ -8353,7 +8423,7 @@
+@@ -8353,7 +8430,7 @@
                          float num12 = 0f;
                          if (!flag)
                          {
@@ -360,7 +367,7 @@
                          }
                          if (num12 > 0f)
                          {
-@@ -8408,7 +8478,7 @@
+@@ -8408,7 +8485,7 @@
                          float num8 = 0f;
                          if (!flag)
                          {
@@ -369,7 +376,7 @@
                          }
                          if (num8 < 0f)
                          {
-@@ -8466,7 +8536,7 @@
+@@ -8466,7 +8543,7 @@
                      float num21 = 0f;
                      if (!flag)
                      {
@@ -378,7 +385,7 @@
                      }
                      position4.X += num21 * 2f;
                      position4.Y += Math.Abs(num21) * 2f;
-@@ -8538,7 +8608,7 @@
+@@ -8538,7 +8615,7 @@
                  Main.instance.LoadTiles(type);
              }
              Vector2 position = new Vector2(x * 16 - (int)unscaledPosition.X + 8, y * 16 - (int)unscaledPosition.Y + 16) + zero;
@@ -387,7 +394,7 @@
              if (!WallID.Sets.AllowsWind[tile.wall])
              {
                  num3 = 0f;
-@@ -8596,7 +8666,7 @@
+@@ -8596,7 +8673,7 @@
                  Main.instance.LoadTiles(type);
              }
              Vector2 position = new Vector2(x * 16 - (int)unscaledPosition.X, y * 16 - (int)unscaledPosition.Y) + zero;
@@ -396,7 +403,7 @@
              if (!WallID.Sets.AllowsWind[tile.wall])
              {
                  num3 = 0f;
-@@ -8901,7 +8971,7 @@
+@@ -8901,7 +8978,7 @@
          {
              Point p = _specialPositions[num][i];
              VoidLensHelper voidLensHelper = new VoidLensHelper(p.ToWorldCoordinates(), 1f);
@@ -405,7 +412,7 @@
              {
                  voidLensHelper.Update();
              }
-@@ -9106,7 +9176,7 @@
+@@ -9106,7 +9183,7 @@
  
      private void DrawMultiTileGrassInWind(Vector2 screenPosition, Vector2 offSet, int topLeftX, int topLeftY, int sizeX, int sizeY)
      {
@@ -414,7 +421,7 @@
          Vector2 vector = new Vector2((float)(topLeftX * 16 - (int)screenPosition.X) + (float)sizeX * 16f * 0.5f, topLeftY * 16 - (int)screenPosition.Y + 16 * sizeY) + offSet;
          float num = 0.07f;
          int type = Main.tile[topLeftX, topLeftY].type;
-@@ -9230,7 +9300,7 @@
+@@ -9230,7 +9307,7 @@
          float amount = Math.Abs(Main.WindForVisuals) / 1.2f;
          amount = MathHelper.Lerp(0.2f, 1f, amount);
          float num3 = -0.08f * amount;
@@ -423,7 +430,7 @@
          float num4 = 0f;
          float num5 = 0f;
          for (int i = startY; i < Main.maxTilesY - 10; i++)
-@@ -9333,7 +9403,7 @@
+@@ -9333,7 +9410,7 @@
          float amount = Math.Abs(Main.WindForVisuals) / 1.2f;
          amount = MathHelper.Lerp(0.2f, 1f, amount);
          float num3 = -0.08f * amount;
@@ -432,7 +439,7 @@
          float num4 = 0f;
          float num5 = 0f;
          for (int num6 = startY; num6 > 10; num6--)
-@@ -9433,7 +9503,7 @@
+@@ -9433,7 +9510,7 @@
  
      private void DrawMultiTileVinesInWind(Vector2 screenPosition, Vector2 offSet, int topLeftX, int topLeftY, int sizeX, int sizeY)
      {
