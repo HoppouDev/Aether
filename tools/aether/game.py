@@ -46,6 +46,7 @@ from .util import (
 
 TARGET_FRAMEWORK = "net10.0"
 CLIENT_DLL = "Terraria.dll"
+BOOTSTRAP_DLL = "Aether.Bootstrap.dll"
 # What the game folders hold that the client replaces or doesn't use: MonoKickstart's launchers,
 # the game's exe and FNA, Mono's configs, and (any *.dll) Mono's class libraries.
 LINUX_LAUNCHERS = ("Terraria", "Terraria.bin.x86_64")
@@ -93,13 +94,21 @@ def output_dir(configuration: str) -> Path:
 def latest_build() -> Path:
     """The most recently built client folder (Debug or Release)."""
     builds = [
-        d for c in CONFIGURATIONS if ((d := output_dir(c)) / CLIENT_DLL).is_file()
+        directory
+        for configuration in CONFIGURATIONS
+        if ((directory := output_dir(configuration)) / CLIENT_DLL).is_file()
+        and (directory / BOOTSTRAP_DLL).is_file()
     ]
     if not builds:
         raise AetherError(
             "there's no build yet; run `./aether build` (or `./aether run`)."
         )
-    return max(builds, key=lambda d: (d / CLIENT_DLL).stat().st_mtime)
+    return max(
+        builds,
+        key=lambda d: max(
+            (d / name).stat().st_mtime_ns for name in (CLIENT_DLL, BOOTSTRAP_DLL)
+        ),
+    )
 
 
 def apphost(platform: str) -> str:

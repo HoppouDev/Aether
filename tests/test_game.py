@@ -442,8 +442,9 @@ def test_host_platform_rejects_others(monkeypatch):
         game.host_platform()
 
 
+@pytest.mark.parametrize("configuration", [None, "Release"])
 def test_relative_save_dir_is_resolved_against_the_callers_directory(
-    repo, tmp_path, monkeypatch
+    repo, tmp_path, monkeypatch, configuration
 ):
     """The game runs inside .aether/run/, which every run wipes; saves must not land there."""
     from typer.testing import CliRunner
@@ -454,8 +455,13 @@ def test_relative_save_dir_is_resolved_against_the_callers_directory(
     client = tmp_path / "client"
     monkeypatch.setattr(cli, "host_platform", lambda: "linux")
     monkeypatch.setattr(cli, "latest_build", lambda: client)
+    monkeypatch.setattr(cli, "output_dir", lambda config: client / config)
     monkeypatch.setattr(cli, "check_build", lambda *args: None)
-    monkeypatch.setattr(cli, "prepare_run_dir", lambda *args: None)
+    monkeypatch.setattr(
+        cli,
+        "prepare_run_dir",
+        lambda platform, base, other, output, run_dir: seen.update(output=output),
+    )
     monkeypatch.setattr(
         cli,
         "launch",
@@ -464,11 +470,17 @@ def test_relative_save_dir_is_resolved_against_the_callers_directory(
         ),
     )
     monkeypatch.chdir(tmp_path)
+    options = ["--configuration", configuration] if configuration else []
     result = CliRunner().invoke(
-        cli.app, ["launch", "--save-dir", "mysaves", "--", "-world", "my world.wld"]
+        cli.app,
+        ["launch", *options, "--save-dir", "mysaves", "--", "-world", "my world.wld"],
     )
     assert result.exit_code == 0, result.output
-    assert seen == {"saves": tmp_path / "mysaves", "args": ["-world", "my world.wld"]}
+    assert seen == {
+        "output": client / configuration if configuration else client,
+        "saves": tmp_path / "mysaves",
+        "args": ["-world", "my world.wld"],
+    }
 
 
 def test_latest_build_picks_the_newest_configuration(repo):
@@ -477,10 +489,15 @@ def test_latest_build_picks_the_newest_configuration(repo):
         game.latest_build()
     for folder, mtime in ((debug, 100), (release, 200)):
         folder.mkdir(parents=True)
-        (folder / "Terraria.dll").write_bytes(b"dll")
-        os.utime(folder / "Terraria.dll", (mtime, mtime))
+        for name in ("Terraria.dll", "Aether.Bootstrap.dll"):
+            (folder / name).write_bytes(b"dll")
+            os.utime(folder / name, (mtime, mtime))
     assert game.latest_build() == release
-    os.utime(debug / "Terraria.dll", (300, 300))
+    os.utime(debug / "Aether.Bootstrap.dll", (300, 300))
+    assert game.latest_build() == debug
+    os.utime(release / "Terraria.dll", (400, 400))
+    assert game.latest_build() == release
+    (release / "Aether.Bootstrap.dll").unlink()
     assert game.latest_build() == debug
 
 

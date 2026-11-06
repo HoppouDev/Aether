@@ -3,6 +3,7 @@
 import shutil
 import subprocess
 import sys
+from enum import Enum
 from pathlib import Path
 from typing import Annotated
 
@@ -19,6 +20,7 @@ from .game import (
     host_platform,
     latest_build,
     launch,
+    output_dir,
     package,
     prepare_run_dir,
     resolve_target,
@@ -332,9 +334,18 @@ def build(
         )
 
 
+class BuildConfiguration(str, Enum):
+    DEBUG = "Debug"
+    RELEASE = "Release"
+
+
 @app.command("launch", context_settings=GAME_ARGS)
 def launch_command(
     ctx: typer.Context,
+    configuration: Annotated[
+        BuildConfiguration | None,
+        typer.Option(case_sensitive=False, help="Launch a specific client build."),
+    ] = None,
     game_dir: GameDirOption = None,
     platform_dir: PlatformDirOption = None,
     save_dir: SaveDirOption = None,
@@ -343,12 +354,12 @@ def launch_command(
     profile: ProfileOption = False,
     profile_depth: ProfileDepthOption = 16,
 ) -> None:
-    """Run the most recent build (Debug or Release) without building.
+    """Run a built client, defaulting to the most recent Debug or Release build.
 
     Same run folder and options as `aether run`; extra arguments go to the game.
     """
     launch_build(
-        latest_build(),
+        output_dir(configuration.value) if configuration else latest_build(),
         game_dir,
         platform_dir,
         save_dir,
