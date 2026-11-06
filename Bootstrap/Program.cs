@@ -42,22 +42,28 @@ internal static class Program
             {
                 phase = $"mod '{package.Manifest.Id}' in '{package.Archive}'";
                 string name = AssemblyName.GetAssemblyName(package.EntryPath).Name!;
-                if (name is "Terraria" or "Aether.Modding" or "FNA" or "ReLogic" || !contexts.TryAdd(name, (package, new ModContext(package))))
+                if (SharedNames.Contains(name) || !contexts.TryAdd(name, (package, new ModContext(package))))
                     throw new InvalidDataException($"Reserved or duplicate entry assembly identity '{name}'.");
             }
 
-            Assembly? ResolveMod(AssemblyLoadContext _, AssemblyName name)
+            phase = "assembly weaving";
+            Assembly game;
+            if (packages.Any(package => package.Manifest.Mixins is { Length: > 0 }))
             {
-                return name.Name != null && contexts.TryGetValue(name.Name, out var mod)
-                    ? mod.Context.LoadFromAssemblyPath(mod.Package.EntryPath) : null;
+                using var image = new MemoryStream();
+                HashSet<string> references = AssemblyWeaver.Write(clientPath, packages, image, parameters.ContainsKey("-mixindebug"));
+                var dependencies = ResolveWovenDependencies(contexts.Values, references);
+                var gameContext = new GameContext(dependencies);
+                image.Position = 0;
+                game = gameContext.LoadFromStream(image);
+            }
+            else
+            {
+                game = AssemblyLoadContext.Default.LoadFromAssemblyPath(clientPath);
             }
 
-            phase = "assembly weaving";
-            using var image = new MemoryStream();
-            Weave(clientPath, packages, image, parameters.ContainsKey("-mixindebug"));
-            image.Position = 0;
-            AssemblyLoadContext.Default.Resolving += ResolveMod;
-            Assembly game = AssemblyLoadContext.Default.LoadFromStream(image);
+            foreach (var (_, context) in contexts.Values)
+                context.Game = game;
 
             ClientStartup.InitializeMods = () =>
             {
@@ -67,7 +73,7 @@ internal static class Program
                     phase = $"mod '{package.Manifest.Id}' in '{package.Archive}'";
                     if (package.Manifest.Entrypoint is not { } entrypoint)
                         continue;
-                    Assembly assembly = context.LoadFromAssemblyPath(package.EntryPath);
+                    Assembly assembly = context.LoadManaged(package.EntryPath);
                     Type type = assembly.GetType(entrypoint, throwOnError: true)!;
                     if (!typeof(IModInitializer).IsAssignableFrom(type) || type.IsAbstract || type.GetConstructor(Type.EmptyTypes) == null)
                         throw new InvalidDataException($"Entrypoint '{entrypoint}' must implement IModInitializer and have a public parameterless constructor.");
@@ -113,6 +119,57 @@ internal static class Program
         }
     }
 
+    internal static readonly HashSet<string> SharedNames = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "Terraria", "Aether.Modding", "FNA", "ReLogic"
+    };
+
+    private static Dictionary<string, (string Path, ModContext Context)> ResolveWovenDependencies(
+        IEnumerable<(ModPackage Package, ModContext Context)> mods, HashSet<string> references)
+    {
+        var result = new Dictionary<string, (string, ModContext)>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (package, context) in mods)
+        {
+            foreach (string path in Directory.EnumerateFiles(package.Root, "*", SearchOption.AllDirectories)
+                .Where(path => Path.GetExtension(path).Equals(".dll", StringComparison.OrdinalIgnoreCase)))
+            {
+                AssemblyName identity;
+                try { identity = AssemblyName.GetAssemblyName(path); }
+                catch (BadImageFormatException) { continue; }
+
+                if (!references.Contains(identity.FullName))
+                    continue;
+                if (SharedNames.Contains(identity.Name!))
+                    throw new InvalidDataException($"Mod '{package.Manifest.Id}' in '{package.Archive}' bundles shared assembly '{identity.Name}'.");
+                if (!result.TryAdd(identity.FullName, (path, context)))
+                    throw new InvalidDataException($"Woven reference '{identity.FullName}' is ambiguous between '{path}' and '{result[identity.FullName].Item1}'.");
+            }
+        }
+        string[] platformAssemblies = ((string?)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES") ?? "")
+            .Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries);
+        var platformNames = platformAssemblies.Select(path => Path.GetFileNameWithoutExtension(path))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        foreach (string reference in references)
+        {
+            string name = new AssemblyName(reference).Name!;
+            if (!result.ContainsKey(reference) && !platformNames.Contains(name) && !SharedNames.Contains(name))
+                throw new InvalidDataException($"No packaged or platform assembly satisfies woven reference '{reference}'.");
+            if (result.ContainsKey(reference) && platformNames.Contains(name))
+                throw new InvalidDataException($"Woven reference '{reference}' conflicts with a platform assembly.");
+        }
+        return result;
+    }
+
+    // The host lists the pristine client in its dependency graph. A separate context ensures
+    // the runtime uses the woven image and lets the mods share that exact assembly instance.
+    private sealed class GameContext(Dictionary<string, (string Path, ModContext Context)> dependencies)
+        : AssemblyLoadContext("Aether game")
+    {
+        protected override Assembly? Load(AssemblyName name) =>
+            dependencies.TryGetValue(name.FullName, out var dependency)
+                ? dependency.Context.LoadManaged(dependency.Path) : null;
+    }
+
     private static int Launch(Assembly game, string[] args)
     {
         try
@@ -125,15 +182,6 @@ internal static class Program
             ExceptionDispatchInfo.Capture(exception.InnerException).Throw();
             throw;
         }
-    }
-
-    private static void Weave(string path, IReadOnlyList<ModPackage> packages, Stream output, bool debug)
-    {
-        foreach (ModPackage package in packages)
-            if (package.Manifest.Mixins is { Length: > 0 })
-                throw new InvalidDataException($"Mixin weaving unavailable for '{package.Manifest.Id}' in '{package.Archive}'.");
-        using FileStream source = File.OpenRead(path);
-        source.CopyTo(output);
     }
 
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]

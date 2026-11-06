@@ -19,6 +19,15 @@
  
      public static float ForcedMinimumZoom = 1f;
  
+@@ -265,7 +266,7 @@
+ 
+     public static bool SettingDontScaleMainMenuUp;
+ 
+-    public static bool SettingPlayWhenUnfocused = false;
++    public static bool SettingPlayWhenUnfocused = true;
+ 
+     public static bool SettingsEnabled_OpaqueBoxBehindTooltips = true;
+ 
 @@ -384,7 +385,7 @@
  
      private AchievementManager _achievements;

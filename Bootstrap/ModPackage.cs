@@ -18,6 +18,7 @@ internal sealed record ModPackage(string Archive, string Root, ModManifest Manif
     {
         using var zip = ZipFile.OpenRead(archive);
         var paths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var directories = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         long total = 0;
         foreach (ZipArchiveEntry entry in zip.Entries)
         {
@@ -25,6 +26,17 @@ internal sealed record ModPackage(string Archive, string Root, ModManifest Manif
             ValidatePath(name);
             if (!paths.Add(name) || ((entry.ExternalAttributes >> 16) & 0xf000) == 0xa000)
                 throw new InvalidDataException($"Duplicate entry or symbolic link '{entry.FullName}'.");
+            string directory = entry.FullName.EndsWith('/') ? name : "";
+            if (directory.Length == 0 && name.LastIndexOf('/') is int separator && separator >= 0)
+                directory = name[..separator];
+            while (directory.Length > 0)
+            {
+                if (directories.TryGetValue(directory, out string? earlier) && earlier != directory)
+                    throw new InvalidDataException($"Case-colliding directory '{directory}'.");
+                directories[directory] = directory;
+                int parent = directory.LastIndexOf('/');
+                directory = parent < 0 ? "" : directory[..parent];
+            }
             total = checked(total + entry.Length);
             if (total > 512L * 1024 * 1024 || paths.Count > 4096)
                 throw new InvalidDataException("Archive exceeds the size or entry count limit.");
@@ -98,15 +110,33 @@ internal sealed record ModPackage(string Archive, string Root, ModManifest Manif
 
 internal sealed class ModContext(ModPackage package) : AssemblyLoadContext(package.Manifest.Id)
 {
+    internal Assembly? Game { get; set; }
+
     private readonly AssemblyDependencyResolver resolver = new(package.EntryPath);
+    private readonly Dictionary<string, Assembly> images = new(StringComparer.Ordinal);
+
+    internal Assembly LoadManaged(string path)
+    {
+        lock (images)
+        {
+            if (images.TryGetValue(path, out Assembly? existing))
+                return existing;
+            using FileStream stream = File.OpenRead(path);
+            Assembly assembly = LoadFromStream(stream);
+            images.Add(path, assembly);
+            return assembly;
+        }
+    }
 
     protected override Assembly? Load(AssemblyName name)
     {
-        if (name.Name is "Terraria" or "Aether.Modding" or "FNA" or "ReLogic")
+        if (string.Equals(name.Name, "Terraria", StringComparison.OrdinalIgnoreCase))
+            return Game;
+        if (name.Name != null && Program.SharedNames.Contains(name.Name))
             return Default.LoadFromAssemblyName(name);
 
         string path = resolver.ResolveAssemblyToPath(name) ?? Path.Combine(Path.GetDirectoryName(package.EntryPath)!, name.Name + ".dll");
-        return File.Exists(path) ? LoadFromAssemblyPath(path) : null;
+        return File.Exists(path) ? LoadManaged(path) : null;
     }
 
     protected override nint LoadUnmanagedDll(string name)
