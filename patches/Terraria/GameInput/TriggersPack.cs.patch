@@ -1,0 +1,24 @@
+--- a/Terraria/GameInput/TriggersPack.cs
++++ b/Terraria/GameInput/TriggersPack.cs
+@@ -1,3 +1,4 @@
++using System.Collections.Generic;
+ using System.Linq;
+ 
+ namespace Terraria.GameInput;
+@@ -32,10 +33,15 @@
+         CompareDiffs(JustReleased, Current, Old);
+     }
+ 
++    private readonly List<string> _keys = new List<string>();
++
+     public void CompareDiffs(TriggersSet Bearer, TriggersSet oldset, TriggersSet newset)
+     {
+         Bearer.Reset();
+-        foreach (string item in Bearer.KeyStatus.Keys.ToList())
++        // The keys are copied first because the loop sets their values; into a list kept for that.
++        _keys.Clear();
++        _keys.AddRange(Bearer.KeyStatus.Keys);
++        foreach (string item in _keys)
+         {
+             Bearer.KeyStatus[item] = newset.KeyStatus[item] && !oldset.KeyStatus[item];
+         }

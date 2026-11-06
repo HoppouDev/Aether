@@ -13,7 +13,34 @@
              Main.keyCount = 0;
              Triggers.Reset();
              Triggers.Reset();
-@@ -981,7 +981,7 @@
+@@ -541,6 +541,26 @@
+         return list;
+     }
+ 
++    // KeyboardInput's lists, reused every frame (it uses them only while it runs).
++    private static readonly List<Keys> _pressedKeys = new List<Keys>();
++
++    private static readonly List<string> _pressedKeyNames = new List<string>();
++
++    /// <summary>GetPressedKeys into a list reused every frame: the same keys, in the same (ascending) order.</summary>
++    private static List<Keys> GetPressedKeysThisFrame()
++    {
++        _pressedKeys.Clear();
++        for (int i = 1; i < 256; i++)
++        {
++            Keys keys = (Keys)i;
++            if (keys != Keys.Kanji && !IsImeStateKeycode(keys) && Main.keyState.IsKeyDown(keys))
++            {
++                _pressedKeys.Add(keys);
++            }
++        }
++        return _pressedKeys;
++    }
++
+     private static bool IsImeStateKeycode(Keys k)
+     {
+         if (k >= (Keys)240)
+@@ -981,7 +1001,7 @@
          bool flag2 = false;
          for (int i = 0; i < 4; i++)
          {
@@ -22,7 +49,124 @@
              if (state.IsConnected)
              {
                  flag2 = true;
-@@ -1400,10 +1400,10 @@
+@@ -1032,7 +1052,7 @@
+             {
+                 continue;
+             }
+-            string text = ButtonsGamepad[j].ToString();
++            string text = Aether.Utilities.EnumNames<Buttons>.Of(ButtonsGamepad[j]);
+             bool flag4 = _buttonsLocked.Contains(text);
+             if (gamePadState.IsButtonDown(ButtonsGamepad[j]))
+             {
+@@ -1078,88 +1098,88 @@
+         }
+         if (Vector2.Dot(-Vector2.UnitX, vector2) >= num2 && gamepadThumbstickLeft.X < 0f - CurrentProfile.LeftThumbstickDeadzoneX)
+         {
+-            if (CheckRebindingProcessGamepad(Buttons.LeftThumbstickLeft.ToString()))
++            if (CheckRebindingProcessGamepad(nameof(Buttons.LeftThumbstickLeft)))
+             {
+                 return false;
+             }
+-            keyConfiguration.Processkey(Triggers.Current, Buttons.LeftThumbstickLeft.ToString(), inputMode);
++            keyConfiguration.Processkey(Triggers.Current, nameof(Buttons.LeftThumbstickLeft), inputMode);
+             flag = true;
+         }
+         if (Vector2.Dot(Vector2.UnitX, vector2) >= num2 && gamepadThumbstickLeft.X > CurrentProfile.LeftThumbstickDeadzoneX)
+         {
+-            if (CheckRebindingProcessGamepad(Buttons.LeftThumbstickRight.ToString()))
++            if (CheckRebindingProcessGamepad(nameof(Buttons.LeftThumbstickRight)))
+             {
+                 return false;
+             }
+-            keyConfiguration.Processkey(Triggers.Current, Buttons.LeftThumbstickRight.ToString(), inputMode);
++            keyConfiguration.Processkey(Triggers.Current, nameof(Buttons.LeftThumbstickRight), inputMode);
+             flag = true;
+         }
+         if (Vector2.Dot(-Vector2.UnitY, vector2) >= num2 && gamepadThumbstickLeft.Y < 0f - CurrentProfile.LeftThumbstickDeadzoneY)
+         {
+-            if (CheckRebindingProcessGamepad(Buttons.LeftThumbstickUp.ToString()))
++            if (CheckRebindingProcessGamepad(nameof(Buttons.LeftThumbstickUp)))
+             {
+                 return false;
+             }
+-            keyConfiguration.Processkey(Triggers.Current, Buttons.LeftThumbstickUp.ToString(), inputMode);
++            keyConfiguration.Processkey(Triggers.Current, nameof(Buttons.LeftThumbstickUp), inputMode);
+             flag = true;
+         }
+         if (Vector2.Dot(Vector2.UnitY, vector2) >= num2 && gamepadThumbstickLeft.Y > CurrentProfile.LeftThumbstickDeadzoneY)
+         {
+-            if (CheckRebindingProcessGamepad(Buttons.LeftThumbstickDown.ToString()))
++            if (CheckRebindingProcessGamepad(nameof(Buttons.LeftThumbstickDown)))
+             {
+                 return false;
+             }
+-            keyConfiguration.Processkey(Triggers.Current, Buttons.LeftThumbstickDown.ToString(), inputMode);
++            keyConfiguration.Processkey(Triggers.Current, nameof(Buttons.LeftThumbstickDown), inputMode);
+             flag = true;
+         }
+         if (Vector2.Dot(-Vector2.UnitX, vector) >= num2 && gamepadThumbstickRight.X < 0f - CurrentProfile.RightThumbstickDeadzoneX)
+         {
+-            if (CheckRebindingProcessGamepad(Buttons.RightThumbstickLeft.ToString()))
++            if (CheckRebindingProcessGamepad(nameof(Buttons.RightThumbstickLeft)))
+             {
+                 return false;
+             }
+-            keyConfiguration.Processkey(Triggers.Current, Buttons.RightThumbstickLeft.ToString(), inputMode);
++            keyConfiguration.Processkey(Triggers.Current, nameof(Buttons.RightThumbstickLeft), inputMode);
+             flag = true;
+         }
+         if (Vector2.Dot(Vector2.UnitX, vector) >= num2 && gamepadThumbstickRight.X > CurrentProfile.RightThumbstickDeadzoneX)
+         {
+-            if (CheckRebindingProcessGamepad(Buttons.RightThumbstickRight.ToString()))
++            if (CheckRebindingProcessGamepad(nameof(Buttons.RightThumbstickRight)))
+             {
+                 return false;
+             }
+-            keyConfiguration.Processkey(Triggers.Current, Buttons.RightThumbstickRight.ToString(), inputMode);
++            keyConfiguration.Processkey(Triggers.Current, nameof(Buttons.RightThumbstickRight), inputMode);
+             flag = true;
+         }
+         if (Vector2.Dot(-Vector2.UnitY, vector) >= num2 && gamepadThumbstickRight.Y < 0f - CurrentProfile.RightThumbstickDeadzoneY)
+         {
+-            if (CheckRebindingProcessGamepad(Buttons.RightThumbstickUp.ToString()))
++            if (CheckRebindingProcessGamepad(nameof(Buttons.RightThumbstickUp)))
+             {
+                 return false;
+             }
+-            keyConfiguration.Processkey(Triggers.Current, Buttons.RightThumbstickUp.ToString(), inputMode);
++            keyConfiguration.Processkey(Triggers.Current, nameof(Buttons.RightThumbstickUp), inputMode);
+             flag = true;
+         }
+         if (Vector2.Dot(Vector2.UnitY, vector) >= num2 && gamepadThumbstickRight.Y > CurrentProfile.RightThumbstickDeadzoneY)
+         {
+-            if (CheckRebindingProcessGamepad(Buttons.RightThumbstickDown.ToString()))
++            if (CheckRebindingProcessGamepad(nameof(Buttons.RightThumbstickDown)))
+             {
+                 return false;
+             }
+-            keyConfiguration.Processkey(Triggers.Current, Buttons.RightThumbstickDown.ToString(), inputMode);
++            keyConfiguration.Processkey(Triggers.Current, nameof(Buttons.RightThumbstickDown), inputMode);
+             flag = true;
+         }
+         if (gamePadState.Triggers.Left > triggersDeadzone)
+         {
+-            if (CheckRebindingProcessGamepad(Buttons.LeftTrigger.ToString()))
++            if (CheckRebindingProcessGamepad(nameof(Buttons.LeftTrigger)))
+             {
+                 return false;
+             }
+-            keyConfiguration.Processkey(Triggers.Current, Buttons.LeftTrigger.ToString(), inputMode);
++            keyConfiguration.Processkey(Triggers.Current, nameof(Buttons.LeftTrigger), inputMode);
+             flag = true;
+         }
+         if (gamePadState.Triggers.Right > triggersDeadzone)
+         {
+-            string newKey = Buttons.RightTrigger.ToString();
++            string newKey = nameof(Buttons.RightTrigger);
+             if (CheckRebindingProcessGamepad(newKey))
+             {
+                 return false;
+@@ -1400,10 +1420,10 @@
          if (!FocusHelper.AllowInputProcessing)
          {
              MouseInfo = new MouseState(MouseInfo.X, MouseInfo.Y, 0, ButtonState.Released, ButtonState.Released, ButtonState.Released, ButtonState.Released, ButtonState.Released);
@@ -35,3 +179,100 @@
          ScrollWheelValue += MouseInfo.ScrollWheelValue;
          if (DebugOptions.ForceGamepad)
          {
+@@ -1456,11 +1476,11 @@
+     {
+         bool flag = false;
+         bool flag2 = false;
+-        List<Keys> pressedKeys = GetPressedKeys();
++        List<Keys> pressedKeys = GetPressedKeysThisFrame();
+         DebugKeys(pressedKeys);
+         if (pressedKeys.Count == 0 && MouseKeys.Count == 0)
+         {
+-            Main.blockKey = Keys.None.ToString();
++            Main.blockKey = nameof(Keys.None);
+             return false;
+         }
+         for (int i = 0; i < pressedKeys.Count; i++)
+@@ -1475,12 +1495,12 @@
+             }
+             Main.ChromaPainter.PressKey(pressedKeys[i]);
+         }
+-        if (Main.blockKey != Keys.None.ToString())
++        if (Main.blockKey != nameof(Keys.None))
+         {
+             bool flag3 = false;
+             for (int j = 0; j < pressedKeys.Count; j++)
+             {
+-                if (pressedKeys[j].ToString() == Main.blockKey)
++                if (Aether.Utilities.EnumNames<Keys>.Of(pressedKeys[j]) == Main.blockKey)
+                 {
+                     pressedKeys[j] = Keys.None;
+                     flag3 = true;
+@@ -1488,7 +1508,7 @@
+             }
+             if (!flag3)
+             {
+-                Main.blockKey = Keys.None.ToString();
++                Main.blockKey = nameof(Keys.None);
+             }
+         }
+         KeyConfiguration keyConfiguration = CurrentProfile.InputModes[InputMode.Keyboard];
+@@ -1496,10 +1516,11 @@
+         {
+             keyConfiguration = CurrentProfile.InputModes[InputMode.KeyboardUI];
+         }
+-        List<string> list = new List<string>(pressedKeys.Count);
++        List<string> list = _pressedKeyNames;
++        list.Clear();
+         for (int k = 0; k < pressedKeys.Count; k++)
+         {
+-            list.Add(pressedKeys[k].ToString());
++            list.Add(Aether.Utilities.EnumNames<Keys>.Of(pressedKeys[k]));
+         }
+         if (WritingText)
+         {
+@@ -1515,7 +1536,7 @@
+                 continue;
+             }
+             string newKey = list[l];
+-            if (!(list[l] == Keys.Tab.ToString()) || !((flag && SocialAPI.Mode == SocialMode.Steam) | flag2))
++            if (!(list[l] == nameof(Keys.Tab)) || !((flag && SocialAPI.Mode == SocialMode.Steam) | flag2))
+             {
+                 if (CheckRebindingProcessKeyboard(newKey))
+                 {
+@@ -2125,7 +2146,7 @@
+                 c.KeyStatus["Left"].Add("Left");
+                 c.KeyStatus["Right"].Add("D");
+                 c.KeyStatus["Right"].Add("Right");
+-                c.KeyStatus["Inventory"].Add(Keys.Escape.ToString());
++                c.KeyStatus["Inventory"].Add(nameof(Keys.Escape));
+                 c.KeyStatus["MenuUp"].Add(string.Concat(Buttons.DPadUp));
+                 c.KeyStatus["MenuDown"].Add(string.Concat(Buttons.DPadDown));
+                 c.KeyStatus["MenuLeft"].Add(string.Concat(Buttons.DPadLeft));
+@@ -2238,7 +2259,7 @@
+                 c.KeyStatus["Left"].Add("Left");
+                 c.KeyStatus["Right"].Add("D");
+                 c.KeyStatus["Right"].Add("Right");
+-                c.KeyStatus["Inventory"].Add(Keys.Escape.ToString());
++                c.KeyStatus["Inventory"].Add(nameof(Keys.Escape));
+                 c.KeyStatus["MenuUp"].Add(string.Concat(Buttons.DPadUp));
+                 c.KeyStatus["MenuDown"].Add(string.Concat(Buttons.DPadDown));
+                 c.KeyStatus["MenuLeft"].Add(string.Concat(Buttons.DPadLeft));
+@@ -2354,7 +2375,7 @@
+                 c.KeyStatus["MenuDown"].Add(string.Concat(Buttons.DPadDown));
+                 c.KeyStatus["MenuLeft"].Add(string.Concat(Buttons.DPadLeft));
+                 c.KeyStatus["MenuRight"].Add(string.Concat(Buttons.DPadRight));
+-                c.KeyStatus["Inventory"].Add(Keys.Escape.ToString());
++                c.KeyStatus["Inventory"].Add(nameof(Keys.Escape));
+                 break;
+             case InputMode.XBoxGamepad:
+                 c.KeyStatus["MouseLeft"].Add(string.Concat(Buttons.RightShoulder));
+@@ -2466,7 +2487,7 @@
+                 c.KeyStatus["MenuDown"].Add(string.Concat(Buttons.DPadDown));
+                 c.KeyStatus["MenuLeft"].Add(string.Concat(Buttons.DPadLeft));
+                 c.KeyStatus["MenuRight"].Add(string.Concat(Buttons.DPadRight));
+-                c.KeyStatus["Inventory"].Add(Keys.Escape.ToString());
++                c.KeyStatus["Inventory"].Add(nameof(Keys.Escape));
+                 break;
+             case InputMode.XBoxGamepad:
+                 c.KeyStatus["MouseLeft"].Add(string.Concat(Buttons.RightTrigger));
