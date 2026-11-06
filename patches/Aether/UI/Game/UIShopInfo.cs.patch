@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/Aether/UI/Game/UIShopInfo.cs
-@@ -0,0 +1,222 @@
+@@ -0,0 +1,273 @@
 +using System;
 +using Microsoft.Xna.Framework;
 +using Microsoft.Xna.Framework.Graphics;
@@ -23,13 +23,15 @@
 +    /// <summary>Draw with ChatManager (shadowed, parses [c/...] tags) instead of a four-way border.</summary>
 +    public bool ColorCoded;
 +
++    private readonly ChatText _chatText = new ChatText();
++
 +    protected override void DrawSelf(SpriteBatch spriteBatch)
 +    {
 +        CalculatedStyle dimensions = GetDimensions();
 +        string text = Text();
 +        if (ColorCoded)
 +        {
-+            ChatManager.DrawColorCodedStringWithShadow(spriteBatch, FontAssets.MouseText.Value, text, dimensions.Position(), Color(), 0f, Vector2.Zero, Vector2.One);
++            _chatText.DrawWithShadow(spriteBatch, FontAssets.MouseText.Value, text, dimensions.Position(), Color(), 0f, Vector2.Zero, Vector2.One);
 +        }
 +        else
 +        {
@@ -53,6 +55,10 @@
 +/// <summary>The shop's price adjustment from the NPC's happiness: a face (happy to angry) and the percentage.</summary>
 +public class UIShopHappiness : UIElement
 +{
++    private float _shownAdjustment = float.NaN;
++
++    private string _percentage;
++
 +    public static float PriceAdjustment => Main.LocalPlayer.currentShoppingSettings.PriceAdjustment;
 +
 +    protected override void DrawSelf(SpriteBatch spriteBatch)
@@ -63,7 +69,12 @@
 +        int frame = priceAdjustment <= 0.82f ? 0 : priceAdjustment <= 1f ? 1 : priceAdjustment <= 1.1f ? 2 : 3;
 +        Rectangle source = texture.Frame(4, 1, frame);
 +        spriteBatch.Draw(texture, new Vector2(dimensions.X + Main.shopHappinessIconOffsetX, dimensions.Y + Main.shopHappinessIconOffsetY), source, Microsoft.Xna.Framework.Color.White, 0f, source.Size() / 2f, 1f, SpriteEffects.None, 0f);
-+        Utils.DrawBorderStringFourWay(spriteBatch, FontAssets.MouseText.Value, priceAdjustment.ToString("P0"), dimensions.X + Main.shopHappinessTextOffsetX, dimensions.Y + Main.shopHappinessTextOffsetY, Microsoft.Xna.Framework.Color.White * ((float)(int)Main.mouseTextColor / 255f), Microsoft.Xna.Framework.Color.Black, Vector2.Zero);
++        if (priceAdjustment != _shownAdjustment)
++        {
++            _shownAdjustment = priceAdjustment;
++            _percentage = priceAdjustment.ToString("P0");
++        }
++        Utils.DrawBorderStringFourWay(spriteBatch, FontAssets.MouseText.Value, _percentage, dimensions.X + Main.shopHappinessTextOffsetX, dimensions.Y + Main.shopHappinessTextOffsetY, Microsoft.Xna.Framework.Color.White * ((float)(int)Main.mouseTextColor / 255f), Microsoft.Xna.Framework.Color.Black, Vector2.Zero);
 +    }
 +}
 +
@@ -130,18 +141,58 @@
 +
 +    private static bool HasItem => Main.reforgeItem.type > 0;
 +
++    // "Cost: " and the price in coins, made again only when the language or the price changes.
++    private string _costLabel;
++
++    private string _costLabelSource;
++
++    private string _priceText;
++
++    private long _pricedAt = -1;
++
++    private GameCulture _pricedIn;
++
++    private string CostLabel
++    {
++        get
++        {
++            string cost = Lang.inter[46].Value;
++            if ((object)cost != _costLabelSource)
++            {
++                _costLabelSource = cost;
++                _costLabel = cost + ": ";
++            }
++            return _costLabel;
++        }
++    }
++
++    private string PriceText
++    {
++        get
++        {
++            long price = Price();
++            if (price != _pricedAt || Language.ActiveCulture != _pricedIn)
++            {
++                _pricedAt = price;
++                _pricedIn = Language.ActiveCulture;
++                _priceText = CoinText(price);
++            }
++            return _priceText;
++        }
++    }
++
 +    public override void OnInitialize()
 +    {
 +        _caption = new UIGameLabel
 +        {
 +            ColorCoded = true,
-+            Text = () => HasItem ? Lang.inter[46].Value + ": " : Lang.inter[20].Value,
++            Text = () => HasItem ? CostLabel : Lang.inter[20].Value,
 +            Color = () => new Color(Main.mouseTextColor, Main.mouseTextColor, Main.mouseTextColor, Main.mouseTextColor)
 +        };
 +        _price = new UIGameLabel
 +        {
 +            ColorCoded = true,
-+            Text = () => CoinText(Price())
++            Text = () => PriceText
 +        };
 +        _savings = new UISavings
 +        {
@@ -168,7 +219,7 @@
 +    /// <summary>A price as chat text, each coin in its colour (at least 1 copper), e.g. "[c/..:3 gold] ".</summary>
 +    public static string CoinText(long price)
 +    {
-+        int[] coins = Utils.CoinsSplit(Math.Max(1L, price));
++        int[] coins = CachedText.CoinsSplit(Math.Max(1L, price));
 +        string text = "";
 +        AddCoins(ref text, coins[3], Colors.CoinPlatinum, 15);
 +        AddCoins(ref text, coins[2], Colors.CoinGold, 16);
@@ -203,7 +254,7 @@
 +        bool hasItem = HasItem;
 +        _caption.Left.Set(_x + 50, 0f);
 +        _caption.Top.Set(_y, 0f);
-+        _price.Left.Set((float)(_x + 50) + FontAssets.MouseText.Value.MeasureString(Lang.inter[46].Value + ": ").X, 0f);
++        _price.Left.Set((float)(_x + 50) + FontAssets.MouseText.Value.MeasureString(CostLabel).X, 0f);
 +        _price.Top.Set(_y, 0f);
 +        _savings.Left.Set(_x + 130, 0f);
 +        _savings.Top.Set(Main.instance.invBottom, 0f);

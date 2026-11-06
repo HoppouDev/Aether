@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/Aether/UI/Game/UIResourceBars.cs
-@@ -0,0 +1,701 @@
+@@ -0,0 +1,702 @@
 +using System;
 +using System.Collections.Generic;
 +using Microsoft.Xna.Framework;
@@ -328,10 +328,11 @@
 +    /// <summary>"Life" and "x/y", centred on center the way the legacy sets centre "Life max/max".</summary>
 +    private void LayOutLifeText(Player player, Vector2 center)
 +    {
-+        string text = Lang.inter[0].Value + " " + player.statLifeMax2 + "/" + player.statLifeMax2;
++        string max = CachedText.Number(player.statLifeMax2);
++        string text = CachedText.Concat(Lang.inter[0].Value, " ", max, "/", max);
 +        Vector2 size = FontAssets.MouseText.Value.MeasureString(text);
 +        SetText(0, Lang.inter[0].Value, center + new Vector2((0f - size.X) * 0.5f, 0f));
-+        SetText(1, player.statLife + "/" + player.statLifeMax2, center + new Vector2(size.X * 0.5f, 0f), rightAligned: true);
++        SetText(1, CachedText.Concat(CachedText.Number(player.statLife), "/", max), center + new Vector2(size.X * 0.5f, 0f), rightAligned: true);
 +    }
 +
 +    /// <summary>The same as ResourceDrawSettings.Draw, laying out pieces instead of drawing them.</summary>
@@ -625,10 +626,10 @@
 +        {
 +            y += 2;
 +            LayOutLifeText(player, new Vector2(x, y) + new Vector2(130f, -20f));
-+            string label = Lang.inter[2].Value + ":";
-+            string value = player.statMana + "/" + player.statManaMax2;
++            string label = CachedText.Concat(Lang.inter[2].Value, ":");
++            string value = CachedText.Concat(CachedText.Number(player.statMana), "/", CachedText.Number(player.statManaMax2));
 +            Vector2 center = new Vector2(Main.screenWidth - 180, 65f);
-+            Vector2 size = FontAssets.MouseText.Value.MeasureString(label + " " + value);
++            Vector2 size = FontAssets.MouseText.Value.MeasureString(CachedText.Concat(label, " ", value));
 +            SetText(2, label, center + new Vector2((0f - size.X) * 0.5f, 0f));
 +            SetText(3, value, center + new Vector2(size.X * 0.5f, 0f), rightAligned: true);
 +        }

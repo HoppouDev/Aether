@@ -755,6 +755,15 @@
      {
          Vector2 vector = new Vector2(inventoryX - 10 - 47 - 47 - 14, (float)inventoryY + (float)TextureAssets.InventoryBack.Height() * 0.5f);
          Texture2D value = TextureAssets.Extra[58].Value;
+@@ -43056,7 +43093,7 @@
+         {
+             spriteBatch.Draw(value, vector, value2, color, 0f, origin, inventoryScale, SpriteEffects.None, 0f);
+         }
+-        string text = statDefense.ToString();
++        string text = Aether.UI.CachedText.Number(statDefense);
+         Vector2 vector2 = FontAssets.MouseText.Value.MeasureString(text);
+         Vector2 vector3 = new Vector2(0f, 2f) * inventoryScale;
+         ChatManager.DrawColorCodedStringWithShadow(spriteBatch, FontAssets.MouseText.Value, text, vector - vector2 * 0.5f * inventoryScale + vector3, Microsoft.Xna.Framework.Color.White, 0f, Vector2.Zero, new Vector2(inventoryScale));
 @@ -43268,6 +43305,10 @@
              inventoryScale = 0.755f;
              num += 5;
@@ -1396,6 +1405,111 @@
      {
          Netplay.ListenPort = ushort.Parse(candidatePort);
          autoPass = false;
+@@ -53272,84 +53398,84 @@
+             }
+             if (SkyManager.Instance[key] != null && SkyManager.Instance[key].IsActive())
+             {
+-                SkyManager.Instance[key].Deactivate();
++                SkyManager.Instance[key].Deactivate(Aether.UI.CachedText.NoArgs);
+             }
+             if (Overlays.Scene[key] != null && Overlays.Scene[key].IsVisible())
+             {
+-                Overlays.Scene[key].Deactivate();
++                Overlays.Scene[key].Deactivate(Aether.UI.CachedText.NoArgs);
+             }
+             if (Terraria.Graphics.Effects.Filters.Scene[key] != null && Terraria.Graphics.Effects.Filters.Scene[key].IsActive())
+             {
+-                Terraria.Graphics.Effects.Filters.Scene[key].Deactivate();
++                Terraria.Graphics.Effects.Filters.Scene[key].Deactivate(Aether.UI.CachedText.NoArgs);
+             }
+         }
+         if (Terraria.Graphics.Effects.Filters.Scene["BloodMoon"].IsActive())
+         {
+-            Terraria.Graphics.Effects.Filters.Scene["BloodMoon"].Deactivate();
++            Terraria.Graphics.Effects.Filters.Scene["BloodMoon"].Deactivate(Aether.UI.CachedText.NoArgs);
+         }
+         if (Terraria.Graphics.Effects.Filters.Scene["Graveyard"].IsActive())
+         {
+-            Terraria.Graphics.Effects.Filters.Scene["Graveyard"].Deactivate();
++            Terraria.Graphics.Effects.Filters.Scene["Graveyard"].Deactivate(Aether.UI.CachedText.NoArgs);
+         }
+         if (Terraria.Graphics.Effects.Filters.Scene["Sepia"].IsActive())
+         {
+-            Terraria.Graphics.Effects.Filters.Scene["Sepia"].Deactivate();
++            Terraria.Graphics.Effects.Filters.Scene["Sepia"].Deactivate(Aether.UI.CachedText.NoArgs);
+         }
+         if (Terraria.Graphics.Effects.Filters.Scene["Noir"].IsActive())
+         {
+-            Terraria.Graphics.Effects.Filters.Scene["Noir"].Deactivate();
++            Terraria.Graphics.Effects.Filters.Scene["Noir"].Deactivate(Aether.UI.CachedText.NoArgs);
+         }
+         if (Terraria.Graphics.Effects.Filters.Scene["BloodMoon"].IsActive())
+         {
+-            Terraria.Graphics.Effects.Filters.Scene["BloodMoon"].Deactivate();
++            Terraria.Graphics.Effects.Filters.Scene["BloodMoon"].Deactivate(Aether.UI.CachedText.NoArgs);
+         }
+         if (Terraria.Graphics.Effects.Filters.Scene["MoonLordShake"].IsActive())
+         {
+-            Terraria.Graphics.Effects.Filters.Scene["MoonLordShake"].Deactivate();
++            Terraria.Graphics.Effects.Filters.Scene["MoonLordShake"].Deactivate(Aether.UI.CachedText.NoArgs);
+         }
+         if (Terraria.Graphics.Effects.Filters.Scene["WaterDistortion"].IsActive())
+         {
+-            Terraria.Graphics.Effects.Filters.Scene["WaterDistortion"].Deactivate();
++            Terraria.Graphics.Effects.Filters.Scene["WaterDistortion"].Deactivate(Aether.UI.CachedText.NoArgs);
+         }
+         if (Terraria.Graphics.Effects.Filters.Scene["CrystalDestructionColor"].IsActive())
+         {
+-            Terraria.Graphics.Effects.Filters.Scene["CrystalDestructionColor"].Deactivate();
++            Terraria.Graphics.Effects.Filters.Scene["CrystalDestructionColor"].Deactivate(Aether.UI.CachedText.NoArgs);
+         }
+         if (Terraria.Graphics.Effects.Filters.Scene["CrystalDestructionVortex"].IsActive())
+         {
+-            Terraria.Graphics.Effects.Filters.Scene["CrystalDestructionVortex"].Deactivate();
++            Terraria.Graphics.Effects.Filters.Scene["CrystalDestructionVortex"].Deactivate(Aether.UI.CachedText.NoArgs);
+         }
+         if (Terraria.Graphics.Effects.Filters.Scene["CrystalWin"].IsActive())
+         {
+-            Terraria.Graphics.Effects.Filters.Scene["CrystalWin"].Deactivate();
++            Terraria.Graphics.Effects.Filters.Scene["CrystalWin"].Deactivate(Aether.UI.CachedText.NoArgs);
+         }
+         if (Terraria.Graphics.Effects.Filters.Scene["CRT"].IsActive())
+         {
+-            Terraria.Graphics.Effects.Filters.Scene["CRT"].Deactivate();
++            Terraria.Graphics.Effects.Filters.Scene["CRT"].Deactivate(Aether.UI.CachedText.NoArgs);
+         }
+         if (Terraria.Graphics.Effects.Filters.Scene["Test2"].IsActive())
+         {
+-            Terraria.Graphics.Effects.Filters.Scene["Test2"].Deactivate();
++            Terraria.Graphics.Effects.Filters.Scene["Test2"].Deactivate(Aether.UI.CachedText.NoArgs);
+         }
+         if (SkyManager.Instance["Martian"].IsActive())
+         {
+-            SkyManager.Instance["Martian"].Deactivate();
++            SkyManager.Instance["Martian"].Deactivate(Aether.UI.CachedText.NoArgs);
+         }
+         if (SkyManager.Instance["Party"].IsActive())
+         {
+-            SkyManager.Instance["Party"].Deactivate();
++            SkyManager.Instance["Party"].Deactivate(Aether.UI.CachedText.NoArgs);
+         }
+         if (SkyManager.Instance["Slime"].IsActive())
+         {
+-            SkyManager.Instance["Slime"].Deactivate();
++            SkyManager.Instance["Slime"].Deactivate(Aether.UI.CachedText.NoArgs);
+         }
+         if (SkyManager.Instance["Ambience"].IsActive())
+         {
+-            SkyManager.Instance["Ambience"].Deactivate();
++            SkyManager.Instance["Ambience"].Deactivate(Aether.UI.CachedText.NoArgs);
+         }
+         if (SkyManager.Instance["Aurora"].IsActive())
+         {
+-            SkyManager.Instance["Aurora"].Deactivate();
++            SkyManager.Instance["Aurora"].Deactivate(Aether.UI.CachedText.NoArgs);
+         }
+         slimeRain = false;
+         slimeRainTime = 0.0;
 @@ -53414,10 +53540,10 @@
          }
      }

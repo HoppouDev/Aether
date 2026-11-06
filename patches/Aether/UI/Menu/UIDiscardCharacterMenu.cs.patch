@@ -19,7 +19,7 @@
 +        AddLabel(delegate
 +        {
 +            string name = Main.PendingPlayer?.name;
-+            return string.IsNullOrEmpty(name) ? Language.GetTextValue("UI.PlayerCreateDiscardWarningNoName") : Language.GetTextValue("UI.PlayerCreateDiscardWarningWithName", name);
++            return string.IsNullOrEmpty(name) ? Language.GetTextValue("UI.PlayerCreateDiscardWarningNoName") : CachedText.Format("UI.PlayerCreateDiscardWarningWithName", name);
 +        });
 +        AddItem(() => Language.GetTextValue("UI.PlayerCreateDiscardWarningYes"), delegate
 +        {

@@ -20,7 +20,7 @@
 +
 +    private static string OnOff(string key, bool enabled)
 +    {
-+        return Language.GetTextValue(key, Language.GetTextValue(enabled ? "GameUI.Enabled" : "GameUI.Disabled"));
++        return CachedText.Format(key, Language.GetTextValue(enabled ? "GameUI.Enabled" : "GameUI.Disabled"));
 +    }
 +
 +    protected override void BuildItems()
@@ -38,7 +38,7 @@
 +        {
 +            Main.UseHeatDistortion = !Main.UseHeatDistortion;
 +        }, Scale);
-+        AddToggle(() => Language.GetTextValue("GameUI.WaveQuality", Main.WaveQuality switch
++        AddToggle(() => CachedText.Format("GameUI.WaveQuality", Main.WaveQuality switch
 +        {
 +            1 => Language.GetTextValue("GameUI.QualityLow"),
 +            2 => Language.GetTextValue("GameUI.QualityMedium"),

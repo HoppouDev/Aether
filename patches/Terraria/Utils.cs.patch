@@ -1,0 +1,15 @@
+--- a/Terraria/Utils.cs
++++ b/Terraria/Utils.cs
+@@ -1035,11 +1035,10 @@
+ 
+     public static long CoinsCount(out bool overFlowing, Item[] inv, params int[] ignoreSlots)
+     {
+-        List<int> list = new List<int>(ignoreSlots);
+         long num = 0L;
+         for (int i = 0; i < inv.Length; i++)
+         {
+-            if (!list.Contains(i))
++            if (Array.IndexOf(ignoreSlots, i) < 0)
+             {
+                 switch (inv[i].type)
+                 {

@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/Aether/UI/Game/UIBuffs.cs
-@@ -0,0 +1,287 @@
+@@ -0,0 +1,302 @@
 +using System;
 +using Microsoft.Xna.Framework;
 +using Microsoft.Xna.Framework.Graphics;
@@ -9,6 +9,7 @@
 +using Terraria.GameContent;
 +using Terraria.GameInput;
 +using Terraria.ID;
++using Terraria.Localization;
 +using Terraria.UI;
 +using Terraria.UI.Gamepad;
 +
@@ -22,6 +23,13 @@
 +public class UIBuffIcon : UIElement
 +{
 +    public readonly int BuffSlot;
++
++    // The duration text last made (it changes once a second), and for which seconds and language.
++    private string _durationText;
++
++    private int _durationSeconds = -1;
++
++    private GameCulture _durationCulture;
 +
 +    public UIBuffIcon(int buffSlot)
 +    {
@@ -57,7 +65,14 @@
 +        }
 +        if (text == null && Main.TryGetBuffTime(BuffSlot, out var time) && time > 2)
 +        {
-+            text = Lang.LocalizedDuration(new TimeSpan(0, 0, time / 60), abbreviated: true, showAllAvailableUnits: false);
++            int seconds = time / 60;
++            if (seconds != _durationSeconds || Language.ActiveCulture != _durationCulture)
++            {
++                _durationSeconds = seconds;
++                _durationCulture = Language.ActiveCulture;
++                _durationText = Lang.LocalizedDuration(new TimeSpan(0, 0, seconds), abbreviated: true, showAllAvailableUnits: false);
++            }
++            text = _durationText;
 +        }
 +        if (text != null)
 +        {

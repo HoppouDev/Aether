@@ -70,6 +70,7 @@ key down|up KEY[+KEY] | key press KEY[+KEY] [FRAMES] | type TEXT
 pad connect|disconnect | pad button B[+B] down|up|press [FRAMES]
 pad stick left|right X Y [MS] | pad trigger left|right VALUE [MS]
 wait MS | wait frames N | release | state | ping
+menu MODE (title menu: show Main.menuMode MODE) | alloc [FRAMES] (allocations, JSON) | quit
 ```
 
 ## Getting around

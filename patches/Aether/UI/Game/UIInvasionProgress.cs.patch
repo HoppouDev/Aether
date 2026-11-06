@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/Aether/UI/Game/UIInvasionProgress.cs
-@@ -0,0 +1,219 @@
+@@ -0,0 +1,243 @@
 +using Microsoft.Xna.Framework;
 +using Microsoft.Xna.Framework.Graphics;
 +using Terraria;
@@ -26,6 +26,31 @@
 +        IgnoresMouseInteraction = true;
 +    }
 +
++    // The panel's text, made again only when the progress (or the language) changes.
++    private string _text;
++
++    private int _textProgress = -1;
++
++    private int _textMax = -1;
++
++    private int _textWave = -1;
++
++    private GameCulture _textIn;
++
++    private string Text()
++    {
++        if (Main.invasionProgress != _textProgress || Main.invasionProgressMax != _textMax || Main.invasionProgressWave != _textWave || Language.ActiveCulture != _textIn)
++        {
++            _textProgress = Main.invasionProgress;
++            _textMax = Main.invasionProgressMax;
++            _textWave = Main.invasionProgressWave;
++            _textIn = Language.ActiveCulture;
++            string progress = Main.invasionProgressMax != 0 ? ((int)((float)Main.invasionProgress * 100f / (float)Main.invasionProgressMax) + "%") : null;
++            _text = Main.invasionProgressWave > 0 ? Language.GetTextValue("Game.WaveMessage", Main.invasionProgressWave, progress ?? Language.GetTextValue("Game.InvasionPoints", Main.invasionProgress)) : Language.GetTextValue("Game.WaveCleared", progress);
++        }
++        return _text;
++    }
++
 +    protected override void DrawSelf(SpriteBatch spriteBatch)
 +    {
 +        float scale = Scale;
@@ -35,14 +60,13 @@
 +        Vector2 center = new Vector2(Main.screenWidth - 120, Main.screenHeight - 40);
 +        Utils.DrawInvBG(spriteBatch, new Rectangle((int)center.X - width / 2, (int)center.Y - height / 2, width, height), new Color(63, 65, 151, 255) * 0.785f);
 +        Texture2D colorBar = TextureAssets.ColorBar.Value;
-+        string progress = Main.invasionProgressMax != 0 ? ((int)((float)Main.invasionProgress * 100f / (float)Main.invasionProgressMax) + "%") : null;
 +        float fill = MathHelper.Clamp((float)Main.invasionProgress / (float)Main.invasionProgressMax, 0f, 1f);
 +        float barWidth = 169f * scale;
 +        float barHeight = 8f * scale;
 +        Vector2 barCenter = center + Vector2.UnitY * barHeight + Vector2.UnitX * 1f;
 +        if (Main.invasionProgressWave > 0)
 +        {
-+            string text = Language.GetTextValue("Game.WaveMessage", Main.invasionProgressWave, progress ?? Language.GetTextValue("Game.InvasionPoints", Main.invasionProgress));
++            string text = Text();
 +            if (Main.invasionProgressMax == 0)
 +            {
 +                fill = 1f;
@@ -56,7 +80,7 @@
 +            {
 +                return;
 +            }
-+            string text = Language.GetTextValue("Game.WaveCleared", progress);
++            string text = Text();
 +            spriteBatch.Draw(colorBar, center, null, Color.White * alpha, 0f, new Vector2(colorBar.Width / 2, 0f), scale, SpriteEffects.None, 0f);
 +            Vector2 size = FontAssets.MouseText.Value.MeasureString(text);
 +            float textScale = scale;

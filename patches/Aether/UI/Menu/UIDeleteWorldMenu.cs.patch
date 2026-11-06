@@ -11,7 +11,7 @@
 +{
 +    protected override void BuildItems()
 +    {
-+        AddLabel(() => Lang.menu[46].Value + " " + WorldName() + "?");
++        AddLabel(() => CachedText.Concat(Lang.menu[46].Value, " ", WorldName(), "?"));
 +        AddItem(() => Lang.menu[104].Value, delegate
 +        {
 +            Main.EraseWorld(Main.selectedWorld);

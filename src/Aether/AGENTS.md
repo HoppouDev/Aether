@@ -50,7 +50,10 @@ Pieces move to retained mode one at a time, each through a small hook at the top
 - Layout is recalculated when a screen opens and when the UI's size changes (resolution, UI scale), not every frame: `GameScreens` and `MenuScreens` switch `UserInterface.ActiveInstance` directly rather than with `Use()`, which recalculates on every switch (twice a frame per screen, the second time for vanilla's own UI).
   So a screen that moves, resizes or rebuilds elements must recalculate them itself (usually `Recalculate()` at the end of `UpdateState`, or after a rebuild, as `UIEquipmentSlots` and `UIMenuScreen.Rebuild` do; `UIMenuItem` recalculates itself when its text changes).
   Elements that are placed while drawing and hit-test themselves (crafting icons, NPC chat buttons) don't need it.
-  Avoid per-frame allocations in screens (collections, closures, string keys): keep them in fields.
+  Avoid per-frame allocations in screens (collections, closures, string keys, `params` arrays): keep them in fields.
+  For text drawn every frame, use `CachedText` (`Number`, `Concat` and `Format`, cached by the pieces' references and the language) instead of `+` or `Language.GetTextValue(key, args)`, and give each element its own `ChatText` (tag-aware text, as `ChatManager` draws it, parsed once per text) or `SplitChatText` (`ChatManager.DrawColorCodedString`'s older split drawing).
+  `AssetRepository.Request` caches cleaned paths, so requesting an asset by name every frame no longer allocates.
+  Measure with the control server's `alloc [FRAMES]` command (bytes per update, and per screen per draw); `AllocationProfiler.Measure("name")` in a `using` block adds a named section to it while measuring.
 - Keep the legacy method's state and side effects where other code reads them: e.g. `IngameOptions.category`, `IngameOptions._GUIHover` (used by `IngameOptions.MouseOver`), `player.mouseInterface` over the window, and the gamepad link points and `UILinkPointNavigator.Shortcuts` counts the legacy code set (vanilla's gamepad pages for that UI read them).
 - Migrated: the settings window (`IngameOptions.Draw` → `UIIngameOptions`, with `IngameOptions.Open` resetting it), including its per-language layouts, sliders (`UIMenuSlider` with the legacy bar scale and HSL ramps) and the UI-scale slider that only applies on release.
   `UIIngameOptions.ShowLegacy` switches back to the legacy window, for comparison.
@@ -100,5 +103,6 @@ Started with `-aethercontrol [PORT]` (`./aether run|launch|screens --control POR
   Each command is an iterator that yields once per update, so smooth moves, drags, stick and trigger glides and waits span updates, and the reply comes when the command has finished.
   Screenshots read the back buffer in `Main.OnPostDraw`, optionally cropped and box-filtered.
   The command list is its doc comment.
+  `alloc [FRAMES]` measures main-thread allocations (overall and per retained screen) and `menu MODE` switches title-menu screens.
   If the main thread stops updating for 10 s (a hang, or a crash showing its error dialog), waiting commands fail instead of blocking, and are skipped if it recovers.
 - Clients: `./aether control` (`tools/aether/control.py`) and the `aether-game` MCP server (`tools/aether/mcp_server.py`, FastMCP, registered in `.mcp.json`); `.agents/skills/aether-game/SKILL.md` is the guide for agents.

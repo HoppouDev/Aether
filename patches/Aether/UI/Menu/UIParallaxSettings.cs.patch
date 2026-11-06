@@ -20,7 +20,7 @@
 +        AddLabel(() => "");
 +        AddLabel(() => Lang.menu[52].Value, 1f, 10f);
 +        AddItem(() => Lang.menu[5].Value, GoBack, 1f, 170f);
-+        UIMenuText text = new UIMenuText(() => Lang.menu[52].Value + ": " + Main.bgScroll);
++        UIMenuText text = new UIMenuText(() => CachedText.Concat(Lang.menu[52].Value, ": ", CachedText.Number(Main.bgScroll)));
 +        text.Left.Set(-30f, 0.5f);
 +        text.Top.Set(400f, 0f);
 +        Append(text);

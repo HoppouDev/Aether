@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/Aether/UI/Menu/MenuScreens.cs
-@@ -0,0 +1,193 @@
+@@ -0,0 +1,198 @@
 +using System;
 +using System.Collections.Generic;
 +using Microsoft.Xna.Framework;
@@ -99,6 +99,7 @@
 +    /// <summary>Updates and draws the screen for the current <c>menuMode</c>; false if it's still legacy.</summary>
 +    public static bool Draw(SpriteBatch spriteBatch, GameTime gameTime)
 +    {
++        long allocated = Aether.Testing.AllocationProfiler.Active ? Aether.Testing.AllocationProfiler.Now() : 0;
 +        MenuPreview.Update();
 +        int mode = Main.menuMode;
 +        UIMenuScreen screen = GetScreen(ShownMode(mode));
@@ -155,6 +156,10 @@
 +            MenuPreview.DrawOverlay(spriteBatch);
 +        }
 +        UserInterface.ActiveInstance = previous;
++        if (Aether.Testing.AllocationProfiler.Active)
++        {
++            Aether.Testing.AllocationProfiler.Add(screen, Aether.Testing.AllocationProfiler.Now() - allocated);
++        }
 +        return true;
 +    }
 +

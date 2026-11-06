@@ -43,7 +43,7 @@
 +        slider.Top.Set(top + 12f - slider.Height.Pixels / 2f, 0f);
 +        Append(slider);
 +        AddText(() => Lang.menu[name].Value, 7f, top);
-+        AddText(() => Math.Round(getValue() * 100f) + "%", 97f, top);
++        AddText(() => CachedText.Concat(CachedText.Number(Math.Round(getValue() * 100f)), "%"), 97f, top);
 +    }
 +
 +    private void AddText(Func<string> text, float fromCenter, float top)

@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/Aether/UI/Game/UIStylistWindow.cs
-@@ -0,0 +1,320 @@
+@@ -0,0 +1,336 @@
 +using System;
 +using Aether.UI.Menu;
 +using Microsoft.Xna.Framework;
@@ -218,7 +218,25 @@
 +        return Math.Max(0, (int)Math.Round((float)price / 10000f) * 10000);
 +    }
 +
++    // The last price text made (it only changes with the hairstyle, prices or language).
++    private static int _pricedAt = -1;
++
++    private static GameCulture _pricedIn;
++
++    private static string _priceText;
++
 +    internal static string PriceText(int price)
++    {
++        if (price != _pricedAt || Language.ActiveCulture != _pricedIn)
++        {
++            _pricedAt = price;
++            _pricedIn = Language.ActiveCulture;
++            _priceText = MakePriceText(price);
++        }
++        return _priceText;
++    }
++
++    private static string MakePriceText(int price)
 +    {
 +        if (price == 0)
 +        {
@@ -246,10 +264,8 @@
 +    {
 +        _left.Recalculate();
 +        _right.Recalculate();
-+        foreach (UIElement arrow in new UIElement[2] { _left, _right })
-+        {
-+            arrow.Draw(spriteBatch);
-+        }
++        _left.Draw(spriteBatch);
++        _right.Draw(spriteBatch);
 +        int count = Main.Hairstyles.AvailableHairstyles.Count;
 +        Main.hairStart = Math.Max(0, Math.Min(Main.hairStart, count - Shown));
 +        int grey = (Main.mouseTextColor * 2 + 255) / 3;

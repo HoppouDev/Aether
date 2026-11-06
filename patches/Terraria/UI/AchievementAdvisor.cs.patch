@@ -1,0 +1,16 @@
+--- a/Terraria/UI/AchievementAdvisor.cs
++++ b/Terraria/UI/AchievementAdvisor.cs
+@@ -164,9 +164,12 @@
+         }
+     }
+ 
++    private readonly List<AchievementAdvisorCard> _bestCards = new List<AchievementAdvisorCard>();
++
+     private List<AchievementAdvisorCard> GetBestCards(int cardsAmount = 10)
+     {
+-        List<AchievementAdvisorCard> list = new List<AchievementAdvisorCard>();
++        List<AchievementAdvisorCard> list = _bestCards;
++        list.Clear();
+         for (int i = 0; i < _cards.Count; i++)
+         {
+             AchievementAdvisorCard achievementAdvisorCard = _cards[i];

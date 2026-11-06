@@ -1,7 +1,8 @@
 --- /dev/null
 +++ b/Aether/UI/Game/UIIngameOptions.cs
-@@ -0,0 +1,636 @@
+@@ -0,0 +1,672 @@
 +using System;
++using System.Collections.Generic;
 +using Aether.UI.Menu;
 +using Microsoft.Xna.Framework;
 +using Microsoft.Xna.Framework.Graphics;
@@ -37,7 +38,21 @@
 +
 +    private static readonly UIIngameOptions Instance = new UIIngameOptions();
 +
-+    private string _layoutKey;
++    // What the window was last built for: screen size, language, category, whether invites work.
++    private bool _built;
++
++    private int _builtWidth;
++
++    private int _builtHeight;
++
++    private GameCulture _builtCulture;
++
++    private int _builtCategory;
++
++    private bool _builtCanInvite;
++
++    // Wrapped label texts (narrow layouts), by the label text they wrap.
++    private readonly Dictionary<string, string> _wrapped = new Dictionary<string, string>();
 +
 +    private Vector2 _origin;
 +
@@ -94,19 +109,25 @@
 +        return GameCulture.FromCultureName(culture).IsActive;
 +    }
 +
-+    private string LayoutKey()
++    private static bool CanInvite => SocialAPI.Network != null && SocialAPI.Network.CanInvite();
++
++    private bool LayoutChanged()
 +    {
-+        return Main.screenWidth + "x" + Main.screenHeight + " " + Language.ActiveCulture.Name + " " + IngameOptions.category + " " + (SocialAPI.Network != null && SocialAPI.Network.CanInvite());
++        if (!_built || _builtWidth != Main.screenWidth || _builtHeight != Main.screenHeight || _builtCulture != Language.ActiveCulture || _builtCategory != IngameOptions.category)
++        {
++            return true;
++        }
++        return _builtCanInvite != CanInvite;
 +    }
 +
 +    public override void OnActivate()
 +    {
-+        _layoutKey = null;
++        _built = false;
 +    }
 +
 +    public override void UpdateState()
 +    {
-+        if (_layoutKey != LayoutKey())
++        if (LayoutChanged())
 +        {
 +            Build();
 +        }
@@ -154,7 +175,13 @@
 +
 +    private void Build()
 +    {
-+        _layoutKey = LayoutKey();
++        _built = true;
++        _builtWidth = Main.screenWidth;
++        _builtHeight = Main.screenHeight;
++        _builtCulture = Language.ActiveCulture;
++        _builtCategory = IngameOptions.category;
++        _builtCanInvite = CanInvite;
++        _wrapped.Clear();
 +        RemoveAllChildren();
 +        _rows.Clear();
 +        _uiScaleSlider = null;
@@ -301,7 +328,16 @@
 +        {
 +            return text;
 +        }
-+        return FontAssets.ItemStack.Value.CreateWrappedText(text, _wrapWidth, Language.ActiveCulture.CultureInfo);
++        if (_wrapped.Count >= 256)
++        {
++            _wrapped.Clear();
++        }
++        if (!_wrapped.TryGetValue(text, out var wrapped))
++        {
++            wrapped = FontAssets.ItemStack.Value.CreateWrappedText(text, _wrapWidth, Language.ActiveCulture.CultureInfo);
++            _wrapped[text] = wrapped;
++        }
++        return wrapped;
 +    }
 +
 +    private UIMenuSlider Slider(int slot, Func<string> label, Func<float> getValue, Action<float> setValue, int gamepadFeature, float labelScale = 1f, float barShift = 0f, Utils.ColorLerpMethod colorMethod = null, int tag = 0)
@@ -335,24 +371,24 @@
 +    {
 +        BeginRight(17);
 +        Header(0, () => Lang.menu[65].Value);
-+        Slider(1, () => Lang.menu[99].Value + " " + Math.Round(Main.musicVolume * 100f) + "%", () => Main.musicVolume, delegate(float v)
++        Slider(1, () => CachedText.Concat(Lang.menu[99].Value, " ", CachedText.Number(Math.Round(Main.musicVolume * 100f)), "%"), () => Main.musicVolume, delegate(float v)
 +        {
 +            Main.musicVolume = v;
 +        }, 2);
-+        Slider(2, () => Lang.menu[98].Value + " " + Math.Round(Main.soundVolume * 100f) + "%", () => Main.soundVolume, delegate(float v)
++        Slider(2, () => CachedText.Concat(Lang.menu[98].Value, " ", CachedText.Number(Math.Round(Main.soundVolume * 100f)), "%"), () => Main.soundVolume, delegate(float v)
 +        {
 +            Main.soundVolume = v;
 +        }, 3);
-+        Slider(3, () => Lang.menu[119].Value + " " + Math.Round(Main.ambientVolume * 100f) + "%", () => Main.ambientVolume, delegate(float v)
++        Slider(3, () => CachedText.Concat(Lang.menu[119].Value, " ", CachedText.Number(Math.Round(Main.ambientVolume * 100f)), "%"), () => Main.ambientVolume, delegate(float v)
 +        {
 +            Main.ambientVolume = v;
 +        }, 4);
 +        Header(5, () => Language.GetTextValue("GameUI.ZoomCategory"));
-+        Slider(6, () => Wrapped(Language.GetTextValue("GameUI.GameZoom", Math.Round(Main.GameZoomTarget * 100f), Math.Round(Main.GameViewMatrix.Zoom.X * 100f))), () => Main.GameZoomTarget - 1f, delegate(float v)
++        Slider(6, () => Wrapped(CachedText.Format("GameUI.GameZoom", CachedText.Number(Math.Round(Main.GameZoomTarget * 100f)), CachedText.Number(Math.Round(Main.GameViewMatrix.Zoom.X * 100f)))), () => Main.GameZoomTarget - 1f, delegate(float v)
 +        {
 +            Main.GameZoomTarget = v + 1f;
 +        }, 10, 0.85f);
-+        _uiScaleSlider = Slider(7, () => Wrapped(Language.GetTextValue("GameUI.UIScale", Math.Round(Main.temporaryGUIScaleSlider * 100f), Math.Round(Main.UIScale * 100f))), () => MathHelper.Clamp((Main.temporaryGUIScaleSlider - 0.5f) / 1.5f, 0f, 1f), delegate(float v)
++        _uiScaleSlider = Slider(7, () => Wrapped(CachedText.Format("GameUI.UIScale", CachedText.Number(Math.Round(Main.temporaryGUIScaleSlider * 100f)), CachedText.Number(Math.Round(Main.UIScale * 100f)))), () => MathHelper.Clamp((Main.temporaryGUIScaleSlider - 0.5f) / 1.5f, 0f, 1f), delegate(float v)
 +        {
 +            Main.temporaryGUIScaleSlider = (float)(int)((v * 1.5f + 0.5f) * 100f) / 100f;
 +            Main.temporaryGUIScaleSliderUpdate = true;
@@ -394,7 +430,7 @@
 +        {
 +            Main.showItemText = !Main.showItemText;
 +        });
-+        Toggle(1, () => Lang.menu[123].Value + " " + Lang.menu[124 + Main.invasionProgressMode].Value, delegate
++        Toggle(1, () => CachedText.Concat(Lang.menu[123].Value, " ", Lang.menu[124 + Main.invasionProgressMode].Value), delegate
 +        {
 +            Main.invasionProgressMode = (Main.invasionProgressMode + 1) % 3;
 +        });
@@ -414,12 +450,12 @@
 +        {
 +            Main.GamepadDisableInstructionsDisplay = !Main.GamepadDisableInstructionsDisplay;
 +        });
-+        Toggle(6, () => Language.GetTextValue("UI.SelectMapBorder", Language.GetTextValue("UI.MinimapFrame_" + Main.MinimapFrameManagerInstance.ActiveSelectionKeyName)), Main.MinimapFrameManagerInstance.CycleSelection);
-+        Slider(7, () => Wrapped(Language.GetTextValue("GameUI.MapScale", Math.Round(Main.MapScale * 100f))), () => (Main.MapScale - 0.5f) / 0.5f, delegate(float v)
++        Toggle(6, () => CachedText.Format("UI.SelectMapBorder", Language.GetTextValue(CachedText.Concat("UI.MinimapFrame_", Main.MinimapFrameManagerInstance.ActiveSelectionKeyName))), Main.MinimapFrameManagerInstance.CycleSelection);
++        Slider(7, () => Wrapped(CachedText.Format("GameUI.MapScale", CachedText.Number(Math.Round(Main.MapScale * 100f)))), () => (Main.MapScale - 0.5f) / 0.5f, delegate(float v)
 +        {
 +            Main.MapScale = v * 0.5f + 0.5f;
 +        }, 12, 0.85f);
-+        Toggle(8, () => Language.GetTextValue("UI.SelectHealthStyle", Language.GetTextValue("UI.HealthManaStyle_" + Main.ResourceSetsManager.ActiveSetKeyName)), Main.ResourceSetsManager.CycleResourceSet);
++        Toggle(8, () => CachedText.Format("UI.SelectHealthStyle", Language.GetTextValue(CachedText.Concat("UI.HealthManaStyle_", Main.ResourceSetsManager.ActiveSetKeyName))), Main.ResourceSetsManager.CycleResourceSet);
 +        Toggle(9, () => Main.DialoguePortraitPreference switch
 +        {
 +            Main.DialoguePortraitDrawOption.CloseUp => Language.GetTextValue("UI.PortraitsCloseUp"),
@@ -459,7 +495,7 @@
 +
 +    private static string OnOff(string key, bool enabled)
 +    {
-+        return Language.GetTextValue(key, Language.GetTextValue(enabled ? "GameUI.Enabled" : "GameUI.Disabled"));
++        return CachedText.Format(key, Language.GetTextValue(enabled ? "GameUI.Enabled" : "GameUI.Disabled"));
 +    }
 +
 +    private void BuildVideo()
@@ -470,14 +506,14 @@
 +        {
 +            Main.QueueMainThreadAction(Main.ToggleFullScreen);
 +        });
-+        Toggle(1, () => Lang.menu[51].Value + ": " + Main.PendingResolutionWidth + "x" + Main.PendingResolutionHeight, NextResolution);
-+        Slider(2, () => Lang.menu[52].Value + ": " + Main.bgScroll + "%", () => Main.bgScroll / 100f, delegate(float v)
++        Toggle(1, () => CachedText.Concat(Lang.menu[51].Value, ": ", CachedText.Number(Main.PendingResolutionWidth), "x", CachedText.Number(Main.PendingResolutionHeight)), NextResolution);
++        Slider(2, () => CachedText.Concat(Lang.menu[52].Value, ": ", CachedText.Number(Main.bgScroll), "%"), () => Main.bgScroll / 100f, delegate(float v)
 +        {
 +            Main.bgScroll = (int)(v * 100f);
 +            Main.caveParallax = 1f - Main.bgScroll / 500f;
 +        }, 1);
 +        Toggle(3, () => Lang.menu[(int)(247 + Main.FrameSkipMode)].Value, Main.CycleFrameSkipMode);
-+        Toggle(4, () => Language.GetTextValue("UI.LightMode_" + Lighting.Mode), Lighting.NextLightMode);
++        Toggle(4, () => Language.GetTextValue(CachedText.Concat("UI.LightMode_", CachedText.Name(Lighting.Mode))), Lighting.NextLightMode);
 +        Toggle(5, () => Lang.menu[59 + Main.qaStyle].Value, delegate
 +        {
 +            if (++Main.qaStyle > 3)
@@ -505,7 +541,7 @@
 +        {
 +            Main.UseStormEffects = !Main.UseStormEffects;
 +        });
-+        Toggle(11, () => Language.GetTextValue("GameUI.WaveQuality", Main.WaveQuality switch
++        Toggle(11, () => CachedText.Format("GameUI.WaveQuality", Main.WaveQuality switch
 +        {
 +            1 => Language.GetTextValue("GameUI.QualityLow"),
 +            2 => Language.GetTextValue("GameUI.QualityMedium"),
@@ -515,7 +551,7 @@
 +        {
 +            Main.WaveQuality = (Main.WaveQuality + 1) % 4;
 +        });
-+        Toggle(12, () => Language.GetTextValue("UI.TilesSwayInWind" + (Main.SettingsEnabled_TilesSwayInWind ? "On" : "Off")), delegate
++        Toggle(12, () => Language.GetTextValue(Main.SettingsEnabled_TilesSwayInWind ? "UI.TilesSwayInWindOn" : "UI.TilesSwayInWindOff"), delegate
 +        {
 +            Main.SettingsEnabled_TilesSwayInWind = !Main.SettingsEnabled_TilesSwayInWind;
 +        });

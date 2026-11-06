@@ -1,0 +1,29 @@
+--- a/ReLogic/Content/AssetRepository.cs
++++ b/ReLogic/Content/AssetRepository.cs
+@@ -24,6 +24,10 @@
+ 
+     private readonly object _requestLock = new object();
+ 
++    // Requested names and their cleaned paths: cleaning allocates, and many assets are requested by
++    // name every frame.
++    private readonly Dictionary<string, string> _cleanPaths = new Dictionary<string, string>();
++
+     private bool _isDisposed;
+ 
+     public int PendingAssets => _asyncLoader.Remaining;
+@@ -82,9 +86,14 @@
+     public Asset<T> Request<T>(string assetName, AssetRequestMode mode = AssetRequestMode.ImmediateLoad) where T : class
+     {
+         ThrowIfDisposed();
+-        assetName = AssetPathHelper.CleanPath(assetName);
+         lock (_requestLock)
+         {
++            if (!_cleanPaths.TryGetValue(assetName, out var cleanPath))
++            {
++                cleanPath = AssetPathHelper.CleanPath(assetName);
++                _cleanPaths[assetName] = cleanPath;
++            }
++            assetName = cleanPath;
+             Asset<T> asset = null;
+             if (_assets.TryGetValue(assetName, out var value))
+             {

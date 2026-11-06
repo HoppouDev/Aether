@@ -1,8 +1,14 @@
 --- a/Terraria/GameContent/UI/NPCChatPanel.cs
 +++ b/Terraria/GameContent/UI/NPCChatPanel.cs
-@@ -21,15 +21,15 @@
+@@ -17,19 +17,19 @@
  
-     private int textBlinkerState;
+ public class NPCChatPanel
+ {
+-    private int textBlinkerCount;
++    internal int textBlinkerCount;
+ 
+-    private int textBlinkerState;
++    internal int textBlinkerState;
  
 -    private List<NPCInteraction> _interactions = new List<NPCInteraction>();
 +    internal List<NPCInteraction> _interactions = new List<NPCInteraction>();

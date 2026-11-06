@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/Aether/Testing/ControlServer.cs
-@@ -0,0 +1,906 @@
+@@ -0,0 +1,963 @@
 +using System;
 +using System.Collections.Concurrent;
 +using System.Collections.Generic;
@@ -47,7 +47,10 @@
 +///                                      answers WxH PATH
 +/// state                                JSON: screen, menu, player, synthetic input
 +/// release                              let go of every button, key, stick and trigger
++/// alloc [FRAMES]                       bytes the main thread allocates over FRAMES updates (default 120),
++///                                      overall and per retained-mode screen; JSON
 +/// quit                                 close the game (as its window's close button does)
++/// menu MODE                            on the title menu, switch to Main.menuMode MODE
 +/// ping
 +/// </code>
 +/// </summary>
@@ -94,6 +97,8 @@
 +    private static float _screenshotScale;
 +
 +    private static int _updates;
++
++    private static int _draws;
 +
 +    // When the main thread last ticked (Clock milliseconds), read by the connection threads.
 +    private static long _lastTick;
@@ -273,6 +278,15 @@
 +            return Result("pong");
 +        case "state":
 +            return Result(State());
++        case "alloc":
++            return Alloc((int)Optional(words, 1, 120f));
++        case "menu":
++            if (!Main.gameMenu)
++            {
++                throw new CommandError("not on the title menu");
++            }
++            Main.menuMode = Int(words, 1, "menuMode");
++            return Frames(2);
 +        case "quit":
 +            Main.instance.Exit();
 +            return Frames(0);
@@ -582,6 +596,48 @@
 +        yield return null;
 +    }
 +
++    private static IEnumerable<object> Alloc(int frames)
++    {
++        if (!AllocationProfiler.Available)
++        {
++            throw new CommandError("this runtime can't count allocations (no GC.GetAllocatedBytesForCurrentThread)");
++        }
++        frames = Math.Max(1, frames);
++        AllocationProfiler.Reset();
++        AllocationProfiler.Active = true;
++        int collections = GC.CollectionCount(0);
++        int drawn = _draws;
++        long start = AllocationProfiler.Now();
++        for (int i = 0; i < frames; i++)
++        {
++            yield return null;
++        }
++        long total = AllocationProfiler.Now() - start;
++        AllocationProfiler.Active = false;
++        drawn = Math.Max(1, _draws - drawn);
++        List<KeyValuePair<object, long>> screens = new List<KeyValuePair<object, long>>(AllocationProfiler.ByScreen);
++        screens.Sort((a, b) => b.Value.CompareTo(a.Value));
++        Dictionary<string, long> perScreen = new Dictionary<string, long>();
++        long screensTotal = 0;
++        foreach (KeyValuePair<object, long> screen in screens)
++        {
++            // Screens by type; sections a screen measures itself (AllocationProfiler.Add with a string) by name.
++            string name = screen.Key as string ?? screen.Key.GetType().Name;
++            perScreen.TryGetValue(name, out var bytes);
++            perScreen[name] = bytes + screen.Value / drawn;
++            screensTotal += screen.Value;
++        }
++        _current.Result = JsonConvert.SerializeObject(new Dictionary<string, object>
++        {
++            ["updates"] = frames,
++            ["draws"] = drawn,
++            ["bytesPerUpdate"] = total / frames,
++            ["screenBytesPerDraw"] = screensTotal / drawn,
++            ["gen0Collections"] = GC.CollectionCount(0) - collections,
++            ["screensPerDraw"] = perScreen
++        });
++    }
++
 +    private static IEnumerable<object> Wait(float milliseconds)
 +    {
 +        double until = Clock.Elapsed.TotalMilliseconds + milliseconds;
@@ -655,6 +711,7 @@
 +
 +    private static void AfterDraw(GameTime gameTime)
 +    {
++        _draws++;
 +        if (_screenshotPath == null)
 +        {
 +            return;

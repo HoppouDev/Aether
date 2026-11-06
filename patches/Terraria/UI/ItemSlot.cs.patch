@@ -1,0 +1,81 @@
+--- a/Terraria/UI/ItemSlot.cs
++++ b/Terraria/UI/ItemSlot.cs
+@@ -2684,7 +2684,7 @@
+             }
+             if (num22 != -1)
+             {
+-                ChatManager.DrawColorCodedStringWithShadow(spriteBatch, FontAssets.ItemStack.Value, num22.ToString(), position + new Vector2(8f, 30f) * inventoryScale, color, 0f, Vector2.Zero, new Vector2(inventoryScale * 0.8f), -1f, inventoryScale);
++                ChatManager.DrawColorCodedStringWithShadow(spriteBatch, FontAssets.ItemStack.Value, Aether.UI.CachedText.Number(num22), position + new Vector2(8f, 30f) * inventoryScale, color, 0f, Vector2.Zero, new Vector2(inventoryScale * 0.8f), -1f, inventoryScale);
+             }
+             if (context != 37 && (item.stack > 1 || drawState.stackTextDrawFadeOverload > 0f) && num22 == -1)
+             {
+@@ -2696,11 +2696,11 @@
+                     num23 *= 1.2f;
+                 }
+                 float num24 = ((drawState.stackTextDrawFadeOverload > 0f) ? drawState.stackTextDrawFadeOverload : 1f);
+-                ChatManager.DrawColorCodedStringWithShadow(spriteBatch, FontAssets.ItemStack.Value, item.stack.ToString(), position + vector4 * inventoryScale, color * num24, 0f, new Vector2(0f, FontAssets.ItemStack.Value.LineSpacing), new Vector2(num23), -1f, num23);
++                ChatManager.DrawColorCodedStringWithShadow(spriteBatch, FontAssets.ItemStack.Value, Aether.UI.CachedText.Number(item.stack), position + vector4 * inventoryScale, color * num24, 0f, new Vector2(0f, FontAssets.ItemStack.Value.LineSpacing), new Vector2(num23), -1f, num23);
+             }
+             if (context == 13)
+             {
+-                string text = string.Concat(slot + 1);
++                string text = Aether.UI.CachedText.Number(slot + 1);
+                 if (text == "10")
+                 {
+                     text = "0";
+@@ -2759,7 +2759,7 @@
+         if (context == 0 && slot < 10)
+         {
+             float num29 = inventoryScale;
+-            string text2 = string.Concat(slot + 1);
++            string text2 = Aether.UI.CachedText.Number(slot + 1);
+             if (text2 == "10")
+             {
+                 text2 = "0";
+@@ -3702,9 +3702,9 @@
+                 {
+                     CoinSlot.UpdateSavings(i, num, out drawState);
+                 }
+-                Vector2 vector = new Vector2(shopx + ChatManager.GetStringSize(FontAssets.MouseText.Value, text, Vector2.One).X + (float)(24 * i) + 45f, shopy + 50f);
++                Vector2 vector = new Vector2(shopx + Aether.UI.CachedText.ChatSize(FontAssets.MouseText.Value, text).X + (float)(24 * i) + 45f, shopy + 50f);
+                 CoinSlot.DrawItemCoin(sb, vector + new Vector2(0f, 0f - drawState.coinYOffset), 74 - i, drawState.coinAnimFrame, 1f, 1024f, Color.White);
+-                Utils.DrawBorderStringFourWay(sb, FontAssets.ItemStack.Value, num.ToString(), vector.X - 11f, vector.Y + (float)FontAssets.ItemStack.Value.LineSpacing * 0.75f, Color.White, Color.Black, new Vector2(0f, FontAssets.ItemStack.Value.LineSpacing), 0.75f * drawState.stackTextScale);
++                Utils.DrawBorderStringFourWay(sb, FontAssets.ItemStack.Value, Aether.UI.CachedText.Number(num), vector.X - 11f, vector.Y + (float)FontAssets.ItemStack.Value.LineSpacing * 0.75f, Color.White, Color.Black, new Vector2(0f, FontAssets.ItemStack.Value.LineSpacing), 0.75f * drawState.stackTextScale);
+             }
+             return;
+         }
+@@ -3722,7 +3722,7 @@
+                 CoinSlot.UpdateSavings(j, num3, out drawState);
+             }
+             CoinSlot.DrawItemCoin(sb, new Vector2(shopx + 11f + (float)(24 * j), shopy + 75f - drawState.coinYOffset), 74 - j, drawState.coinAnimFrame, 1f, 1024f, Color.White);
+-            Utils.DrawBorderStringFourWay(sb, FontAssets.ItemStack.Value, num3.ToString(), shopx + (float)(24 * j) + (float)num2, shopy + 75f + (float)FontAssets.ItemStack.Value.LineSpacing * 0.75f, Color.White, Color.Black, new Vector2(0f, FontAssets.ItemStack.Value.LineSpacing), 0.75f * drawState.stackTextScale);
++            Utils.DrawBorderStringFourWay(sb, FontAssets.ItemStack.Value, Aether.UI.CachedText.Number(num3), shopx + (float)(24 * j) + (float)num2, shopy + 75f + (float)FontAssets.ItemStack.Value.LineSpacing * 0.75f, Color.White, Color.Black, new Vector2(0f, FontAssets.ItemStack.Value.LineSpacing), 0.75f * drawState.stackTextScale);
+         }
+     }
+ 
+@@ -3734,11 +3734,11 @@
+             CustomCurrencyManager.DrawSavings(sb, _customCurrencyForSavings, shopx, shopy, horizontal);
+             return;
+         }
+-        long num = Utils.CoinsCount(out var overFlowing, player.bank.item);
+-        long num2 = Utils.CoinsCount(out overFlowing, player.bank2.item);
+-        long num3 = Utils.CoinsCount(out overFlowing, player.bank3.item);
+-        long num4 = Utils.CoinsCount(out overFlowing, player.bank4.item);
+-        long num5 = Utils.CoinsCombineStacks(out overFlowing, num, num2, num3, num4);
++        long num = Utils.CoinsCount(out var overFlowing, player.bank.item, Aether.UI.CachedText.NoSlots);
++        long num2 = Utils.CoinsCount(out overFlowing, player.bank2.item, Aether.UI.CachedText.NoSlots);
++        long num3 = Utils.CoinsCount(out overFlowing, player.bank3.item, Aether.UI.CachedText.NoSlots);
++        long num4 = Utils.CoinsCount(out overFlowing, player.bank4.item, Aether.UI.CachedText.NoSlots);
++        long num5 = Utils.CoinsCombineStacks(out overFlowing, Aether.UI.CachedText.Counts(num, num2, num3, num4));
+         if (num5 > 0)
+         {
+             Main.GetItemDrawFrame(4076, out var itemTexture, out var itemFrame);
+@@ -3761,7 +3761,7 @@
+             {
+                 sb.Draw(itemTexture4, Utils.CenteredRectangle(new Vector2(shopx + 70f, shopy + 60f), itemTexture4.Size() * 0.65f), null, Color.White);
+             }
+-            DrawMoney(sb, Lang.inter[66].Value, shopx, shopy, Utils.CoinsSplit(num5), horizontal, fromSavings: true);
++            DrawMoney(sb, Lang.inter[66].Value, shopx, shopy, Aether.UI.CachedText.CoinsSplit(num5), horizontal, fromSavings: true);
+         }
+     }
+ 

@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/Aether/UI/Menu/UIMenuColorBars.cs
-@@ -0,0 +1,171 @@
+@@ -0,0 +1,176 @@
 +using Microsoft.Xna.Framework;
 +using Microsoft.Xna.Framework.Graphics;
 +using Terraria;
@@ -123,16 +123,21 @@
 +        }
 +    }
 +
++    /// <summary>Where a bar's slider sits, 0 to 1.</summary>
++    private float BarValue(int row)
++    {
++        return row switch
++        {
++            0 => Main.hBar,
++            1 => Main.sBar,
++            2 => (Main.lBar - _minLuminosity) / (1f - _minLuminosity),
++            _ => Main.aBar
++        };
++    }
++
 +    protected override void DrawSelf(SpriteBatch spriteBatch)
 +    {
 +        CalculatedStyle dimensions = GetDimensions();
-+        float[] values = new float[4]
-+        {
-+            Main.hBar,
-+            Main.sBar,
-+            (Main.lBar - _minLuminosity) / (1f - _minLuminosity),
-+            Main.aBar
-+        };
 +        Color color = Main.hslToRgb(Main.hBar, Main.sBar, Main.lBar);
 +        for (int row = 0; row < Rows; row++)
 +        {
@@ -160,7 +165,7 @@
 +            {
 +                spriteBatch.Draw(TextureAssets.ColorHighlight.Value, position, Main.OurFavoriteColor);
 +            }
-+            spriteBatch.Draw(TextureAssets.ColorSlider.Value, new Vector2(position.X + (TextureAssets.Hue.Width() - 2) * values[row] - TextureAssets.ColorSlider.Width() / 2, position.Y - TextureAssets.ColorSlider.Height() / 2 + TextureAssets.Hue.Height() / 2), Color.White);
++            spriteBatch.Draw(TextureAssets.ColorSlider.Value, new Vector2(position.X + (TextureAssets.Hue.Width() - 2) * BarValue(row) - TextureAssets.ColorSlider.Width() / 2, position.Y - TextureAssets.ColorSlider.Height() / 2 + TextureAssets.Hue.Height() / 2), Color.White);
 +            if (LinkPointBase >= 0)
 +            {
 +                UILinkPointNavigator.SetPosition(LinkPointBase + row, position + TextureAssets.ColorBar.Value.Size() / 2f);

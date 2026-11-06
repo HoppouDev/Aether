@@ -24,7 +24,7 @@
 +
 +    protected override void BuildItems()
 +    {
-+        AddLabel(() => "Opens " + _target, 0.6f);
++        AddLabel(() => CachedText.Concat("Opens ", _target), 0.6f);
 +    }
 +
 +    public override void UpdateState()

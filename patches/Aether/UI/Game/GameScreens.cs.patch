@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/Aether/UI/Game/GameScreens.cs
-@@ -0,0 +1,76 @@
+@@ -0,0 +1,81 @@
 +using System.Collections.Generic;
 +using Microsoft.Xna.Framework;
 +using Microsoft.Xna.Framework.Graphics;
@@ -36,6 +36,7 @@
 +    /// <summary>Updates and draws screen; call from the legacy draw it replaces, in UI zoom.</summary>
 +    public static void Draw(UIGameScreen screen, SpriteBatch spriteBatch)
 +    {
++        long allocated = Aether.Testing.AllocationProfiler.Active ? Aether.Testing.AllocationProfiler.Now() : 0;
 +        UserInterface previous = UserInterface.ActiveInstance;
 +        if (!Hosts.TryGetValue(screen, out var host))
 +        {
@@ -66,6 +67,10 @@
 +        ui.Update(gameTime);
 +        ui.Draw(spriteBatch, gameTime);
 +        UserInterface.ActiveInstance = previous;
++        if (Aether.Testing.AllocationProfiler.Active)
++        {
++            Aether.Testing.AllocationProfiler.Add(screen, Aether.Testing.AllocationProfiler.Now() - allocated);
++        }
 +    }
 +
 +    /// <summary>Drops screen, so its next Draw opens it afresh (input reset, rebuilt).</summary>

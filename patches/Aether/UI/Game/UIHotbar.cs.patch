@@ -1,11 +1,12 @@
 --- /dev/null
 +++ b/Aether/UI/Game/UIHotbar.cs
-@@ -0,0 +1,150 @@
+@@ -0,0 +1,176 @@
 +using Microsoft.Xna.Framework;
 +using Microsoft.Xna.Framework.Graphics;
 +using ReLogic.Graphics;
 +using Terraria;
 +using Terraria.GameContent;
++using Terraria.Localization;
 +using Terraria.GameInput;
 +using Terraria.UI;
 +
@@ -74,11 +75,36 @@
 +        Recalculate();
 +    }
 +
++    // The selected item's name with its prefix, which Item.AffixName builds anew each call.
++    private string _name;
++
++    private int _nameType;
++
++    private int _namePrefix;
++
++    private GameCulture _nameCulture;
++
++    private string SelectedName(Item item)
++    {
++        if (item.prefix <= 0)
++        {
++            return item.AffixName();
++        }
++        if (_name == null || item.type != _nameType || item.prefix != _namePrefix || Language.ActiveCulture != _nameCulture)
++        {
++            _nameType = item.type;
++            _namePrefix = item.prefix;
++            _nameCulture = Language.ActiveCulture;
++            _name = item.AffixName();
++        }
++        return _name;
++    }
++
 +    protected override void DrawSelf(SpriteBatch spriteBatch)
 +    {
 +        Player player = Main.LocalPlayer;
 +        Item selected = player.inventory[player.selectedItem];
-+        string text = (!string.IsNullOrEmpty(selected.Name)) ? selected.AffixName() : Lang.inter[37].Value;
++        string text = (!string.IsNullOrEmpty(selected.Name)) ? SelectedName(selected) : Lang.inter[37].Value;
 +        Vector2 half = FontAssets.MouseText.Value.MeasureString(text) / 2f;
 +        byte c = Main.mouseTextColor;
 +        spriteBatch.DrawString(FontAssets.MouseText.Value, text, new Vector2(236f - half.X, 0f), new Color(c, c, c, c), 0f, default(Vector2), 1f, SpriteEffects.None, 0f);

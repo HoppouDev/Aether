@@ -26,7 +26,7 @@
 +        {
 +            Main.showItemText = !Main.showItemText;
 +        }, Scale);
-+        AddToggle(() => Lang.menu[123].Value + " " + Lang.menu[124 + Main.invasionProgressMode].Value, delegate
++        AddToggle(() => CachedText.Concat(Lang.menu[123].Value, " ", Lang.menu[124 + Main.invasionProgressMode].Value), delegate
 +        {
 +            Main.invasionProgressMode = (Main.invasionProgressMode + 1) % 3;
 +        }, Scale);
@@ -47,11 +47,11 @@
 +            Main.GamepadDisableInstructionsDisplay = !Main.GamepadDisableInstructionsDisplay;
 +        }, Scale);
 +        // DrawMenu cycles these two without a sound.
-+        AddItem(() => Language.GetTextValue("UI.SelectMapBorder", Language.GetTextValue("UI.MinimapFrame_" + Main.MinimapFrameManagerInstance.ActiveSelectionKeyName)), delegate
++        AddItem(() => CachedText.Format("UI.SelectMapBorder", Language.GetTextValue(CachedText.Concat("UI.MinimapFrame_", Main.MinimapFrameManagerInstance.ActiveSelectionKeyName))), delegate
 +        {
 +            Main.MinimapFrameManagerInstance.CycleSelection();
 +        }, Scale);
-+        AddItem(() => Language.GetTextValue("UI.SelectHealthStyle", Language.GetTextValue("UI.HealthManaStyle_" + Main.ResourceSetsManager.ActiveSetKeyName)), delegate
++        AddItem(() => CachedText.Format("UI.SelectHealthStyle", Language.GetTextValue(CachedText.Concat("UI.HealthManaStyle_", Main.ResourceSetsManager.ActiveSetKeyName))), delegate
 +        {
 +            Main.ResourceSetsManager.CycleResourceSet();
 +        }, Scale);

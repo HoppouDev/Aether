@@ -19,7 +19,7 @@
 +
 +    protected override void BuildItems()
 +    {
-+        AddToggle(() => Lang.menu[73].Value + ": " + Main.PendingResolutionWidth + "x" + Main.PendingResolutionHeight, NextResolution, Scale);
++        AddToggle(() => CachedText.Concat(Lang.menu[73].Value, ": ", CachedText.Number(Main.PendingResolutionWidth), "x", CachedText.Number(Main.PendingResolutionHeight)), NextResolution, Scale);
 +        if (Main.IsBorderlessDisplayAvailable())
 +        {
 +            AddToggle(() => Lang.menu[Main.PendingBorderlessState ? 245 : 246].Value, delegate
