@@ -174,7 +174,10 @@ internal static class Program
     {
         try
         {
-            game.EntryPoint!.Invoke(null, [args]);
+            MethodInfo entrypoint = game.EntryPoint ??
+                game.GetType("Terraria.LinuxLaunch", throwOnError: true)!.GetMethod("Main", BindingFlags.Static | BindingFlags.NonPublic)
+                ?? throw new MissingMethodException("Terraria.LinuxLaunch", "Main");
+            entrypoint.Invoke(null, [args]);
             return Environment.ExitCode;
         }
         catch (TargetInvocationException exception) when (exception.InnerException != null)

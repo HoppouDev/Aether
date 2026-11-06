@@ -2,16 +2,13 @@
   <PropertyGroup>
     <AssemblyName>Terraria</AssemblyName>
     <GenerateAssemblyInfo>False</GenerateAssemblyInfo>
-    <!-- WinExe: no console window on Windows (the same as Exe elsewhere). -->
-    <OutputType>WinExe</OutputType>
+    <OutputType>Library</OutputType>
     <TargetFramework>net10.0</TargetFramework>
     <!-- On a newer runtime when .NET 10 isn't installed. -->
     <RollForward>Major</RollForward>
     <Nullable>disable</Nullable>
     <ImplicitUsings>disable</ImplicitUsings>
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
-    <StartupObject>Terraria.LinuxLaunch</StartupObject>
-    <UseAppHost>false</UseAppHost>
     <!-- Sources live in src/ (base + patches); never glob .base/ or lib/. -->
     <EnableDefaultItems>False</EnableDefaultItems>
   </PropertyGroup>

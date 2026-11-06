@@ -53,7 +53,7 @@ Notes on the game's modules live in `AGENTS.md` files under `src/Terraria/`; rea
 ## Build and run
 
 ```bash
-dotnet build -c Debug
+dotnet build Bootstrap/Aether.Bootstrap.csproj -c Debug
 ```
 
 - Targets **.NET 10** (`net10.0`, `Microsoft.NET.Sdk`; `RollForward` lets a newer runtime run it), on every OS: Mono and .NET Framework, which the game's own builds use, aren't involved.
@@ -61,13 +61,13 @@ dotnet build -c Debug
   These are normal for decompiled code, so don't "fix" them unless you're already editing that code.
   The game's XNA-era code (its WinForms window, used only when `Program.IsXna`) compiles against stand-ins in `src/Aether/Compat/` that throw if reached, and `ReLogic`'s XNA-only Windows platform classes are deleted: Windows runs on FNA through `FnaWindowsPlatform`.
   On .NET, `Thread.Abort` doesn't exist (the LAN broadcast thread stops cooperatively), and `Stopwatch` counts nanoseconds on Linux where Mono counted 100 ns ticks (the frame limiter converts its deltas to seconds directly).
-- The output is `bin/Debug/net10.0/`: `Terraria.dll`, its apphost launcher (`Terraria`, or `Terraria.exe` on Windows; built for the OS you build on), `runtimeconfig`/`deps` files, FNA (its .NET build) and a few NuGet libraries.
+- The client output is `Bootstrap/bin/Debug/net10.0/` with the `Aether.Bootstrap` apphost (`Aether.Bootstrap.exe` on Windows), `Terraria.dll`, the mod API, runtime metadata, FNA and supporting libraries.
   **Run it with `./aether run`** (build + launch; `--release`, `--save-dir`, `--real-saves`, `--platform-dir`; arguments after `--` go to the game; Steam must be running), or separately with `./aether build` and `./aether launch` (runs whichever of the Debug/Release builds is newer).
   It needs the .NET 10 runtime installed (the SDK has it), and rebuilds `.aether/run/` around the client with **Aether's FNA** (`lib/FNA.dll` and the matching natives in `lib/fnalibs*/`), which replaces each build's older FNA 26.3 and its SDL3/FNA3D/FAudio:
   - **Linux:** the client with every native library next to it (`lib/fnalibs/lib64/` over the game's Steam and file-dialog libraries from its `lib64/`), plus symlinks to the Linux build's `Content/` and other files; none of its Mono runtime (MonoKickstart, Mono's `*.dll`s, its `Terraria.exe` and FNA).
     The vanilla server that Host & Play starts is a separate Mono program needing its own, older FNA, so it gets the game's layout in `server/` (Aether's patch to `Main.cs` starts `server/TerrariaServer`), with copies of its launchers: MonoKickstart finds `lib64/` relative to its real path.
   - **macOS:** a copy of the **macOS** build's `Terraria.app` (`--platform-dir`, default `.aether/game-macos/` from `./aether download --platform macos`, else the Steam install) with the client in `Contents/Client/` (with `lib/fnalibs-apple/osx/`, the bundle's Steam library and a link to `Contents/Resources/Content/`), started by a `Contents/MacOS/Terraria` script.
-    macOS needs that build's own `Content/`: its shaders and XACT audio banks differ from Linux's.
+    The macOS bundle supplies its own shaders and XACT audio banks.
     The vanilla server keeps the bundle's `MacOS/` (copied) and `Resources/` (linked), where the game starts it from (`../MacOS/TerrariaServer`).
   - **Windows:** the client links the **Linux** build's `Content/` (the Windows build's is XNA's: Reach-profile images and XNA-compiled shaders), and copies `lib/fnalibs/x64/` and `lib/fnalibs/D3D12/` (FNA3D's Direct3D 12 Agility SDK), plus the official 64-bit Steamworks.NET and `steam_api64.dll` from `lib/steamworks/` (pinned in `tools/steamworks.json`: Terraria embeds that same Steamworks.NET 2024.8.0 release unmodified, so its x64 build is the drop-in match).
     That Steamworks.NET sits next to the client, which loads a library next to it in preference to the embedded one (the Linux build).
@@ -78,6 +78,8 @@ dotnet build -c Debug
   It can be built on any OS: `lin64` and `win64` need the Linux build (`--game-dir`), the mac targets the macOS build (`./aether download --platform macos` or `--platform-dir`, which needs the targets to be one OS's); another OS's Steam install isn't looked for.
   The macOS apphost isn't signed when published elsewhere: on Apple silicon, sign the bundle on a Mac (`codesign --force --deep -s - Terraria.app`) before running it.
   `dist/` contains the game's files: it's gitignored and for playing on your own machines, not for distributing.
+- The bootstrap discovers local mod archives before loading the client.
+  See [the mod authoring guide](MODDING.md).
 - The client exe has no headless mode: `Main.dedServ` is only set in the separate server build, so any runtime test opens a game window.
   To drive that window without focusing it or sending system input, start it with `--control PORT` and use `./aether control` or the `aether-game` MCP server (see `.agents/skills/aether-game/SKILL.md`).
 - **Finding allocations:** `--profile` (Linux; with `--control`) has .NET load Aether's allocation profiler at startup (`CORECLR_PROFILER*`), a CoreCLR profiler (`ICorProfilerCallback3`) compiled from `tools/aether/profiler/aether_profiler.c` into `.aether/profiler/` (needs `cc`).
@@ -104,9 +106,10 @@ dotnet build -c Debug
   The game's own FNA (26.3) is only used to decompile, so `.base/` doesn't depend on the FNA version.
   The patch keeps 26.3's leniency the game depends on: a disposed `SoundEffectInstance` reports `Stopped` and ignores `Stop`/`Pause` (26.11 throws, and Terraria disposes finished instances it still holds, so their sounds stopped playing).
   CI artifacts expire after 90 days; the pinned run (from 2026-11-03) expires around 2027-02-01, so re-pin before then or mirror the libraries.
-- At startup, `LinuxLaunch.Main` resolves missing assemblies from a file of that name next to the client, else from the client's own manifest resources (by suffix `<AssemblyName>.dll`), loading them into .NET's default load context.
-  So the `lib/` DLLs (except FNA, which is copied next to the client) are referenced with `Private=False` (not copied to the output) and embedded under their original names (`Terraria.Libraries.ReLogic.ReLogic.dll`, etc.).
-  .NET only looks in its own folder for what libraries loaded from bytes P/Invoke, so `Aether.NativeLibraries` looks next to the client too (`libsteam_api.so`, `libnfd.so`, ...).
+- At startup, `LinuxLaunch.Main` resolves missing assemblies from a DLL next to the client or an embedded resource matching its name.
+  Libraries extracted from the game are embedded under their original resource names.
+  FNA is copied next to the client.
+  `Aether.NativeLibraries` also looks next to the client for native dependencies such as `libsteam_api.so` and `libnfd.so`.
   The game's background pass that JITs every method skips what needs a library .NET can't load (the WeGame SDK is 32-bit); the .NET Framework builds of the embedded libraries also need the `System.IO.Packaging` and `System.Security.Permissions` packages (and `CaptureCamera`'s XNA path `System.Drawing.Common`, which loads but is never called).
   ReLogic is the exception: it's built from `src/ReLogic/` by `ReLogic/ReLogic.csproj`, and `Terraria.csproj`'s `EmbedReLogic` target embeds that build under the same name.
   To add or replace a library, update both the `Reference` and the `EmbeddedResource` in the csproj, and `LIBRARY_RESOURCES` in `tools/aether/decompile.py` if it comes from the game.

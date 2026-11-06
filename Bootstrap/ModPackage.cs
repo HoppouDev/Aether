@@ -24,10 +24,12 @@ internal sealed record ModPackage(string Archive, string Root, ModManifest Manif
         {
             string name = entry.FullName.TrimEnd('/');
             ValidatePath(name);
-            if (!paths.Add(name) || ((entry.ExternalAttributes >> 16) & 0xf000) == 0xa000)
+            if (!paths.Add(name) || ((entry.ExternalAttributes >> 16) & 0xf000) == 0xa000
+                || (entry.ExternalAttributes & (int)FileAttributes.ReparsePoint) != 0)
                 throw new InvalidDataException($"Duplicate entry or symbolic link '{entry.FullName}'.");
             string directory = entry.FullName.EndsWith('/') ? name : "";
-            if (directory.Length == 0 && name.LastIndexOf('/') is int separator && separator >= 0)
+            int separator = name.LastIndexOf('/');
+            if (directory.Length == 0 && separator >= 0)
                 directory = name[..separator];
             while (directory.Length > 0)
             {

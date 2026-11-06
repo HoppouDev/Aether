@@ -141,7 +141,12 @@ internal sealed partial class AssemblyWeaver
 
         foreach (int match in matches)
         {
-            int index = shift == AtShift.BY ? checked(match + Option(attribute, "By", 0)) : match;
+            int index = shift switch
+            {
+                AtShift.BEFORE => match - 1,
+                AtShift.BY => checked(match + Option(attribute, "By", 0)),
+                _ => match
+            };
             bool after = shift == AtShift.AFTER;
             if (index < region.Start || index > region.End)
                 throw new InvalidDataException($"Shift leaves the selected region in '{target.FullName}'.");
@@ -165,8 +170,6 @@ internal sealed partial class AssemblyWeaver
     {
         if (!method.IsConstructor || method.IsStatic)
             return 0;
-        if (method.Body.HasExceptionHandlers)
-            throw new InvalidDataException($"Cannot verify initialization chain in '{method.FullName}' with exception handlers.");
 
         // A linear, empty-stack prefix establishes that the first receiver is the uninitialized instance.
         int depth = 0;
