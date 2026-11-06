@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/Aether/Testing/AllocationProfiler.cs
-@@ -0,0 +1,77 @@
+@@ -0,0 +1,101 @@
 +using System;
 +using System.Collections.Generic;
 +using System.Reflection;
@@ -75,6 +75,30 @@
 +            {
 +                Add(_name, Now() - _start);
 +            }
++        }
++    }
++
++    private static long _lap;
++
++    /// <summary>
++    /// While profiling, counts the bytes allocated since the previous Lap (or <see cref="LapStart" />)
++    /// under name: checkpoints dropped through a long method show which stretch allocates.
++    /// </summary>
++    public static void Lap(string name)
++    {
++        if (Active)
++        {
++            long now = Now();
++            Add(name, now - _lap);
++            _lap = now;
++        }
++    }
++
++    public static void LapStart()
++    {
++        if (Active)
++        {
++            _lap = Now();
 +        }
 +    }
 +}

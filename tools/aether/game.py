@@ -19,6 +19,7 @@ dropped into a different runtime:
 everything into a self-contained dist/<target>/ (which therefore contains game files).
 """
 
+import os
 import shutil
 import struct
 import subprocess
@@ -380,10 +381,21 @@ def launch_command(
     return cmd + args
 
 
-def launch(platform: str, run_dir: Path, save_dir: Path | None, args: list[str]) -> int:
-    """Runs the client in the foreground and returns its exit code."""
+def launch(
+    platform: str,
+    run_dir: Path,
+    save_dir: Path | None,
+    args: list[str],
+    env: dict[str, str] | None = None,
+) -> int:
+    """Runs the client in the foreground (env: extra environment) and returns its exit code."""
     if save_dir is not None:
         save_dir.mkdir(parents=True, exist_ok=True)
     cmd = launch_command(platform, run_dir, save_dir, args)
     log("starting the client" + (f" (saves in {save_dir})" if save_dir else "") + "…")
-    return subprocess.run(cmd, cwd=Path(cmd[0]).parent, check=False).returncode
+    return subprocess.run(
+        cmd,
+        cwd=Path(cmd[0]).parent,
+        check=False,
+        env={**os.environ, **env} if env else None,
+    ).returncode

@@ -83,6 +83,13 @@ def build_server(port: int = DEFAULT_PORT) -> FastMCP:
         game_args: Annotated[
             list[str] | None, Field(description="Extra game launch arguments.")
         ] = None,
+        profile: Annotated[
+            bool,
+            Field(
+                description="Preload the allocation profiler (Linux), for game_profile. "
+                "Allocation is slower for the whole run."
+            ),
+        ] = False,
         timeout: Annotated[float, Field(description="Seconds to wait for it.")] = 300,
     ) -> str:
         """Start the client with its control socket on, and wait until it answers.
@@ -108,6 +115,8 @@ def build_server(port: int = DEFAULT_PORT) -> FastMCP:
             command = "run" if build else "launch"
         if save_dir:
             options += ["--save-dir", str(Path(save_dir).expanduser().resolve())]
+        if profile:
+            options.append("--profile")
         session.game = GameProcess.start(port, command, options, game_args)
         session.game.wait_ready(session.control, timeout)
         state = session.control.state()
@@ -296,6 +305,23 @@ def build_server(port: int = DEFAULT_PORT) -> FastMCP:
             session.send("wait", hold_ms)
             session.send("pad trigger", trigger, 0, duration_ms)
         return "ok"
+
+    @server.tool()
+    def game_profile(
+        frames: Annotated[
+            int, Field(ge=1, le=3600, description="Updates to record over.")
+        ] = 120,
+        top: Annotated[
+            int, Field(ge=1, le=500, description="Sites and methods to list.")
+        ] = 40,
+    ) -> str:
+        """Record every managed allocation's class, size and call stack for a number of updates
+        (needs game_launch with profile: true), and return the report, per frame: the methods
+        with the most bytes allocated under them, then the allocation sites by bytes."""
+        session.count += 1
+        path = session.shots / f"profile-{session.count:04}.txt"
+        session.send("profile", frames, top, path)
+        return path.read_text()
 
     @server.tool()
     def game_wait(

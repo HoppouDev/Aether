@@ -353,7 +353,9 @@ def test_relative_save_dir_is_resolved_against_the_callers_directory(
     monkeypatch.setattr(
         cli,
         "launch",
-        lambda platform, run_dir, saves, args: seen.update(saves=saves, args=args) or 0,
+        lambda platform, run_dir, saves, args, env=None: (
+            seen.update(saves=saves, args=args) or 0
+        ),
     )
     monkeypatch.chdir(tmp_path)
     result = CliRunner().invoke(
@@ -501,8 +503,49 @@ def test_screens_opens_the_gallery(repo, tmp_path, monkeypatch, argv, expected):
     monkeypatch.setattr(cli, "latest_build", lambda: exe)
     monkeypatch.setattr(cli, "build_client", lambda *args: pytest.fail("built"))
     monkeypatch.setattr(
-        cli, "launch_build", lambda exe, *rest: seen.update(exe=exe, args=rest[-1])
+        cli, "launch_build", lambda exe, *rest: seen.update(exe=exe, args=rest[4])
     )
     result = CliRunner().invoke(cli.app, argv)
     assert result.exit_code == 0, result.output
     assert seen == {"exe": exe, "args": expected}
+
+
+def test_profile_preloads_the_profiler(repo, tmp_path, monkeypatch):
+    from typer.testing import CliRunner
+
+    from aether import cli, profiler
+
+    exe = tmp_path / "Terraria.exe"
+    exe.write_bytes(b"client")
+    seen = {}
+    library = tmp_path / "libmono-profiler-aether.so"
+    monkeypatch.setattr(profiler, "build_profiler", lambda: library)
+    monkeypatch.delenv("LD_PRELOAD", raising=False)
+    monkeypatch.setattr(cli, "host_platform", lambda: "linux")
+    monkeypatch.setattr(cli, "latest_build", lambda: exe)
+    monkeypatch.setattr(cli, "check_build", lambda *args: None)
+    monkeypatch.setattr(cli, "prepare_run_dir", lambda *args: None)
+    monkeypatch.setattr(
+        cli,
+        "launch",
+        lambda platform, run_dir, saves, args, env=None: seen.update(env=env) or 0,
+    )
+    result = CliRunner().invoke(
+        cli.app, ["launch", "--profile", "--profile-depth", "8", "--control", "5000"]
+    )
+    assert result.exit_code == 0, result.output
+    assert seen["env"] == {"AETHER_PROFILER": "depth=8", "LD_PRELOAD": str(library)}
+    assert CliRunner().invoke(cli.app, ["launch"]).exit_code == 0
+    assert seen["env"] is None
+    result = CliRunner().invoke(
+        cli.app, ["launch", "--profile", "--profile-depth", "40"]
+    )
+    assert result.exit_code == 1
+
+
+def test_profile_is_linux_only():
+    from aether.profiler import profiler_env
+    from aether.util import AetherError
+
+    with pytest.raises(AetherError, match="Linux only"):
+        profiler_env("windows", 16)

@@ -1,0 +1,69 @@
+--- /dev/null
++++ b/Aether/Testing/NativeProfiler.cs
+@@ -0,0 +1,66 @@
++using System;
++using System.Runtime.InteropServices;
++
++namespace Aether.Testing;
++
++/// <summary>
++/// Aether's allocation profiler (tools/aether/profiler/aether_profiler.c), when the game was started
++/// with it (`aether run --profile`): it records each managed allocation's class, size and call stack
++/// between <see cref="Start" /> and <see cref="Stop" />, on every thread, and writes a report of the
++/// allocation sites and the methods that allocate the most. The control server's <c>profile</c>
++/// command drives it.
++/// </summary>
++public static class NativeProfiler
++{
++    // The library is preloaded, so its functions are in the process's global symbols.
++    [DllImport("__Internal")]
++    private static extern int aether_profiler_available();
++
++    [DllImport("__Internal")]
++    private static extern void aether_profiler_start();
++
++    [DllImport("__Internal")]
++    private static extern void aether_profiler_stop();
++
++    [DllImport("__Internal")]
++    private static extern int aether_profiler_report([MarshalAs(UnmanagedType.LPStr)] string path, int top, int per);
++
++    private static bool? _available;
++
++    /// <summary>Whether the profiler was loaded into the game.</summary>
++    public static bool Available
++    {
++        get
++        {
++            if (!_available.HasValue)
++            {
++                try
++                {
++                    _available = aether_profiler_available() != 0;
++                }
++                catch (Exception exception) when (exception is EntryPointNotFoundException || exception is DllNotFoundException)
++                {
++                    _available = false;
++                }
++            }
++            return _available.Value;
++        }
++    }
++
++    /// <summary>Forgets what was collected and starts collecting (call from the main thread, which the report tells apart).</summary>
++    public static void Start()
++    {
++        aether_profiler_start();
++    }
++
++    public static void Stop()
++    {
++        aether_profiler_stop();
++    }
++
++    /// <summary>Writes the top sites and methods to path, per frame over frames; false if it can't be written.</summary>
++    public static bool Report(string path, int top, int frames)
++    {
++        return aether_profiler_report(path, top, frames) == 0;
++    }
++}

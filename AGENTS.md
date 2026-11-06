@@ -77,12 +77,15 @@ dotnet build -c Debug
   `dist/` contains the game's files: it's gitignored and for playing on your own machines, not for distributing.
 - The client exe has no headless mode: `Main.dedServ` is only set in the separate server build, so any runtime test opens a game window.
   To drive that window without focusing it or sending system input, start it with `--control PORT` and use `./aether control` or the `aether-game` MCP server (see `.agents/skills/aether-game/SKILL.md`).
+- **Finding allocations:** `--profile` (Linux; with `--control`) preloads Aether's allocation profiler, a Mono profiler module compiled from `tools/aether/profiler/aether_profiler.c` into `.aether/profiler/` (needs `cc`).
+  The control command `profile [FRAMES] [TOP] PATH` (MCP: `game_profile`) then records every managed allocation's class, size and call stack and writes the methods with the most bytes allocated under them and the top sites, per frame.
+  The runtime's allocation fast paths are off for a profiled run, so only compare profiled runs with each other.
 
 ## Layout
 
 | Path | Committed? | What it is |
 | --- | --- | --- |
-| `aether`, `pyproject.toml`, `uv.lock`, `tools/` | yes | Patch workflow CLI: a uv project (typer) whose package is `tools/aether/` (`cli.py` commands, `decompile.py` recipe, `fna.py` FNA build and natives, `steamworks.py` the 64-bit Steamworks.NET, `game.py` building, run folders and `dist/` targets, `control.py` and `mcp_server.py` the control-socket client and FastMCP server, `steam.py` SteamCMD, `update.py`, `patches.py` diff/apply, `guard.py` commit guard, `tree.py`, `pinning.py`, `paths.py`, `util.py`); `./aether` runs it with `uv run`. Plus the pinned base (`tools/base.json`), FNA (`tools/fna.json`) and Steamworks.NET (`tools/steamworks.json`). |
+| `aether`, `pyproject.toml`, `uv.lock`, `tools/` | yes | Patch workflow CLI: a uv project (typer) whose package is `tools/aether/` (`cli.py` commands, `decompile.py` recipe, `fna.py` FNA build and natives, `steamworks.py` the 64-bit Steamworks.NET, `game.py` building, run folders and `dist/` targets, `control.py` and `mcp_server.py` the control-socket client and FastMCP server, `profiler.py` and `profiler/aether_profiler.c` the allocation profiler, `steam.py` SteamCMD, `update.py`, `patches.py` diff/apply, `guard.py` commit guard, `tree.py`, `pinning.py`, `paths.py`, `util.py`); `./aether` runs it with `uv run`. Plus the pinned base (`tools/base.json`), FNA (`tools/fna.json`) and Steamworks.NET (`tools/steamworks.json`). |
 | `patches/` | yes | Aether itself: the client's changes to the game, as unified diffs mirroring `src/`. |
 | `.mcp.json`, `.agents/skills/` | yes | The `aether-game` MCP server registration and the agent skill for driving the game (`aether-game`). |
 | `prek.toml`, `rumdl.toml`, `cog.toml` | yes | Git hooks (patch guard, basic checks, rumdl, conventional-pre-commit, cocogitto) and their configs. |

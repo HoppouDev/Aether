@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/Aether/Testing/ControlServer.cs
-@@ -0,0 +1,963 @@
+@@ -0,0 +1,1014 @@
 +using System;
 +using System.Collections.Concurrent;
 +using System.Collections.Generic;
@@ -51,6 +51,10 @@
 +///                                      overall and per retained-mode screen; JSON
 +/// quit                                 close the game (as its window's close button does)
 +/// menu MODE                            on the title menu, switch to Main.menuMode MODE
++/// profile [FRAMES] [TOP] PATH          with the game started with the allocation profiler (`aether run
++///                                      --profile`): record allocation stacks for FRAMES updates
++///                                      (default 120) and write the TOP (default 40) sites and methods,
++///                                      per frame, to PATH; answers with the report's first line
 +/// ping
 +/// </code>
 +/// </summary>
@@ -280,6 +284,8 @@
 +            return Result(State());
 +        case "alloc":
 +            return Alloc((int)Optional(words, 1, 120f));
++        case "profile":
++            return Profile(words, line);
 +        case "menu":
 +            if (!Main.gameMenu)
 +            {
@@ -636,6 +642,51 @@
 +            ["gen0Collections"] = GC.CollectionCount(0) - collections,
 +            ["screensPerDraw"] = perScreen
 +        });
++    }
++
++    private static IEnumerable<object> Profile(string[] words, string line)
++    {
++        if (!NativeProfiler.Available)
++        {
++            throw new CommandError("the allocation profiler isn't loaded; start the game with --profile");
++        }
++        // profile [FRAMES] [TOP] PATH: the numbers first, the rest of the line is the path.
++        int index = 1;
++        int frames = 120;
++        int top = 40;
++        if (words.Length > index + 1 && IsNumber(words[index]))
++        {
++            frames = Math.Max(1, Int(words, index++, "frames"));
++            if (words.Length > index + 1 && IsNumber(words[index]))
++            {
++                top = Math.Max(1, Int(words, index++, "top"));
++            }
++        }
++        if (words.Length <= index)
++        {
++            throw new CommandError("profile [FRAMES] [TOP] PATH");
++        }
++        string rest = line.Trim().Substring(words[0].Length).TrimStart();
++        for (int i = 1; i < index; i++)
++        {
++            rest = rest.Substring(words[i].Length).TrimStart();
++        }
++        string path = Path.GetFullPath(rest);
++        Directory.CreateDirectory(Path.GetDirectoryName(path));
++        NativeProfiler.Start();
++        for (int i = 0; i < frames; i++)
++        {
++            yield return null;
++        }
++        NativeProfiler.Stop();
++        if (!NativeProfiler.Report(path, top, frames))
++        {
++            throw new CommandError("can't write " + path);
++        }
++        using (StreamReader reader = new StreamReader(path))
++        {
++            _current.Result = reader.ReadLine() + " -> " + path;
++        }
 +    }
 +
 +    private static IEnumerable<object> Wait(float milliseconds)

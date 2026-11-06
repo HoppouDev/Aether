@@ -36,6 +36,7 @@ from .patches import (
     sync_patches,
 )
 from .pinning import load_base_json, require_base
+from .profiler import profiler_env
 from .steam import PLATFORMS, default_game_dir, download_game, platform_game_dir
 from .tree import changed_files
 from .update import update as update_base
@@ -223,6 +224,18 @@ ControlOption = Annotated[
         f"the `aether mcp` server (default port {DEFAULT_PORT}).",
     ),
 ]
+ProfileOption = Annotated[
+    bool,
+    typer.Option(
+        "--profile",
+        help="Preload Aether's allocation profiler (Linux): the control command `profile` "
+        "(MCP: game_profile) then records allocation call stacks. Use with --control.",
+    ),
+]
+ProfileDepthOption = Annotated[
+    int,
+    typer.Option("--profile-depth", help="Stack frames kept per allocation (1-32)."),
+]
 GAME_ARGS = {"allow_extra_args": True, "ignore_unknown_options": True}
 
 
@@ -237,10 +250,15 @@ def launch_build(
     save_dir: Path | None,
     real_saves: bool,
     args: list[str],
+    profile_depth: int | None = None,
 ) -> None:
-    """Runs a built client in a scratch copy of the game; exits with the game's exit code."""
+    """Runs a built client in a scratch copy of the game; exits with the game's exit code.
+
+    profile_depth: preload the allocation profiler, keeping that many frames per stack.
+    """
     platform = host_platform()
     check_build(exe, platform)
+    env = profiler_env(platform, profile_depth) if profile_depth is not None else None
     log(
         f"launching {exe.relative_to(paths.REPO) if exe.is_relative_to(paths.REPO) else exe}"
     )
@@ -256,7 +274,7 @@ def launch_build(
     # Resolve now: the game runs with the run folder as its working directory, and that
     # folder is wiped on every run, so a relative save dir would lose the saves.
     saves = None if real_saves else (save_dir or paths.SAVES_DIR).expanduser().resolve()
-    code = launch(platform, paths.RUN_DIR, saves, args)
+    code = launch(platform, paths.RUN_DIR, saves, args, env)
     if code != 0:
         raise typer.Exit(code)
 
@@ -316,6 +334,8 @@ def launch_command(
     save_dir: SaveDirOption = None,
     real_saves: RealSavesOption = False,
     control: ControlOption = None,
+    profile: ProfileOption = False,
+    profile_depth: ProfileDepthOption = 16,
 ) -> None:
     """Run the most recent build (Debug or Release) without building.
 
@@ -328,6 +348,7 @@ def launch_command(
         save_dir,
         real_saves,
         game_args(ctx, control),
+        profile_depth if profile else None,
     )
 
 
@@ -340,6 +361,8 @@ def run_game(
     save_dir: SaveDirOption = None,
     real_saves: RealSavesOption = False,
     control: ControlOption = None,
+    profile: ProfileOption = False,
+    profile_depth: ProfileDepthOption = 16,
 ) -> None:
     """Build the client and run it in a scratch copy of the game (.aether/run/).
 
@@ -350,7 +373,13 @@ def run_game(
     """
     exe = build_client("Release" if release else "Debug", host_platform())
     launch_build(
-        exe, game_dir, platform_dir, save_dir, real_saves, game_args(ctx, control)
+        exe,
+        game_dir,
+        platform_dir,
+        save_dir,
+        real_saves,
+        game_args(ctx, control),
+        profile_depth if profile else None,
     )
 
 
@@ -373,6 +402,8 @@ def screens(
     save_dir: SaveDirOption = None,
     real_saves: RealSavesOption = False,
     control: ControlOption = None,
+    profile: ProfileOption = False,
+    profile_depth: ProfileDepthOption = 16,
 ) -> None:
     """Build the client and open its title-menu screen gallery (`-aetherscreens`).
 
@@ -392,7 +423,15 @@ def screens(
         extra.insert(len(extra) - len(ctx.args), mode)
         mode = None
     args = ["-aetherscreens", *([mode] if mode is not None else []), *extra]
-    launch_build(exe, game_dir, platform_dir, save_dir, real_saves, args)
+    launch_build(
+        exe,
+        game_dir,
+        platform_dir,
+        save_dir,
+        real_saves,
+        args,
+        profile_depth if profile else None,
+    )
 
 
 PortOption = Annotated[

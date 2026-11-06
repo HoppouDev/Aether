@@ -12,7 +12,8 @@ The window doesn't need focus and can sit behind other windows, and the user's r
 
 | Tool | What it does |
 | --- | --- |
-| `game_launch` | Start the client and return once the title menu is up, with the screen size. Builds first by default (`build: false` reuses the last build). `screens: true` starts it in screen-testing mode (see `src/Aether/AGENTS.md`). `save_dir` defaults to `.aether/saves/`; never point it at the user's real saves. `game_args` are extra launch arguments. |
+| `game_launch` | Start the client and return once the title menu is up, with the screen size. Builds first by default (`build: false` reuses the last build). `screens: true` starts it in screen-testing mode (see `src/Aether/AGENTS.md`). `save_dir` defaults to `.aether/saves/`; never point it at the user's real saves. `game_args` are extra launch arguments. `profile: true` preloads the allocation profiler for `game_profile` (allocations are slower for the whole run). |
+| `game_profile` | With `game_launch` `profile: true` (Linux), record every allocation's class, size and call stack over `frames` updates and return the report per frame: methods by bytes allocated under them, then the top `top` allocation sites. Use it to find what allocates every frame. |
 | `game_quit` | Close the client, including one this server didn't start. Progress since the last save is lost. |
 | `game_state` | Screen size, `loading`, `gameMenu`, `menuMode`, the synthetic mouse, keys and pad, `usingGamepad`. In game it also gives the player (tile, life, mana, held item, inventory open, chest, `talkNPC`, item on the cursor), `ingameOptions` and `mapFullscreen`. |
 | `game_screenshot` | The next drawn frame. `scale` defaults to 0.5. `crop: [x, y, w, h]` with `scale: 1` reads small text or checks pixels. |
@@ -71,6 +72,7 @@ pad connect|disconnect | pad button B[+B] down|up|press [FRAMES]
 pad stick left|right X Y [MS] | pad trigger left|right VALUE [MS]
 wait MS | wait frames N | release | state | ping
 menu MODE (title menu: show Main.menuMode MODE) | alloc [FRAMES] (allocations, JSON) | quit
+profile [FRAMES] [TOP] PATH (allocation call stacks, with profile: true)
 ```
 
 ## Getting around
