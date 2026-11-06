@@ -1,0 +1,20 @@
+--- a/Terraria/GameInput/TriggersSet.cs
++++ b/Terraria/GameInput/TriggersSet.cs
+@@ -738,10 +738,15 @@
+ 
+     public Vector2 DirectionsRaw => new Vector2(Right.ToInt() - Left.ToInt(), Down.ToInt() - Up.ToInt());
+ 
++    // The keys, copied before the loop sets their values (which would break enumerating them); kept.
++    private readonly List<string> _resetKeys = new List<string>();
++
+     public void Reset()
+     {
+-        string[] array = KeyStatus.Keys.ToArray();
+-        for (int i = 0; i < array.Length; i++)
++        List<string> array = _resetKeys;
++        array.Clear();
++        array.AddRange(KeyStatus.Keys);
++        for (int i = 0; i < array.Count; i++)
+         {
+             KeyStatus[array[i]] = false;
+         }
