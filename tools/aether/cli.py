@@ -244,7 +244,7 @@ def game_args(ctx: typer.Context, control: int | None) -> list[str]:
 
 
 def launch_build(
-    exe: Path,
+    client: Path,
     game_dir: Path | None,
     platform_dir: Path | None,
     save_dir: Path | None,
@@ -257,10 +257,15 @@ def launch_build(
     profile_depth: preload the allocation profiler, keeping that many frames per stack.
     """
     platform = host_platform()
-    check_build(exe, platform)
+    check_build(client, platform)
     env = profiler_env(platform, profile_depth) if profile_depth is not None else None
     log(
-        f"launching {exe.relative_to(paths.REPO) if exe.is_relative_to(paths.REPO) else exe}"
+        "launching "
+        + str(
+            client.relative_to(paths.REPO)
+            if client.is_relative_to(paths.REPO)
+            else client
+        )
     )
     prepare_run_dir(
         platform,
@@ -268,7 +273,7 @@ def launch_build(
         (platform_dir or platform_game_dir(platform)).expanduser()
         if platform != "linux"
         else Path(),
-        exe,
+        client,
         paths.RUN_DIR,
     )
     # Resolve now: the game runs with the run folder as its working directory, and that
@@ -287,7 +292,7 @@ def build(
         typer.Option(
             "--target",
             help="Also package a self-contained dist/<target>/ to play on that OS: lin64, "
-            "win64, mac (mac64 and macarm are the same universal bundle) or all. Repeatable.",
+            "win64, mac64 (Intel), macarm (Apple silicon), mac (both) or all. Repeatable.",
         ),
     ] = None,
     game_dir: GameDirOption = None,
@@ -295,34 +300,35 @@ def build(
 ) -> None:
     """Build the client (Terraria.csproj with ReLogic), and optionally package it per OS.
 
-    The client is one AnyCPU Terraria.exe for every OS; a target folder wraps it in that
-    OS's runtime, copied from the Linux build (the base) and, for mac, the macOS build
-    (`./aether download --platform macos`); win64 also takes TerrariaServer.exe from the
-    Windows build if it's there. dist/ holds game files: it's for playing, not sharing.
+    The client is a .NET 10 app; a target folder publishes it self-contained for that OS
+    (with the .NET runtime) and lays it out with the game's files, from the Linux build (the
+    base) and, for mac, the macOS build (`./aether download --platform macos`); win64 also takes
+    TerrariaServer.exe from the Windows build if it's there. dist/ holds game files: it's for
+    playing, not sharing.
     """
     targets = list(
         dict.fromkeys(t for name in target or [] for t in resolve_target(name))
     )
-    platforms = [TARGETS[t] for t in targets if TARGETS[t] != "linux"]
+    platforms = {TARGETS[t] for t in targets if TARGETS[t] != "linux"}
     if platform_dir is not None and len(platforms) != 1:
         raise AetherError(
-            "--platform-dir needs exactly one mac or win64 target (it's that OS's build)."
+            "--platform-dir needs exactly one OS among the mac and win64 targets (it's that OS's build)."
         )
-    exe = build_client("Release" if release else "Debug", host_platform())
-    print(exe.relative_to(paths.REPO))
+    configuration = "Release" if release else "Debug"
+    client = build_client(configuration, host_platform())
+    print(client.relative_to(paths.REPO))
     base = (game_dir or default_game_dir()).expanduser()
     for name in targets:
         platform = TARGETS[name]
-        check_build(exe, platform)
         other = (
             None
             if platform == "linux"
             else (platform_dir or platform_game_dir(platform))
         )
         print(
-            package(name, exe, base, other and other.expanduser()).relative_to(
-                paths.REPO
-            )
+            package(
+                name, configuration, base, other and other.expanduser()
+            ).relative_to(paths.REPO)
         )
 
 
@@ -371,9 +377,9 @@ def run_game(
     the game, e.g. `./aether run -- -world path/to/world.wld`. Steam has to be running.
     `aether build` and `aether launch` do the two halves separately.
     """
-    exe = build_client("Release" if release else "Debug", host_platform())
+    client = build_client("Release" if release else "Debug", host_platform())
     launch_build(
-        exe,
+        client,
         game_dir,
         platform_dir,
         save_dir,
@@ -410,7 +416,7 @@ def screens(
     Each migrated retained-mode screen can be previewed on its own, with sample state and inert
     clicks; Esc goes back to the gallery and Tab switches to the legacy version of the screen.
     """
-    exe = (
+    client = (
         latest_build()
         if no_build
         else build_client("Release" if release else "Debug", host_platform())
@@ -424,7 +430,7 @@ def screens(
         mode = None
     args = ["-aetherscreens", *([mode] if mode is not None else []), *extra]
     launch_build(
-        exe,
+        client,
         game_dir,
         platform_dir,
         save_dir,

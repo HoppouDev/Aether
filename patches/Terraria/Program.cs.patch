@@ -1,6 +1,60 @@
 --- a/Terraria/Program.cs
 +++ b/Terraria/Program.cs
-@@ -240,7 +240,8 @@
+@@ -79,6 +79,8 @@
+             MethodInfo[] array = (IsMono ? type.GetMethods() : type.GetMethods(BindingFlags.DeclaredOnly | BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic));
+             foreach (MethodInfo methodInfo in array)
+             {
++                try
++                {
+                 if (!methodInfo.IsAbstract && !methodInfo.ContainsGenericParameters && methodInfo.GetMethodBody() != null)
+                 {
+                     if (IsMono)
+@@ -90,11 +92,29 @@
+                         RuntimeHelpers.PrepareMethod(methodInfo.MethodHandle);
+                     }
+                 }
++                }
++                catch (Exception exception) when (IsUnloadableLibrary(exception))
++                {
++                    // Aether: code using a library .NET can't load here (the WeGame SDK is 32-bit).
++                }
+             }
+             ThingsLoaded++;
+         }
+     }
+ 
++    /// <summary>Aether: whether exception (or what it wraps) is a library that can't be loaded in this process.</summary>
++    private static bool IsUnloadableLibrary(Exception exception)
++    {
++        for (; exception != null; exception = exception.InnerException)
++        {
++            if (exception is FileLoadException || exception is FileNotFoundException || exception is BadImageFormatException)
++            {
++                return true;
++            }
++        }
++        return false;
++    }
++
+     private static void ForceStaticInitializers(Assembly assembly)
+     {
+         Type[] types = assembly.GetTypes();
+@@ -102,7 +122,13 @@
+         {
+             if (!type.IsGenericType)
+             {
+-                RuntimeHelpers.RunClassConstructor(type.TypeHandle);
++                try
++                {
++                    RuntimeHelpers.RunClassConstructor(type.TypeHandle);
++                }
++                catch (Exception exception) when (IsUnloadableLibrary(exception))
++                {
++                }
+             }
+         }
+     }
+@@ -240,7 +266,8 @@
      private static void LogFNANativeLibVersions()
      {
          Console.WriteLine(("SDL v" + SDL.SDL_GetVersion() + "." + SDL.SDL_GetRevision()) ?? "");

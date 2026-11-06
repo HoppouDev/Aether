@@ -1451,7 +1451,17 @@
      {
          Netplay.ServerPassword = passwordCandidate;
          HostAndPlay();
-@@ -53129,7 +53287,7 @@
+@@ -53094,7 +53252,8 @@
+         tServer = new Process();
+         if (Platform.IsLinux)
+         {
+-            tServer.StartInfo.FileName = "TerrariaServer";
++            // Aether: the vanilla (Mono) server has its own folder, with its own FNA.
++            tServer.StartInfo.FileName = "server/TerrariaServer";
+         }
+         else if (Platform.IsOSX)
+         {
+@@ -53129,7 +53288,7 @@
          menuMode = 10;
      }
  
@@ -1460,7 +1470,7 @@
      {
          if (SocialAPI.Network != null)
          {
-@@ -53142,7 +53300,7 @@
+@@ -53142,7 +53301,7 @@
          Netplay.ServerPassword = "";
      }
  
@@ -1469,7 +1479,7 @@
      {
          if (string.IsNullOrWhiteSpace(text))
          {
-@@ -53156,7 +53314,7 @@
+@@ -53156,7 +53315,7 @@
          return true;
      }
  
@@ -1478,7 +1488,7 @@
      {
          Netplay.ListenPort = ushort.Parse(candidatePort);
          autoPass = false;
-@@ -53272,84 +53430,84 @@
+@@ -53272,84 +53431,84 @@
              }
              if (SkyManager.Instance[key] != null && SkyManager.Instance[key].IsActive())
              {
@@ -1583,7 +1593,7 @@
          }
          slimeRain = false;
          slimeRainTime = 0.0;
-@@ -53414,10 +53572,10 @@
+@@ -53414,10 +53573,10 @@
          }
      }
  
@@ -1596,7 +1606,7 @@
          {
              result = true;
          }
-@@ -53506,7 +53664,7 @@
+@@ -53506,7 +53665,7 @@
          plr.voiceVariant = variantOrder[num];
      }
  
@@ -1605,7 +1615,7 @@
      {
          CycleClothingStyle_Inner(plr);
          while (!IsValidPlayerStyle(plr))
-@@ -53643,7 +53801,7 @@
+@@ -53643,7 +53802,7 @@
              _isAsyncLoadComplete = true;
          }
          spriteBatch.Begin();
@@ -1614,7 +1624,7 @@
          Microsoft.Xna.Framework.Color white = Microsoft.Xna.Framework.Color.White;
          byte b = 0;
          int num3 = 90;
-@@ -53734,11 +53892,7 @@
+@@ -53734,11 +53893,7 @@
          {
              DrawSplash_LoadingFlower(white);
          }
@@ -1627,7 +1637,7 @@
          spriteBatch.End();
      }
  
-@@ -58565,13 +58719,13 @@
+@@ -58565,13 +58720,13 @@
          {
              waterTarget.UpdateContent(RenderWater);
          }
@@ -1643,7 +1653,7 @@
          {
              wallTarget.UpdateContent(RenderWallsAndBlacks);
              tileTarget.UpdateContent(RenderTiles);
-@@ -60670,7 +60824,7 @@
+@@ -60670,7 +60825,7 @@
              {
                  if (cloudBGActive > 0f)
                  {
@@ -1652,7 +1662,7 @@
                      if (cloudBGAlpha > 1f)
                      {
                          cloudBGAlpha = 1f;
-@@ -60678,7 +60832,7 @@
+@@ -60678,7 +60833,7 @@
                  }
                  else
                  {
@@ -1661,7 +1671,7 @@
                      if (cloudBGAlpha < 0f)
                      {
                          cloudBGAlpha = 0f;
-@@ -62977,7 +63131,9 @@
+@@ -62977,7 +63132,9 @@
              _isDrawingOrUpdating = true;
              DetailedFPS.Begin(DetailedFPS.OperationCategory.Draw);
              EnsureRenderTargetContent();
@@ -1672,16 +1682,34 @@
              if (OnPostDraw != null)
              {
                  OnPostDraw(gameTime);
-@@ -63003,7 +63159,7 @@
+@@ -62998,18 +63155,19 @@
          {
-             flag = true;
+             NewRuntimeMethods.GC_Collect(0, GCCollectionMode.Forced, blocking: false);
          }
+-        bool flag = false;
+-        if (Program.IsMono)
+-        {
+-            flag = true;
+-        }
 -        if (FrameSkipMode == FrameSkipMode.Subtle && improvedSubtleFrameSkip)
++        // Aether: no forced garbage collections between frames on any runtime (Mono never did them;
++        // on .NET they ask for a full collection almost every frame).
++        bool flag = true;
 +        if (!Aether.Graphics.GraphicsSettings.UncappedFps && FrameSkipMode == FrameSkipMode.Subtle && improvedSubtleFrameSkip)
          {
              while (true)
              {
-@@ -63023,7 +63179,7 @@
+                 long num = presentTimestamp;
+                 presentTimestamp = Stopwatch.GetTimestamp();
+-                UpdateTimeAccumulator += Utils.SWTicksToTimeSpan(presentTimestamp - num).TotalSeconds;
++                // Aether: in seconds directly. Via whole TimeSpan ticks (100 ns), the spin's sub-100 ns
++                // steps count as nothing where Stopwatch counts nanoseconds (.NET on Linux), and
++                // frames take many times as long.
++                UpdateTimeAccumulator += (double)(presentTimestamp - num) / (double)Stopwatch.Frequency;
+                 if (UpdateTimeAccumulator >= TARGET_FRAME_TIME * 599.0 / 600.0)
+                 {
+                     break;
+@@ -63023,7 +63181,7 @@
              }
          }
          DetailedFPS.Begin(DetailedFPS.OperationCategory.Present);
@@ -1690,7 +1718,7 @@
          {
              flag = true;
              NewRuntimeMethods.GC_Collect(2, GCCollectionMode.Optimized, blocking: false);
-@@ -63035,6 +63191,11 @@
+@@ -63035,6 +63193,11 @@
  
      private void DoDraw(GameTime gameTime)
      {
@@ -1702,7 +1730,7 @@
          if (showSplash)
          {
              TimeLogger.StartTimestamp fromTimestamp = TimeLogger.Start();
-@@ -63045,11 +63206,14 @@
+@@ -63045,11 +63208,14 @@
          TimeLogger.StartTimestamp fromTimestamp2 = TimeLogger.Start();
          int num = renderCount;
          DebugVisualizer.PreDraw();
@@ -1720,7 +1748,7 @@
          MenuUI.IsVisible = gameMenu && menuMode == 888;
          InGameUI.IsVisible = !gameMenu && InGameUI.CurrentState != null;
          PlayerInput.UpdateMainMouse();
-@@ -63177,16 +63341,30 @@
+@@ -63177,16 +63343,30 @@
              _rainbowBoulderMusicFramesCounter--;
          }
          ClearHoverItem();
@@ -1753,7 +1781,7 @@
              if (renderNow)
              {
                  renderCount = 99;
-@@ -63201,7 +63379,7 @@
+@@ -63201,7 +63381,7 @@
              }
              renderNow = false;
          }
@@ -1762,7 +1790,7 @@
          {
              waterTarget.UpdateContent(() =>
              {
-@@ -63251,7 +63429,7 @@
+@@ -63251,7 +63431,7 @@
          {
              num4 = 1;
          }
@@ -1771,7 +1799,7 @@
          if (gameMenu)
          {
              num5 *= 20f;
-@@ -63367,6 +63545,20 @@
+@@ -63367,6 +63547,20 @@
                  Terraria.Graphics.Effects.Filters.Scene.Deactivate("Sepia");
              }
          }
@@ -1792,7 +1820,7 @@
          bool flag2 = Terraria.Graphics.Effects.Filters.Scene.CanCapture() || ForegroundSunlightEffects;
          bool flag3 = (!drawToScreen && !mapFullscreen && !onlyDrawFancyUI && Lighting.NotRetro) & flag2;
          if (flag3)
-@@ -63491,7 +63683,10 @@
+@@ -63491,7 +63685,10 @@
              return;
          }
          onlyDrawFancyUI = false;
@@ -1804,7 +1832,7 @@
          spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, DefaultSamplerState, DepthStencilState.None, Rasterizer, null, Transform);
          if (mapFullscreen)
          {
-@@ -63564,16 +63759,9 @@
+@@ -63564,16 +63761,9 @@
          }
          Overlays.Scene.Draw(spriteBatch, RenderLayers.Background);
          ScreenDarkness.DrawBack(spriteBatch);
@@ -1824,7 +1852,7 @@
          PlayerInput.SetZoom_World();
          DoDraw_WallsTilesNPCs();
          Overlays.Scene.Draw(spriteBatch, RenderLayers.TilesAndNPCs);
-@@ -63612,7 +63800,7 @@
+@@ -63612,7 +63802,7 @@
          DrawCachedNPCs(DrawCacheNPCsOverPlayers, behindTiles: false);
          if (!gamePaused)
          {
@@ -1833,7 +1861,7 @@
              if (essScale > 1f)
              {
                  essDir = -1;
-@@ -63625,6 +63813,17 @@
+@@ -63625,6 +63815,17 @@
              }
          }
          DrawItems();
@@ -1851,7 +1879,7 @@
          DrawRain();
          try
          {
-@@ -63861,6 +64060,30 @@
+@@ -63861,6 +64062,30 @@
          }
      }
  
@@ -1882,7 +1910,7 @@
      private static void DrawLensFlare()
      {
          PlayerInput.SetZoom_Background();
-@@ -63998,9 +64221,7 @@
+@@ -63998,9 +64223,7 @@
              }
          }
          instance.CameraModifiers.ApplyTo(ref screenPosition);
@@ -1893,7 +1921,7 @@
      }
  
      public static void DebugCameraPan(bool left, bool right, bool up, bool down)
-@@ -65345,73 +65566,91 @@
+@@ -65345,73 +65568,91 @@
          {
              scAdj = 0f;
          }
@@ -2020,7 +2048,7 @@
          try
          {
              DrawSurfaceBG(parentSpriteBatchBeginner);
-@@ -65426,6 +65665,7 @@
+@@ -65426,6 +65667,7 @@
              {
                  throw;
              }
@@ -2028,7 +2056,7 @@
              TimeLogger.DrawException(e);
          }
      }
-@@ -65681,7 +65921,7 @@
+@@ -65681,7 +65923,7 @@
  
      public void DrawInfernoRings()
      {
@@ -2037,7 +2065,7 @@
          for (int i = 0; i < 255; i++)
          {
              if (!player[i].active || player[i].outOfRange || !player[i].inferno || player[i].dead)
-@@ -67754,7 +67994,7 @@
+@@ -67754,7 +67996,7 @@
      {
          bool flag = false;
          Form form = null;
@@ -2046,7 +2074,7 @@
          {
              form = Control.FromHandle(instance.Window.Handle);
              screenMaximized = form.WindowState == FormWindowState.Maximized;
-@@ -67785,7 +68025,7 @@
+@@ -67785,7 +68027,7 @@
                      TryPickingDefaultUIScale(800f);
                  }
              }
@@ -2055,7 +2083,7 @@
              {
                  form.MinimumSize = new Size(0, 0);
                  if (!fullscreen && !flag3)
-@@ -67824,7 +68064,7 @@
+@@ -67824,7 +68066,7 @@
          else
          {
              PlayerInput.RawMouseScale = Vector2.One;
@@ -2064,7 +2092,7 @@
              {
                  form.MinimumSize = new Size(minScreenW, minScreenH);
                  if (flag)
-@@ -67839,7 +68079,7 @@
+@@ -67839,7 +68081,7 @@
              num4 = graphics.GraphicsDevice.Viewport.Height;
              flag2 = graphics.PreferredBackBufferWidth != graphics.GraphicsDevice.Viewport.Width || graphics.PreferredBackBufferHeight != graphics.GraphicsDevice.Viewport.Height;
          }
@@ -2073,7 +2101,7 @@
          {
              if (form.ClientSize.Width < graphics.PreferredBackBufferWidth)
              {
-@@ -67884,7 +68124,7 @@
+@@ -67884,7 +68126,7 @@
              PendingResolutionWidth = screenWidth;
              PendingResolutionHeight = screenHeight;
              PlayerInput.CacheOriginalScreenDimensions();
@@ -2082,7 +2110,7 @@
              {
                  if (screenBorderless)
                  {
-@@ -67909,9 +68149,10 @@
+@@ -67909,9 +68151,10 @@
              instance._needsMenuUIRecalculation = true;
              Console.WriteLine(Language.GetTextValue("Misc.ResolutionChanged", width, height));
          }

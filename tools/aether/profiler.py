@@ -40,6 +40,10 @@ def build_profiler() -> Path:
 
 def profiler_env(platform: str, depth: int) -> dict[str, str]:
     """The environment that preloads the profiler into the client, keeping depth frames per stack."""
+    raise AetherError(
+        "--profile isn't available yet: the allocation profiler is being ported from Mono to "
+        ".NET 10's runtime."
+    )
     if platform != "linux":
         raise AetherError(
             "--profile is Linux only (it's preloaded into the Linux launcher)."

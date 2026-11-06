@@ -1,0 +1,60 @@
+--- a/Terraria/Netplay.cs
++++ b/Terraria/Netplay.cs
+@@ -777,11 +777,16 @@
+         return y / 150;
+     }
+ 
+-    private static void BroadcastThread()
++    // Which broadcast thread is current: Thread.Abort doesn't exist on .NET, so a stopped
++    // thread notices the change and returns.
++    private static volatile int broadcastGeneration;
++
++    private static void BroadcastThread(int generation)
+     {
+-        BroadcastClient = new UdpClient();
++        UdpClient client = new UdpClient();
++        BroadcastClient = client;
+         new IPEndPoint(IPAddress.Any, 0);
+-        BroadcastClient.EnableBroadcast = true;
++        client.EnableBroadcast = true;
+         new DateTime(0L);
+         int num = 0;
+         byte[] array;
+@@ -808,7 +813,7 @@
+             binaryWriter.Flush();
+             array = memoryStream.ToArray();
+         }
+-        while (true)
++        while (generation == broadcastGeneration)
+         {
+             int num2 = 0;
+             for (int i = 0; i < 255; i++)
+@@ -821,7 +826,7 @@
+             array[num] = (byte)num2;
+             try
+             {
+-                BroadcastClient.Send(array, array.Length, new IPEndPoint(IPAddress.Broadcast, 8888));
++                client.Send(array, array.Length, new IPEndPoint(IPAddress.Broadcast, 8888));
+             }
+             catch
+             {
+@@ -836,7 +841,9 @@
+         {
+             StopBroadCasting();
+         }
+-        broadcastThread = new Thread(BroadcastThread);
++        int generation = ++broadcastGeneration;
++        broadcastThread = new Thread(() => BroadcastThread(generation));
++        broadcastThread.IsBackground = true;
+         broadcastThread.Start();
+     }
+ 
+@@ -844,7 +851,7 @@
+     {
+         if (broadcastThread != null)
+         {
+-            broadcastThread.Abort();
++            broadcastGeneration++;
+             broadcastThread = null;
+         }
+         if (BroadcastClient != null)

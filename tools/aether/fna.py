@@ -15,7 +15,9 @@ from . import paths
 from .util import AetherError, log, run, sha256_file
 
 FNA_REPO = "https://github.com/FNA-XNA/FNA.git"
-FNA_PROJECT = "FNA.NetFramework.csproj"
+FNA_PROJECT = "FNA.Core.csproj"
+# Where FNA_PROJECT builds (its TargetFramework), relative to the FNA checkout.
+FNA_OUTPUT_DIR = Path("bin") / "Release" / "net8.0"
 FNA_OUTPUTS = ("FNA.dll", "FNA.dll.config")
 
 
@@ -27,7 +29,7 @@ def build_fna(pinned: dict, dest: Path) -> None:
     """Builds FNA.dll (+ its dllmap config) from the pinned commit into dest, cached by commit."""
     commit = pinned["commit"]
     cache = paths.FNA_CACHE / commit
-    out = cache / "bin" / "Release" / "net4.0"
+    out = cache / FNA_OUTPUT_DIR
     if not all((out / name).is_file() for name in FNA_OUTPUTS):
         if cache.exists():
             shutil.rmtree(cache)
@@ -58,7 +60,7 @@ def build_fna(pinned: dict, dest: Path) -> None:
                 f"FNA tag {pinned['version']} is {head[:10]}, but tools/fna.json pins {commit[:10]}."
             )
         run(
-            ["dotnet", "build", FNA_PROJECT, "-c", "Release"],
+            ["dotnet", "build", FNA_PROJECT, "-c", "Release", "-p:NuGetAudit=false"],
             cwd=cache,
             capture_output=True,
         )

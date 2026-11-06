@@ -1,0 +1,20 @@
+--- a/ReLogic/Localization/IME/Windows/NativeMethods.cs
++++ b/ReLogic/Localization/IME/Windows/NativeMethods.cs
+@@ -1,6 +1,5 @@
+ using System;
+ using System.Runtime.InteropServices;
+-using System.Windows.Forms;
+ 
+ namespace ReLogic.Localization.IME.Windows;
+ 
+@@ -108,10 +107,6 @@
+     [return: MarshalAs(UnmanagedType.I1)]
+     public static extern bool ImeUi_IsCandidateListVisible();
+ 
+-    [DllImport("ReLogic.Native.dll", CharSet = CharSet.Unicode, EntryPoint = "ImeUi_IgnoreHotKey")]
+-    [return: MarshalAs(UnmanagedType.I1)]
+-    public static extern bool ImeUi_ShouldIgnoreHotKey(ref Message message);
+-
+     [DllImport("ReLogic.Native.dll")]
+     public static extern ushort ImeUi_GetPrimaryLanguage();
+ 

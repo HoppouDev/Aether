@@ -8,7 +8,7 @@ import tempfile
 from pathlib import Path
 
 from . import paths
-from .fna import FNA_OUTPUTS, FNA_PROJECT, load_fna_json
+from .fna import FNA_OUTPUT_DIR, FNA_OUTPUTS, FNA_PROJECT, load_fna_json
 from .util import AetherError, log
 
 SOURCES = paths.REPO / "tools" / "terrain"
@@ -21,6 +21,8 @@ def build_backend() -> Path:
     if not (source / "lib" / "FNA3D" / "CMakeLists.txt").is_file():
         raise AetherError("Run ./aether setup to obtain the pinned FNA source.")
     digest = hashlib.sha256(pin.encode())
+    # The FNA build it bundles (a .NET Framework one before the move to .NET 10).
+    digest.update(FNA_PROJECT.encode())
     for file in sorted(SOURCES.rglob("*")):
         if file.is_file():
             digest.update(file.relative_to(SOURCES).as_posix().encode())
@@ -86,7 +88,7 @@ def build_backend() -> Path:
         shaders = output / "AetherTerrain"
         shaders.mkdir(parents=True)
         for name in FNA_OUTPUTS:
-            shutil.copy2(tree / "bin" / "Release" / "net4.0" / name, output / name)
+            shutil.copy2(tree / FNA_OUTPUT_DIR / name, output / name)
         shutil.copy2(work / "native" / "libFNA3D.so.0", output / "libFNA3D.so.0")
         for shader in sorted((SOURCES / "shaders").iterdir()):
             if shader.suffix not in {".vert", ".frag", ".comp"}:
@@ -131,7 +133,8 @@ def stage_linux_backend(destination: Path) -> None:
         return
     for name in FNA_OUTPUTS:
         shutil.copy2(backend / name, destination / name)
-    shutil.copy2(backend / "libFNA3D.so.0", destination / "lib64" / "libFNA3D.so.0")
+    # Next to the client, with the other native libraries.
+    shutil.copy2(backend / "libFNA3D.so.0", destination / "libFNA3D.so.0")
     shutil.copytree(
         backend / "AetherTerrain", destination / "AetherTerrain", dirs_exist_ok=True
     )

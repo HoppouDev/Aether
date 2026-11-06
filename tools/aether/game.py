@@ -1,32 +1,37 @@
 """Building the client and running it inside a scratch copy of the game (.aether/run/).
 
-The client is just Terraria.exe, built from src/ against Aether's FNA. Each OS needs it
-dropped into a different runtime:
+The client is a .NET 10 app (Terraria.dll with an apphost launcher), built from src/ against
+Aether's FNA (its .NET build). The game's own builds run on Mono or .NET Framework; the client
+replaces their runtime and keeps their content and libraries:
 
-- Linux: the pinned Linux build (the base) with its bundled Mono (MonoKickstart), Content/
-  and Steam libraries, but Aether's FNA and its lib64/ natives. The run folder is symlinks
-  into the game, except the launcher: it finds lib64/ relative to its real path, so a
-  symlinked launcher would load the game's own natives.
-- macOS: a copy of the macOS build's Terraria.app, same idea: Contents/MacOS/ (launcher and
-  osx/ natives, with fnalibs-apple's FNA libraries) is copied, Contents/Resources/ linked.
-  macOS needs that build's own Content/ (its shaders and XACT audio banks differ).
-- Windows: no Mono; .NET Framework runs the same AnyCPU Terraria.exe as a 64-bit process, with
-  Content/ from the Linux build (the Windows build's is XNA's), fnalibs' x64 natives and D3D12
-  Agility SDK, and the official 64-bit Steamworks.NET + steam_api64.dll. The Windows build only
-  adds the vanilla 32-bit TerrariaServer.exe (+ its steam_api.dll) for Host & Play.
+- Linux: the client and every native library side by side in the run folder (Aether's FNA
+  natives over the game's Steam and file-dialog libraries from lib64/), with the Linux build's
+  Content/ and other files linked in. The vanilla server that Host & Play starts is a separate
+  Mono program needing its own (older) FNA, so it gets a copy of the game's layout in server/;
+  its launcher is a real copy there, because MonoKickstart finds lib64/ relative to it.
+- macOS: a copy of the macOS build's Terraria.app with the client in Contents/Client/ (with its
+  natives and a link to the bundle's Content/: macOS needs that build's own shaders and audio
+  banks), started by a Contents/MacOS/Terraria script; the vanilla server keeps the bundle's
+  MacOS/ and Resources/, which is where the game starts it from (../MacOS/TerrariaServer).
+- Windows: the client with Content/ from the Linux build (the Windows build's is XNA's),
+  fnalibs' x64 natives and D3D12 Agility SDK, and the official 64-bit Steamworks.NET +
+  steam_api64.dll. The Windows build only adds the vanilla 32-bit TerrariaServer.exe (+ its
+  steam_api.dll) for Host & Play.
 
-`aether run` builds that layout in .aether/run/ with symlinks; `aether build --target` copies
-everything into a self-contained dist/<target>/ (which therefore contains game files).
+`aether run` builds the client framework-dependent (it runs on the installed .NET 10) and lays it
+out in .aether/run/ with symlinks; `aether build --target` publishes it self-contained for the
+target's runtime and copies everything into dist/<target>/ (which therefore contains game files).
 """
 
+import filecmp
 import os
 import shutil
-import struct
 import subprocess
 import sys
 from pathlib import Path
 
 from . import paths
+from .fna import FNA_OUTPUT_DIR, load_fna_json
 from .pinning import load_base_json
 from .steam import platform_pin
 from .terrain import stage_linux_backend
@@ -40,17 +45,35 @@ from .util import (
     host_platform as detect_platform,
 )
 
-# Replaced in the run folder instead of linked from the game.
-CLIENT_FILES = ("Terraria.exe", "FNA.dll", "FNA.dll.config")
+TARGET_FRAMEWORK = "net10.0"
+CLIENT_DLL = "Terraria.dll"
+# What the game folders hold that the client replaces or doesn't use: MonoKickstart's launchers,
+# the game's exe and FNA, Mono's configs, and (any *.dll) Mono's class libraries.
 LINUX_LAUNCHERS = ("Terraria", "Terraria.bin.x86_64")
+MONO_FILES = (
+    *LINUX_LAUNCHERS,
+    "Terraria.exe",
+    "FNA.dll.config",
+    "monoconfig",
+    "monomachineconfig",
+)
+LINUX_SERVER = ("TerrariaServer", "TerrariaServer.bin.x86_64", "TerrariaServer.exe")
+SERVER_DIR = "server"
 MAC_CONTENTS = Path("Terraria.app") / "Contents"
+MAC_CLIENT = MAC_CONTENTS / "Client"
 # From the Windows build: the vanilla server Host & Play starts from the client's folder. It's a
 # 32-bit process, so it loads its own 32-bit steam_api.dll (the client uses steam_api64.dll).
 WINDOWS_SERVER = ("TerrariaServer.exe", "steam_api.dll")
 WINDOWS_STEAMWORKS = ("Steamworks.NET.dll", "steam_api64.dll")
-# Build targets for `aether build --target`, and the OS layout each one uses.
-TARGETS = {"lin64": "linux", "win64": "windows", "mac": "macos"}
-TARGET_ALIASES = {"mac64": "mac", "macarm": "mac"}  # one universal macOS bundle
+# Build targets for `aether build --target`: the OS layout and .NET runtime each one uses.
+TARGETS = {"lin64": "linux", "win64": "windows", "mac64": "macos", "macarm": "macos"}
+RUNTIMES = {
+    "lin64": "linux-x64",
+    "win64": "win-x64",
+    "mac64": "osx-x64",
+    "macarm": "osx-arm64",
+}
+TARGET_ALIASES = {"mac": ["mac64", "macarm"]}
 
 
 def host_platform() -> str:
@@ -61,66 +84,40 @@ def host_platform() -> str:
 
 
 CONFIGURATIONS = ("Debug", "Release")
-# IMAGE_COR20_HEADER flags: the CLR runs the exe as 32-bit with either.
-COMIMAGE_FLAGS_32BITREQUIRED = 0x2
-COMIMAGE_FLAGS_32BITPREFERRED = 0x20000
 
 
-def output_exe(configuration: str) -> Path:
-    return paths.REPO / "bin" / configuration / "net40" / "Terraria.exe"
+def output_dir(configuration: str) -> Path:
+    """Where `dotnet build` puts the client (framework-dependent, for this OS)."""
+    return paths.REPO / "bin" / configuration / TARGET_FRAMEWORK
 
 
 def latest_build() -> Path:
-    """The most recently built Terraria.exe (Debug or Release)."""
-    builds = [exe for c in CONFIGURATIONS if (exe := output_exe(c)).is_file()]
+    """The most recently built client folder (Debug or Release)."""
+    builds = [
+        d for c in CONFIGURATIONS if ((d := output_dir(c)) / CLIENT_DLL).is_file()
+    ]
     if not builds:
         raise AetherError(
             "there's no build yet; run `./aether build` (or `./aether run`)."
         )
-    return max(builds, key=lambda exe: exe.stat().st_mtime)
+    return max(builds, key=lambda d: (d / CLIENT_DLL).stat().st_mtime)
 
 
-def clr_flags(exe: Path) -> int:
-    """The CLR header flags of a .NET executable (PE file)."""
-    data = exe.read_bytes()
-    try:
-        (pe,) = struct.unpack_from("<I", data, 0x3C)
-        if data[pe : pe + 4] != b"PE\0\0":
-            raise ValueError("no PE signature")
-        coff = pe + 4
-        (sections,) = struct.unpack_from("<H", data, coff + 2)
-        (optional_size,) = struct.unpack_from("<H", data, coff + 16)
-        optional = coff + 20
-        (magic,) = struct.unpack_from("<H", data, optional)
-        directories = optional + (96 if magic == 0x10B else 112)  # PE32 / PE32+
-        (clr_rva,) = struct.unpack_from("<I", data, directories + 14 * 8)
-        table = optional + optional_size
-        for i in range(sections):
-            size, address, raw_size, raw_offset = struct.unpack_from(
-                "<IIII", data, table + i * 40 + 8
-            )
-            if address <= clr_rva < address + max(size, raw_size):
-                (flags,) = struct.unpack_from(
-                    "<I", data, raw_offset + clr_rva - address + 16
-                )
-                return flags
-        raise ValueError("no CLR header")
-    except (struct.error, ValueError) as e:
-        raise AetherError(f"{exe} isn't a .NET executable: {e}") from e
+def apphost(platform: str) -> str:
+    """The client's native launcher (the .NET apphost) on platform."""
+    return "Terraria.exe" if platform == "windows" else "Terraria"
 
 
-def runs_32_bit(exe: Path) -> bool:
-    return bool(
-        clr_flags(exe) & (COMIMAGE_FLAGS_32BITREQUIRED | COMIMAGE_FLAGS_32BITPREFERRED)
-    )
-
-
-def check_build(exe: Path, platform: str) -> None:
-    """Refuses a build that can't run on platform (Windows runs it 64-bit, with x64 natives)."""
-    if platform == "windows" and runs_32_bit(exe):
+def check_build(client: Path, platform: str) -> None:
+    """Refuses a client folder that can't run on platform (its apphost is built for one OS)."""
+    if not (client / CLIENT_DLL).is_file():
         raise AetherError(
-            f"{exe} is a 32-bit build, but the client runs as a 64-bit process on Windows (x64 "
-            "FNA natives and steam_api64.dll). Rebuild it with `./aether build`."
+            f"{client} has no {CLIENT_DLL}; rebuild with `./aether build`."
+        )
+    if not (client / apphost(platform)).is_file():
+        raise AetherError(
+            f"{client} has no {apphost(platform)}: it was built on another OS. Rebuild it "
+            "here with `./aether build`."
         )
 
 
@@ -128,11 +125,17 @@ def resolve_target(target: str) -> list[str]:
     """Target names for `--target` (an alias, a target, or "all")."""
     if target == "all":
         return list(TARGETS)
-    target = TARGET_ALIASES.get(target, target)
+    if target in TARGET_ALIASES:
+        return list(TARGET_ALIASES[target])
     if target not in TARGETS:
         names = ", ".join([*TARGETS, *TARGET_ALIASES, "all"])
         raise AetherError(f"unknown target {target!r}; use one of: {names}.")
     return [target]
+
+
+# No lingering MSBuild nodes or compiler server: they would inherit the captured output pipe and
+# keep it open after the build finishes.
+DOTNET_FLAGS = ("-nodeReuse:false", "-p:UseSharedCompilation=false")
 
 
 def build_command(configuration: str) -> list[str]:
@@ -142,32 +145,68 @@ def build_command(configuration: str) -> list[str]:
         str(paths.REPO / "Terraria.csproj"),
         "-c",
         configuration,
-        # No lingering MSBuild nodes or compiler server: they would inherit the
-        # captured output pipe and keep it open after the build finishes.
-        "-nodeReuse:false",
-        "-p:UseSharedCompilation=false",
+        *DOTNET_FLAGS,
     ]
 
 
-def build_client(configuration: str, platform: str) -> Path:
-    """Builds Terraria.csproj (and ReLogic) and returns the built Terraria.exe."""
-    log(f"building the client ({configuration}, {platform})…")
-    result = subprocess.run(
-        build_command(configuration),
-        check=False,
-        capture_output=True,
-        text=True,
-    )
+def publish_command(configuration: str, runtime: str, dest: Path) -> list[str]:
+    return [
+        "dotnet",
+        "publish",
+        str(paths.REPO / "Terraria.csproj"),
+        "-c",
+        configuration,
+        "-r",
+        runtime,
+        "--self-contained",
+        "-o",
+        str(dest),
+        *DOTNET_FLAGS,
+    ]
+
+
+def run_dotnet(command: list[str], what: str) -> None:
+    result = subprocess.run(command, check=False, capture_output=True, text=True)
     if result.returncode != 0:
         errors = [line for line in result.stdout.splitlines() if " error " in line]
         raise AetherError(
-            "build failed:\n"
+            f"{what} failed:\n"
             + "\n".join(dict.fromkeys(errors) or [result.stdout[-2000:]])
         )
-    exe = output_exe(configuration)
-    if not exe.is_file():
-        raise AetherError(f"the build didn't produce {exe}")
-    return exe
+
+
+def require_net_fna() -> None:
+    """Refuses lib/'s FNA if it's the .NET Framework build from before the move to .NET 10."""
+    fna = load_fna_json()
+    built = paths.FNA_CACHE / fna["commit"] / FNA_OUTPUT_DIR / "FNA.dll"
+    if not built.is_file() or not filecmp.cmp(
+        built, paths.LIB / "FNA.dll", shallow=False
+    ):
+        raise AetherError(
+            "lib/FNA.dll isn't FNA's .NET build; run `./aether setup` to rebuild it."
+        )
+
+
+def build_client(configuration: str, platform: str) -> Path:
+    """Builds Terraria.csproj (and ReLogic) and returns the client folder."""
+    require_net_fna()
+    log(f"building the client ({configuration}, {platform})…")
+    run_dotnet(build_command(configuration), "build")
+    client = output_dir(configuration)
+    if not (client / CLIENT_DLL).is_file():
+        raise AetherError(f"the build didn't produce {client / CLIENT_DLL}")
+    return client
+
+
+def publish_client(configuration: str, target: str) -> Path:
+    """Publishes the client self-contained for target's runtime and returns that folder."""
+    runtime = RUNTIMES[target]
+    dest = paths.STATE / "publish" / runtime
+    if dest.exists():
+        shutil.rmtree(dest)
+    log(f"publishing the client for {runtime} ({configuration}, self-contained)…")
+    run_dotnet(publish_command(configuration, runtime, dest), "publish")
+    return dest
 
 
 def require_fna(natives: str) -> Path:
@@ -183,7 +222,7 @@ def place(src: Path, dst: Path, copy: bool) -> None:
     if not copy:
         link_or_copy(src, dst)
     elif src.is_dir():
-        shutil.copytree(src, dst)
+        shutil.copytree(src, dst, symlinks=True)
     else:
         shutil.copy2(src, dst)
 
@@ -204,14 +243,10 @@ def warn_if_unpinned(platform_dir: Path, platform: str) -> str | None:
     return digest
 
 
-def copy_client(exe: Path, dest: Path) -> None:
-    """The built client (+ its .pdb) and Aether's FNA into dest."""
-    shutil.copy2(exe, dest / "Terraria.exe")
-    pdb = exe.with_suffix(".pdb")
-    if pdb.is_file():
-        shutil.copy2(pdb, dest / pdb.name)
-    for name in ("FNA.dll", "FNA.dll.config"):
-        shutil.copy2(paths.LIB / name, dest / name)
+def copy_client(client: Path, dest: Path) -> None:
+    """The client folder's files (apphost, Terraria.dll, its runtime files, FNA, ...) into dest."""
+    dest.mkdir(parents=True, exist_ok=True)
+    shutil.copytree(client, dest, symlinks=True, dirs_exist_ok=True)
 
 
 def replace_natives(natives: Path, dest: Path) -> None:
@@ -230,7 +265,29 @@ def fresh_dir(path: Path) -> None:
     path.mkdir(parents=True)
 
 
-def prepare_linux(game_dir: Path, exe: Path, run_dir: Path, copy: bool = False) -> None:
+def is_mono_file(name: str) -> bool:
+    """Whether a Linux game folder entry belongs to its Mono runtime (MonoKickstart, Mono's
+    class libraries and configs, the game's exe and FNA), which the client doesn't use."""
+    return name in MONO_FILES or name.endswith((".dll", ".dll.config"))
+
+
+def prepare_linux_server(game_dir: Path, run_dir: Path, copy: bool) -> None:
+    """The vanilla server in run_dir/server/: the game's layout, with its own Mono and FNA."""
+    server = run_dir / SERVER_DIR
+    server.mkdir()
+    for entry in game_dir.iterdir():
+        if entry.name in (*LINUX_LAUNCHERS, "Terraria.exe", "Content"):
+            continue
+        if entry.name in LINUX_SERVER[:2]:
+            shutil.copy2(entry, server / entry.name)
+        else:
+            place(entry, server / entry.name, copy)
+    (server / "Content").symlink_to(Path("..") / "Content")
+
+
+def prepare_linux(
+    game_dir: Path, client: Path, run_dir: Path, copy: bool = False
+) -> None:
     for launcher in LINUX_LAUNCHERS:
         if not (game_dir / launcher).is_file():
             raise AetherError(f"{game_dir} has no {launcher}; is it the Linux build?")
@@ -238,22 +295,26 @@ def prepare_linux(game_dir: Path, exe: Path, run_dir: Path, copy: bool = False) 
     warn_if_unpinned(game_dir, "linux")
     fresh_dir(run_dir)
     for entry in game_dir.iterdir():
-        if entry.name not in (*CLIENT_FILES, *LINUX_LAUNCHERS, "lib64"):
+        if not is_mono_file(entry.name) and entry.name not in (*LINUX_SERVER, "lib64"):
             place(entry, run_dir / entry.name, copy)
-    for launcher in LINUX_LAUNCHERS:
-        shutil.copy2(game_dir / launcher, run_dir / launcher)
-    # lib64/: the game's natives (Steam, file dialogs), with FNA's replaced by Aether's.
-    lib64 = run_dir / "lib64"
-    lib64.mkdir()
+    # Natives next to the client: the game's (Steam, file dialogs), then Aether's FNA ones.
     for lib in (game_dir / "lib64").iterdir() if (game_dir / "lib64").is_dir() else []:
-        place(lib, lib64 / lib.name, copy)
-    replace_natives(natives, lib64)
-    copy_client(exe, run_dir)
+        place(lib, run_dir / lib.name, copy)
+    replace_natives(natives, run_dir)
+    copy_client(client, run_dir)
+    prepare_linux_server(game_dir, run_dir, copy)
     stage_linux_backend(run_dir)
 
 
+MAC_LAUNCHER = """#!/bin/sh
+# Aether: the client is in Contents/Client/ (with its natives and Content/ link).
+cd "$(dirname "$0")/../Client" || exit 1
+exec ./Terraria "$@"
+"""
+
+
 def prepare_macos(
-    platform_dir: Path, exe: Path, run_dir: Path, copy: bool = False
+    platform_dir: Path, client: Path, run_dir: Path, copy: bool = False
 ) -> None:
     contents = platform_dir / MAC_CONTENTS
     if not (contents / "MacOS" / "Terraria.bin.osx").is_file():
@@ -268,27 +329,37 @@ def prepare_macos(
     out.mkdir(parents=True)
     for entry in contents.iterdir():
         if entry.name == "MacOS":
-            # Launcher, kickstart and osx/ natives as real files, FNA's swapped in.
-            shutil.copytree(entry, out / "MacOS")
-            replace_natives(natives, out / "MacOS" / "osx")
-        elif entry.name == "Resources":
-            (out / "Resources").mkdir()
-            for item in entry.iterdir():
-                if item.name not in CLIENT_FILES:
-                    place(item, out / "Resources" / item.name, copy)
+            # The vanilla server's launcher and natives, as real files; the client's
+            # launcher replaced by a script that starts Contents/Client/Terraria.
+            shutil.copytree(entry, out / "MacOS", symlinks=True)
+            launcher = out / "MacOS" / "Terraria"
+            launcher.unlink(missing_ok=True)
+            launcher.write_text(MAC_LAUNCHER)
+            launcher.chmod(0o755)
         elif entry.name == "_CodeSignature":
             continue  # the copy isn't the signed bundle anymore
         elif entry.is_file():
             shutil.copy2(entry, out / entry.name)
         else:
             place(entry, out / entry.name, copy)
-    copy_client(exe, out / "Resources")
+    client_dir = run_dir / MAC_CLIENT
+    client_dir.mkdir()
+    # Natives next to the client: the game's (Steam, file dialogs), then Aether's FNA ones.
+    for lib in (contents / "MacOS" / "osx").iterdir():
+        if lib.name.endswith(".dylib"):
+            shutil.copy2(lib, client_dir / lib.name)
+    replace_natives(natives, client_dir)
+    (client_dir / "Content").symlink_to(Path("..") / "Resources" / "Content")
+    steam_appid = contents / "Resources" / "steam_appid.txt"
+    if steam_appid.is_file():
+        shutil.copy2(steam_appid, client_dir / "steam_appid.txt")
+    copy_client(client, client_dir)
 
 
 def prepare_windows(
     game_dir: Path,
     platform_dir: Path | None,
-    exe: Path,
+    client: Path,
     run_dir: Path,
     copy: bool = False,
 ) -> None:
@@ -312,8 +383,8 @@ def prepare_windows(
     replace_natives(natives, run_dir)
     # FNA3D's Direct3D 12 backend needs the Agility SDK in a D3D12/ folder next to the exe.
     shutil.copytree(paths.LIB / "fnalibs" / "D3D12", run_dir / "D3D12")
-    # Next to the exe, so the CLR loads this 64-bit Steamworks.NET instead of the Linux one
-    # embedded in the client.
+    # Next to the client, so it loads this 64-bit Steamworks.NET instead of the Linux one
+    # embedded in it.
     for name in WINDOWS_STEAMWORKS:
         shutil.copy2(steamworks / name, run_dir / name)
     if platform_dir is not None and all(
@@ -327,49 +398,51 @@ def prepare_windows(
             "warning: no Windows build (`./aether download --platform windows`), so there's no "
             "TerrariaServer.exe and Host & Play won't work; everything else does."
         )
-    copy_client(exe, run_dir)
+    copy_client(client, run_dir)
 
 
 def prepare_run_dir(
     platform: str,
     game_dir: Path,
     platform_dir: Path | None,
-    exe: Path,
+    client: Path,
     run_dir: Path,
     copy: bool = False,
 ) -> None:
-    """(Re)creates run_dir for platform. game_dir is the Linux base; platform_dir the
-    macOS/Windows build (unused on Linux, optional on Windows). copy makes it self-contained."""
+    """(Re)creates run_dir for platform from the client folder. game_dir is the Linux base;
+    platform_dir the macOS/Windows build (unused on Linux, optional on Windows). copy makes it
+    self-contained."""
     if platform == "linux":
-        prepare_linux(game_dir, exe, run_dir, copy)
+        prepare_linux(game_dir, client, run_dir, copy)
     elif platform == "macos":
         if platform_dir is None:
             raise AetherError(
                 "the macOS layout needs the macOS build (--platform-dir)."
             )
-        prepare_macos(platform_dir, exe, run_dir, copy)
+        prepare_macos(platform_dir, client, run_dir, copy)
     elif platform == "windows":
-        prepare_windows(game_dir, platform_dir, exe, run_dir, copy)
+        prepare_windows(game_dir, platform_dir, client, run_dir, copy)
     else:
         raise AetherError(f"unknown platform {platform}")
 
 
-def package(target: str, exe: Path, game_dir: Path, platform_dir: Path | None) -> Path:
-    """Builds the self-contained dist/<target>/ for target (lin64, win64 or mac)."""
+def package(
+    target: str, configuration: str, game_dir: Path, platform_dir: Path | None
+) -> Path:
+    """Builds the self-contained dist/<target>/ (lin64, win64, mac64 or macarm)."""
+    client = publish_client(configuration, target)
     dest = paths.DIST / target
     log(
         f"packaging {target} into {dest.relative_to(paths.REPO)}/ (copies the game files)…"
     )
-    prepare_run_dir(TARGETS[target], game_dir, platform_dir, exe, dest, copy=True)
+    prepare_run_dir(TARGETS[target], game_dir, platform_dir, client, dest, copy=True)
     return dest
 
 
 def launcher(platform: str, run_dir: Path) -> Path:
     if platform == "macos":
         return run_dir / MAC_CONTENTS / "MacOS" / "Terraria"
-    if platform == "windows":
-        return run_dir / "Terraria.exe"
-    return run_dir / "Terraria"
+    return run_dir / apphost(platform)
 
 
 def launch_command(

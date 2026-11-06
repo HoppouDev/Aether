@@ -1,0 +1,37 @@
+--- a/Terraria/LinuxLaunch.cs
++++ b/Terraria/LinuxLaunch.cs
+@@ -1,6 +1,7 @@
+ using System;
+ using System.IO;
+ using System.Reflection;
++using System.Runtime.Loader;
+ 
+ namespace Terraria;
+ 
+@@ -11,6 +12,13 @@
+         AppDomain.CurrentDomain.AssemblyResolve += (object sender, ResolveEventArgs sargs) =>
+         {
+             string resourceName = new AssemblyName(sargs.Name).Name + ".dll";
++            // Aether: a library next to the client wins over the embedded one (the 64-bit
++            // Steamworks.NET on Windows, where the embedded one is the Linux build).
++            string file = Path.Combine(AppContext.BaseDirectory, resourceName);
++            if (File.Exists(file))
++            {
++                return AssemblyLoadContext.Default.LoadFromAssemblyPath(file);
++            }
+             string text = Array.Find(typeof(Program).Assembly.GetManifestResourceNames(), (string element) => element.EndsWith(resourceName));
+             if (text == null)
+             {
+@@ -19,8 +27,11 @@
+             using Stream stream = Assembly.GetExecutingAssembly().GetManifestResourceStream(text);
+             byte[] array = new byte[stream.Length];
+             stream.Read(array, 0, array.Length);
+-            return Assembly.Load(array);
++            // Aether: into the default context (Assembly.Load(byte[]) would give each library its
++            // own), where NativeLibraries finds what they P/Invoke.
++            return AssemblyLoadContext.Default.LoadFromStream(new MemoryStream(array));
+         };
++        Aether.NativeLibraries.Install();
+         Environment.SetEnvironmentVariable("FNA_WORKAROUND_WINDOW_RESIZABLE", "1");
+         Program.LaunchGame(args, monoArgs: true);
+     }

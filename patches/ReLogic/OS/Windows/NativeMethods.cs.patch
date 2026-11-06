@@ -1,0 +1,19 @@
+--- a/ReLogic/OS/Windows/NativeMethods.cs
++++ b/ReLogic/OS/Windows/NativeMethods.cs
+@@ -1,6 +1,5 @@
+ using System;
+ using System.Runtime.InteropServices;
+-using System.Windows.Forms;
+ 
+ namespace ReLogic.OS.Windows;
+ 
+@@ -143,9 +142,6 @@
+     [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+     public static extern IntPtr DefWindowProc(IntPtr hWnd, int msg, IntPtr wParam, IntPtr lParam);
+ 
+-    [DllImport("user32.dll", CallingConvention = CallingConvention.StdCall, CharSet = CharSet.Unicode)]
+-    public static extern bool TranslateMessage(ref Message message);
+-
+     [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+     public static extern IntPtr GetForegroundWindow();
+ 

@@ -11,8 +11,10 @@ from .conftest import write_files
 
 
 @pytest.fixture
-def builds(repo, tmp_path):
+def builds(repo, tmp_path, monkeypatch):
     """Fake Linux/macOS/Windows game builds, Aether's lib/ with FNA, and a built client."""
+    # The Vulkan terrain extension builds (and caches) real files; not here.
+    monkeypatch.setattr(game, "stage_linux_backend", lambda destination: None)
     paths.BASE_JSON.write_text(
         json.dumps(
             {
@@ -44,6 +46,12 @@ def builds(repo, tmp_path):
             "Terraria.exe": b"vanilla exe",
             "FNA.dll": b"fna 26.3",
             "FNA.dll.config": "<old/>",
+            "mscorlib.dll": b"mono",
+            "monoconfig": "<mono/>",
+            "TerrariaServer": "#!/bin/sh\n",
+            "TerrariaServer.bin.x86_64": b"\x7fELF server launcher",
+            "TerrariaServer.exe": b"vanilla server",
+            "open-folder": "#!/bin/sh\n",
             "steam_appid.txt": "105600",
             "Content/Images/Item_1.xnb": b"linux xnb",
             "lib64/libFNA3D.so.0": b"old fna3d",
@@ -58,12 +66,14 @@ def builds(repo, tmp_path):
             "Terraria.app/Contents/_CodeSignature/CodeResources": "sig",
             "Terraria.app/Contents/MacOS/Terraria": "#!/bin/bash\n",
             "Terraria.app/Contents/MacOS/Terraria.bin.osx": b"kickstart",
+            "Terraria.app/Contents/MacOS/TerrariaServer": "#!/bin/bash\n",
             "Terraria.app/Contents/MacOS/osx/libFNA3D.0.dylib": b"old fna3d",
             "Terraria.app/Contents/MacOS/osx/libsteam_api.dylib": b"steam",
             "Terraria.app/Contents/Resources/Terraria.exe": b"mac exe",
             "Terraria.app/Contents/Resources/FNA.dll": b"fna 26.3",
             "Terraria.app/Contents/Resources/Content/Images/Item_1.xnb": b"mac xnb",
             "Terraria.app/Contents/Resources/mscorlib.dll": b"mono",
+            "Terraria.app/Contents/Resources/steam_appid.txt": "105600",
         },
     )
     windows = tmp_path / "windows"
@@ -93,14 +103,28 @@ def builds(repo, tmp_path):
             "fnalibs-apple/osx/libSDL3.0.dylib": b"new sdl3 mac",
         },
     )
-    exe = tmp_path / "bin" / "Terraria.exe"
-    write_files(exe.parent, {"Terraria.exe": b"aether client", "Terraria.pdb": b"pdb"})
-    return linux, mac, windows, exe, repo.root / ".aether" / "run"
+    client = tmp_path / "bin" / "net10.0"
+    write_files(
+        client,
+        {
+            "Terraria.dll": b"aether client",
+            "Terraria": b"\x7fELF apphost",
+            "Terraria.exe": b"MZ apphost",
+            "Terraria.pdb": b"pdb",
+            "Terraria.runtimeconfig.json": "{}",
+            "FNA.dll": b"fna 26.11",
+            "FNA.dll.config": "<new/>",
+            "runtimes/win/lib/net10.0/System.Drawing.Common.dll": b"drawing",
+        },
+    )
+    return linux, mac, windows, client, repo.root / ".aether" / "run"
 
 
 def assert_client(dest: Path) -> None:
-    assert (dest / "Terraria.exe").read_bytes() == b"aether client"
+    assert (dest / "Terraria.dll").read_bytes() == b"aether client"
     assert (dest / "Terraria.pdb").read_bytes() == b"pdb"
+    assert (dest / "Terraria.runtimeconfig.json").is_file()
+    assert (dest / "runtimes/win/lib/net10.0/System.Drawing.Common.dll").is_file()
     assert (dest / "FNA.dll").read_bytes() == b"fna 26.11"
     assert not (dest / "FNA.dll").is_symlink()
 
@@ -108,21 +132,49 @@ def assert_client(dest: Path) -> None:
 # --- Linux ------------------------------------------------------------------
 
 
-def test_linux_links_the_game_and_copies_the_client(builds):
-    linux, _, _, exe, run_dir = builds
-    game.prepare_run_dir("linux", linux, Path(), exe, run_dir)
+def test_linux_lays_the_client_out_with_its_natives(builds):
+    linux, _, _, client, run_dir = builds
+    game.prepare_run_dir("linux", linux, Path(), client, run_dir)
 
-    # Launchers must be real files: MonoKickstart finds lib64/ next to its real path.
-    for launcher in ("Terraria", "Terraria.bin.x86_64"):
-        assert not (run_dir / launcher).is_symlink()
-        assert (run_dir / launcher).read_bytes() == (linux / launcher).read_bytes()
+    assert_client(run_dir)
+    assert (run_dir / "Terraria").read_bytes() == b"\x7fELF apphost"
     assert (run_dir / "Content").is_symlink()
     assert (run_dir / "Content/Images/Item_1.xnb").read_bytes() == b"linux xnb"
-    assert_client(run_dir)
-    lib64 = run_dir / "lib64"
-    assert (lib64 / "libFNA3D.so.0").read_bytes() == b"new fna3d"
-    assert not (lib64 / "libFNA3D.so.0").is_symlink()
-    assert (lib64 / "libsteam_api.so").is_symlink()
+    assert (run_dir / "open-folder").is_symlink()
+    # Natives next to the client: Aether's FNA ones over the game's.
+    assert (run_dir / "libFNA3D.so.0").read_bytes() == b"new fna3d"
+    assert (run_dir / "libsteam_api.so").read_bytes() == b"steam"
+    # Nothing of the game's Mono runtime.
+    for name in (
+        "mscorlib.dll",
+        "monoconfig",
+        "Terraria.bin.x86_64",
+        "lib64",
+        "TerrariaServer",
+    ):
+        assert not (run_dir / name).exists(), name
+
+
+def test_linux_gives_the_vanilla_server_its_own_folder(builds):
+    """Host & Play starts server/TerrariaServer: Mono, with the game's own FNA."""
+    linux, _, _, client, run_dir = builds
+    game.prepare_run_dir("linux", linux, Path(), client, run_dir)
+    server = run_dir / "server"
+    # Launchers must be real files: MonoKickstart finds lib64/ next to its real path.
+    for launcher in ("TerrariaServer", "TerrariaServer.bin.x86_64"):
+        assert not (server / launcher).is_symlink()
+        assert (server / launcher).read_bytes() == (linux / launcher).read_bytes()
+    for name, data in (
+        ("TerrariaServer.exe", b"vanilla server"),
+        ("FNA.dll", b"fna 26.3"),
+        ("mscorlib.dll", b"mono"),
+        ("lib64/libFNA3D.so.0", b"old fna3d"),
+        ("Content/Images/Item_1.xnb", b"linux xnb"),
+    ):
+        assert (server / name).read_bytes() == data, name
+    assert os.readlink(server / "Content") == os.path.join("..", "Content")
+    for name in ("Terraria", "Terraria.bin.x86_64", "Terraria.exe"):
+        assert not (server / name).exists()
 
 
 def test_linux_warns_about_an_unpinned_build(builds, capsys):
@@ -157,25 +209,33 @@ def test_linux_needs_the_linux_build(builds):
 # --- macOS ------------------------------------------------------------------
 
 
-def test_macos_copies_the_bundle_runtime_and_links_resources(builds, capsys):
-    _, mac, _, exe, run_dir = builds
-    game.prepare_run_dir("macos", Path(), mac, exe, run_dir)
+def test_macos_puts_the_client_in_its_own_folder(builds, capsys):
+    _, mac, _, client, run_dir = builds
+    game.prepare_run_dir("macos", Path(), mac, client, run_dir)
     contents = run_dir / "Terraria.app" / "Contents"
 
     assert (contents / "Info.plist").read_text() == "<plist/>"
     assert not (contents / "_CodeSignature").exists()
+    # The bundle's launcher starts the client in Contents/Client/.
+    launcher = contents / "MacOS" / "Terraria"
+    assert "../Client" in launcher.read_text()
+    assert os.access(launcher, os.X_OK)
+    # The vanilla server keeps the bundle's runtime (MacOS/ copied, Resources/ linked).
     macos = contents / "MacOS"
     assert not macos.is_symlink()
-    assert not (macos / "Terraria.bin.osx").is_symlink()
-    assert (macos / "osx/libFNA3D.0.dylib").read_bytes() == b"new fna3d mac"
-    assert (macos / "osx/libSDL3.0.dylib").read_bytes() == b"new sdl3 mac"
-    assert (macos / "osx/libsteam_api.dylib").read_bytes() == b"steam"
-
+    assert (macos / "TerrariaServer").is_file()
+    assert (macos / "osx/libFNA3D.0.dylib").read_bytes() == b"old fna3d"
     resources = contents / "Resources"
-    assert (resources / "Content").is_symlink()
-    assert (resources / "Content/Images/Item_1.xnb").read_bytes() == b"mac xnb"
-    assert (resources / "mscorlib.dll").is_symlink()
-    assert_client(resources)
+    assert resources.is_symlink()
+    assert (resources / "FNA.dll").read_bytes() == b"fna 26.3"
+
+    client_dir = contents / "Client"
+    assert_client(client_dir)
+    assert (client_dir / "libFNA3D.0.dylib").read_bytes() == b"new fna3d mac"
+    assert (client_dir / "libSDL3.0.dylib").read_bytes() == b"new sdl3 mac"
+    assert (client_dir / "libsteam_api.dylib").read_bytes() == b"steam"
+    assert (client_dir / "steam_appid.txt").read_text() == "105600"
+    assert (client_dir / "Content/Images/Item_1.xnb").read_bytes() == b"mac xnb"
     assert "isn't the pinned macos build" in capsys.readouterr().err
 
 
@@ -242,10 +302,10 @@ def test_windows_needs_64_bit_steamworks(builds):
     [
         ("lin64", ["lin64"]),
         ("win64", ["win64"]),
-        ("mac", ["mac"]),
-        ("mac64", ["mac"]),
-        ("macarm", ["mac"]),
-        ("all", ["lin64", "win64", "mac"]),
+        ("mac", ["mac64", "macarm"]),
+        ("mac64", ["mac64"]),
+        ("macarm", ["macarm"]),
+        ("all", ["lin64", "win64", "mac64", "macarm"]),
     ],
 )
 def test_resolve_target(target, expected):
@@ -257,46 +317,90 @@ def test_resolve_target_rejects_unknown_names():
         game.resolve_target("win32")
 
 
-def no_symlinks(root: Path) -> list[Path]:
-    return [p for p in root.rglob("*") if p.is_symlink()]
+def outside_links(root: Path) -> list[Path]:
+    """Symlinks in root that point outside it (relative ones within a package are fine)."""
+    return [
+        p
+        for p in root.rglob("*")
+        if p.is_symlink() and not p.resolve().is_relative_to(root.resolve())
+    ]
+
+
+@pytest.fixture
+def published(builds, monkeypatch):
+    """`dotnet publish` replaced by the fake client folder, recording what was published."""
+    calls = []
+    monkeypatch.setattr(
+        game,
+        "publish_client",
+        lambda configuration, target: (
+            calls.append((configuration, target)) or builds[3]
+        ),
+    )
+    return calls
 
 
 @pytest.mark.parametrize(
-    ("target", "launcher"),
+    ("target", "launcher", "client"),
     [
-        ("lin64", "Terraria"),
-        ("win64", "Terraria.exe"),
-        ("mac", "Terraria.app/Contents/MacOS/Terraria"),
+        ("lin64", "Terraria", ""),
+        ("win64", "Terraria.exe", ""),
+        (
+            "mac64",
+            "Terraria.app/Contents/MacOS/Terraria",
+            "Terraria.app/Contents/Client",
+        ),
+        (
+            "macarm",
+            "Terraria.app/Contents/MacOS/Terraria",
+            "Terraria.app/Contents/Client",
+        ),
     ],
 )
-def test_package_copies_everything(builds, target, launcher):
-    linux, mac, windows, exe, _ = builds
-    platform_dir = {"lin64": None, "win64": windows, "mac": mac}[target]
-    dest = game.package(target, exe, linux, platform_dir)
+def test_package_copies_everything(builds, published, target, launcher, client):
+    linux, mac, windows, _, _ = builds
+    platform_dir = {"lin64": None, "win64": windows}.get(target, mac)
+    dest = game.package(target, "Release", linux, platform_dir)
 
+    assert published == [("Release", target)]
     assert dest == paths.DIST / target
     assert (dest / launcher).is_file()
-    assert no_symlinks(dest) == []
-    client = dest / "Terraria.app/Contents/Resources" if target == "mac" else dest
-    assert_client(client)
-    content = client / "Content/Images/Item_1.xnb"
-    assert content.read_bytes() == (b"mac xnb" if target == "mac" else b"linux xnb")
+    assert outside_links(dest) == []
+    assert_client(dest / client)
+    content = dest / client / "Content/Images/Item_1.xnb"
+    assert content.read_bytes() == (b"mac xnb" if "mac" in target else b"linux xnb")
 
 
-def test_package_replaces_the_previous_folder(builds):
-    linux, _, _, exe, _ = builds
-    dest = game.package("lin64", exe, linux, None)
+def test_package_replaces_the_previous_folder(builds, published):
+    linux, _, _, _, _ = builds
+    dest = game.package("lin64", "Release", linux, None)
     (dest / "stale.txt").write_text("left over")
-    game.package("lin64", exe, linux, None)
+    game.package("lin64", "Release", linux, None)
     assert not (dest / "stale.txt").exists()
+
+
+def test_publish_command_is_self_contained_per_runtime(tmp_path):
+    command = game.publish_command("Release", "osx-arm64", tmp_path)
+    assert command[:2] == ["dotnet", "publish"]
+    assert ["-r", "osx-arm64"] == command[command.index("-r") : command.index("-r") + 2]
+    assert "--self-contained" in command
+    assert {game.RUNTIMES[t] for t in game.TARGETS} == {
+        "linux-x64",
+        "win-x64",
+        "osx-x64",
+        "osx-arm64",
+    }
 
 
 # --- building and launching -------------------------------------------------
 
 
 def test_one_anycpu_build_for_every_os():
-    """Every target runs the same Terraria.exe, so nothing may pin it to a bitness."""
-    assert "PlatformTarget" not in (paths.REPO / "Terraria.csproj").read_text()
+    """`aether run` runs the framework-dependent build on any OS: nothing may pin it."""
+    csproj = (paths.REPO / "Terraria.csproj").read_text()
+    assert "PlatformTarget" not in csproj
+    assert "RuntimeIdentifier" not in csproj
+    assert "<TargetFramework>net10.0</TargetFramework>" in csproj
     assert "PlatformTarget" not in " ".join(game.build_command("Debug"))
     assert "-nodeReuse:false" in game.build_command("Release")
 
@@ -345,10 +449,10 @@ def test_relative_save_dir_is_resolved_against_the_callers_directory(
     from aether import cli
 
     seen = {}
-    exe = tmp_path / "Terraria.exe"
-    exe.write_bytes(b"client")
+    client = tmp_path / "client"
     monkeypatch.setattr(cli, "host_platform", lambda: "linux")
-    monkeypatch.setattr(cli, "latest_build", lambda: exe)
+    monkeypatch.setattr(cli, "latest_build", lambda: client)
+    monkeypatch.setattr(cli, "check_build", lambda *args: None)
     monkeypatch.setattr(cli, "prepare_run_dir", lambda *args: None)
     monkeypatch.setattr(
         cli,
@@ -366,47 +470,27 @@ def test_relative_save_dir_is_resolved_against_the_callers_directory(
 
 
 def test_latest_build_picks_the_newest_configuration(repo):
-    debug, release = game.output_exe("Debug"), game.output_exe("Release")
+    debug, release = game.output_dir("Debug"), game.output_dir("Release")
     with pytest.raises(AetherError, match="aether build"):
         game.latest_build()
-    for exe, mtime in ((debug, 100), (release, 200)):
-        exe.parent.mkdir(parents=True)
-        exe.write_bytes(b"exe")
-        os.utime(exe, (mtime, mtime))
+    for folder, mtime in ((debug, 100), (release, 200)):
+        folder.mkdir(parents=True)
+        (folder / "Terraria.dll").write_bytes(b"dll")
+        os.utime(folder / "Terraria.dll", (mtime, mtime))
     assert game.latest_build() == release
-    os.utime(debug, (300, 300))
+    os.utime(debug / "Terraria.dll", (300, 300))
     assert game.latest_build() == debug
 
 
-@pytest.mark.parametrize(
-    ("flags", "ok_on_windows"),
-    [(0x1, True), (0x3, False), (0x20001, False)],  # AnyCPU, x86, AnyCPU32BitPreferred
-)
-def test_windows_refuses_a_32_bit_build(tmp_path, monkeypatch, flags, ok_on_windows):
-    monkeypatch.setattr(game, "clr_flags", lambda exe: flags)
-    exe = tmp_path / "Terraria.exe"
-    game.check_build(exe, "linux")
-    game.check_build(exe, "macos")
-    if ok_on_windows:
-        game.check_build(exe, "windows")
-    else:
-        with pytest.raises(AetherError, match="is a 32-bit build"):
-            game.check_build(exe, "windows")
-
-
-def test_clr_flags_reads_real_executables():
-    exe = Path.home() / ".local/share/Steam/steamapps/common/Terraria/Terraria.exe"
-    if not exe.is_file():
-        pytest.skip("no Terraria install")
-    assert game.clr_flags(exe) & 0x1  # IL-only
-    assert not game.runs_32_bit(exe)  # the Linux build is AnyCPU
-
-
-def test_clr_flags_rejects_non_pe_files(tmp_path):
-    junk = tmp_path / "junk.exe"
-    junk.write_bytes(b"not a PE file at all" * 10)
-    with pytest.raises(AetherError, match="isn't a .NET executable"):
-        game.clr_flags(junk)
+def test_check_build_needs_this_os_apphost(tmp_path):
+    client = tmp_path / "client"
+    write_files(client, {"Terraria.dll": b"dll", "Terraria": b"apphost"})
+    game.check_build(client, "linux")
+    game.check_build(client, "macos")
+    with pytest.raises(AetherError, match="built on another OS"):
+        game.check_build(client, "windows")
+    with pytest.raises(AetherError, match="has no Terraria.dll"):
+        game.check_build(tmp_path, "linux")
 
 
 def test_build_command_prints_the_output(repo, monkeypatch):
@@ -420,13 +504,13 @@ def test_build_command_prints_the_output(repo, monkeypatch):
         cli,
         "build_client",
         lambda configuration, platform: (
-            built.append((configuration, platform)) or game.output_exe(configuration)
+            built.append((configuration, platform)) or game.output_dir(configuration)
         ),
     )
     result = CliRunner().invoke(cli.app, ["build", "--release"])
     assert result.exit_code == 0, result.output
     assert built == [("Release", "windows")]
-    assert "bin/Release/net40/Terraria.exe" in result.output.replace("\\", "/")
+    assert "bin/Release/net10.0" in result.output.replace("\\", "/")
 
 
 def test_build_packages_targets(repo, tmp_path, monkeypatch):
@@ -434,19 +518,22 @@ def test_build_packages_targets(repo, tmp_path, monkeypatch):
 
     from aether import cli
 
-    exe = game.output_exe("Debug")
     linux, mac = tmp_path / "linux", tmp_path / "mac"
     monkeypatch.setattr(cli, "host_platform", lambda: "linux")
-    monkeypatch.setattr(cli, "build_client", lambda configuration, platform: exe)
-    monkeypatch.setattr(cli, "check_build", lambda exe, platform: None)
+    monkeypatch.setattr(
+        cli,
+        "build_client",
+        lambda configuration, platform: game.output_dir(configuration),
+    )
     monkeypatch.setattr(cli, "default_game_dir", lambda: linux)
     monkeypatch.setattr(cli, "platform_game_dir", lambda platform: tmp_path / platform)
     packaged = []
     monkeypatch.setattr(
         cli,
         "package",
-        lambda target, exe, game_dir, platform_dir: (
-            packaged.append((target, game_dir, platform_dir)) or paths.DIST / target
+        lambda target, configuration, game_dir, platform_dir: (
+            packaged.append((target, configuration, game_dir, platform_dir))
+            or paths.DIST / target
         ),
     )
     result = CliRunner().invoke(
@@ -454,17 +541,21 @@ def test_build_packages_targets(repo, tmp_path, monkeypatch):
     )
     assert result.exit_code == 0, result.output
     assert packaged == [
-        ("mac", linux, tmp_path / "macos"),
-        ("lin64", linux, None),
-        ("win64", linux, tmp_path / "windows"),
+        ("macarm", "Debug", linux, tmp_path / "macos"),
+        ("lin64", "Debug", linux, None),
+        ("win64", "Debug", linux, tmp_path / "windows"),
+        ("mac64", "Debug", linux, tmp_path / "macos"),
     ]
 
     packaged.clear()
     result = CliRunner().invoke(
-        cli.app, ["build", "--target", "mac64", "--platform-dir", str(mac)]
+        cli.app, ["build", "--release", "--target", "mac", "--platform-dir", str(mac)]
     )
     assert result.exit_code == 0, result.output
-    assert packaged == [("mac", linux, mac)]
+    assert packaged == [
+        ("mac64", "Release", linux, mac),
+        ("macarm", "Release", linux, mac),
+    ]
 
 
 def test_build_platform_dir_needs_one_non_linux_target(repo, monkeypatch):
@@ -497,55 +588,36 @@ def test_screens_opens_the_gallery(repo, tmp_path, monkeypatch, argv, expected):
 
     from aether import cli
 
-    exe = tmp_path / "Terraria.exe"
-    exe.write_bytes(b"client")
+    client = tmp_path / "client"
     seen = {}
-    monkeypatch.setattr(cli, "latest_build", lambda: exe)
+    monkeypatch.setattr(cli, "latest_build", lambda: client)
     monkeypatch.setattr(cli, "build_client", lambda *args: pytest.fail("built"))
     monkeypatch.setattr(
-        cli, "launch_build", lambda exe, *rest: seen.update(exe=exe, args=rest[4])
+        cli,
+        "launch_build",
+        lambda client, *rest: seen.update(client=client, args=rest[4]),
     )
     result = CliRunner().invoke(cli.app, argv)
     assert result.exit_code == 0, result.output
-    assert seen == {"exe": exe, "args": expected}
+    assert seen == {"client": client, "args": expected}
 
 
-def test_profile_preloads_the_profiler(repo, tmp_path, monkeypatch):
-    from typer.testing import CliRunner
-
-    from aether import cli, profiler
-
-    exe = tmp_path / "Terraria.exe"
-    exe.write_bytes(b"client")
-    seen = {}
-    library = tmp_path / "libmono-profiler-aether.so"
-    monkeypatch.setattr(profiler, "build_profiler", lambda: library)
-    monkeypatch.delenv("LD_PRELOAD", raising=False)
-    monkeypatch.setattr(cli, "host_platform", lambda: "linux")
-    monkeypatch.setattr(cli, "latest_build", lambda: exe)
-    monkeypatch.setattr(cli, "check_build", lambda *args: None)
-    monkeypatch.setattr(cli, "prepare_run_dir", lambda *args: None)
-    monkeypatch.setattr(
-        cli,
-        "launch",
-        lambda platform, run_dir, saves, args, env=None: seen.update(env=env) or 0,
-    )
-    result = CliRunner().invoke(
-        cli.app, ["launch", "--profile", "--profile-depth", "8", "--control", "5000"]
-    )
-    assert result.exit_code == 0, result.output
-    assert seen["env"] == {"AETHER_PROFILER": "depth=8", "LD_PRELOAD": str(library)}
-    assert CliRunner().invoke(cli.app, ["launch"]).exit_code == 0
-    assert seen["env"] is None
-    result = CliRunner().invoke(
-        cli.app, ["launch", "--profile", "--profile-depth", "40"]
-    )
-    assert result.exit_code == 1
-
-
-def test_profile_is_linux_only():
+def test_profile_is_not_available_until_ported():
     from aether.profiler import profiler_env
     from aether.util import AetherError
 
-    with pytest.raises(AetherError, match="Linux only"):
-        profiler_env("windows", 16)
+    with pytest.raises(AetherError, match="isn't available yet"):
+        profiler_env("linux", 16)
+
+
+def test_build_needs_fnas_net_build(repo, monkeypatch):
+    from aether import fna
+
+    monkeypatch.setattr(game, "load_fna_json", lambda: {"commit": "abc"})
+    built = paths.FNA_CACHE / "abc" / fna.FNA_OUTPUT_DIR / "FNA.dll"
+    write_files(built.parent, {"FNA.dll": b"fna for .net"})
+    write_files(paths.LIB, {"FNA.dll": b"fna for .net framework"})
+    with pytest.raises(AetherError, match="aether setup"):
+        game.require_net_fna()
+    (paths.LIB / "FNA.dll").write_bytes(b"fna for .net")
+    game.require_net_fna()

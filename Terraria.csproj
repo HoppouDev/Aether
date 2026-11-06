@@ -1,10 +1,15 @@
-<Project Sdk="Microsoft.NET.Sdk.WindowsDesktop">
+<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <AssemblyName>Terraria</AssemblyName>
     <GenerateAssemblyInfo>False</GenerateAssemblyInfo>
+    <!-- WinExe: no console window on Windows (the same as Exe elsewhere). -->
     <OutputType>WinExe</OutputType>
-    <UseWindowsForms>True</UseWindowsForms>
-    <TargetFramework>net40</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
+    <!-- On a newer runtime when .NET 10 isn't installed. -->
+    <RollForward>Major</RollForward>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
     <StartupObject>Terraria.LinuxLaunch</StartupObject>
     <!-- Sources live in src/ (base + patches); never glob .base/ or lib/. -->
     <EnableDefaultItems>False</EnableDefaultItems>
@@ -22,11 +27,12 @@
   <!-- Third-party libraries in lib/, extracted by ./aether setup from the embedded resources of
        the shipped Terraria.exe (Linux build); FNA.dll is copied from the game directory. -->
   <ItemGroup>
-    <Reference Include="System.Core" />
+    <!-- FNA is copied next to the client (it isn't embedded), with the dllmap its FNADllMap
+         reads to find the native libraries. -->
     <Reference Include="FNA">
       <HintPath>lib/FNA.dll</HintPath>
-      <Private>False</Private>
     </Reference>
+    <None Include="lib/FNA.dll.config" CopyToOutputDirectory="PreserveNewest" Link="FNA.dll.config" />
     <Reference Include="Ionic.Zip.CF">
       <HintPath>lib/Ionic.Zip.CF.dll</HintPath>
       <Private>False</Private>
@@ -43,8 +49,6 @@
       <HintPath>lib/RailSDK.Net.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="System.Runtime.Serialization" />
-    <Reference Include="WindowsBase" />
     <Reference Include="Steamworks.NET">
       <HintPath>lib/Steamworks.NET.dll</HintPath>
       <Private>False</Private>
@@ -61,6 +65,16 @@
       <HintPath>lib/NVorbis.dll</HintPath>
       <Private>False</Private>
     </Reference>
+  </ItemGroup>
+
+  <!-- For the XNA-only Bitmap screenshot path in CaptureCamera (FNA saves with SavePng); never
+       used at runtime, where GDI+ is Windows-only. -->
+  <ItemGroup>
+    <PackageReference Include="System.Drawing.Common" Version="10.0.0" />
+    <!-- System.IO.FileFormatException (WorldFile), in WindowsBase on .NET Framework. -->
+    <PackageReference Include="System.IO.Packaging" Version="10.0.0" />
+    <!-- Code-access-security types the .NET Framework builds of the embedded libraries reference. -->
+    <PackageReference Include="System.Security.Permissions" Version="10.0.0" />
   </ItemGroup>
 
   <!-- The game resolves these at runtime from its own manifest resources (see LinuxLaunch.Main),
