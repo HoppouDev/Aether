@@ -25,7 +25,7 @@ internal sealed partial class AssemblyWeaver
             return declaration.Target;
         if (source.Scope.Name == game.Assembly.Name.Name && game.GetType(source.FullName) is { } gameType)
             return gameType;
-        return game.ImportReference(source);
+        return TrackReference(game.ImportReference(source));
     }
 
     private MethodReference ImportMethod(MethodReference source)
@@ -46,7 +46,7 @@ internal sealed partial class AssemblyWeaver
         if (source.DeclaringType.Scope.Name == game.Assembly.Name.Name && game.GetType(source.DeclaringType.FullName) is { } type)
             return type.Methods.SingleOrDefault(method => method.FullName == source.FullName)
                 ?? throw new InvalidDataException($"Cannot resolve game method '{source.FullName}'.");
-        return game.ImportReference(source);
+        return TrackReference(game.ImportReference(source));
     }
 
     private FieldReference ImportField(FieldReference source)
@@ -58,7 +58,56 @@ internal sealed partial class AssemblyWeaver
         if (source.DeclaringType.Scope.Name == game.Assembly.Name.Name && game.GetType(source.DeclaringType.FullName) is { } type)
             return type.Fields.SingleOrDefault(field => field.FullName == source.FullName)
                 ?? throw new InvalidDataException($"Cannot resolve game field '{source.FullName}'.");
-        return game.ImportReference(source);
+        return TrackReference(game.ImportReference(source));
+    }
+
+    private T TrackReference<T>(T member) where T : MemberReference
+    {
+        switch (member)
+        {
+            case TypeReference type:
+                TrackType(type);
+                break;
+            case MethodReference method:
+                TrackType(method.DeclaringType);
+                TrackType(method.ReturnType);
+                foreach (ParameterDefinition parameter in method.Parameters)
+                    TrackType(parameter.ParameterType);
+                break;
+            case FieldReference field:
+                TrackType(field.DeclaringType);
+                TrackType(field.FieldType);
+                break;
+        }
+        return member;
+    }
+
+    private void TrackType(TypeReference type)
+    {
+        if (importingPackage == null || type is GenericParameter)
+            return;
+
+        if (type is GenericInstanceType generic)
+            foreach (TypeReference argument in generic.GenericArguments)
+                TrackType(argument);
+        if (type is IModifierType modifier)
+            TrackType(modifier.ModifierType);
+        if (type is FunctionPointerType function)
+        {
+            TrackType(function.ReturnType);
+            foreach (ParameterDefinition parameter in function.Parameters)
+                TrackType(parameter.ParameterType);
+        }
+        else if (type is TypeSpecification specification)
+        {
+            TrackType(specification.ElementType);
+        }
+        else if (type.Scope is AssemblyNameReference reference)
+        {
+            if (!referenceOwners.TryGetValue(reference.FullName, out var owners))
+                referenceOwners.Add(reference.FullName, owners = []);
+            owners.Add(importingPackage);
+        }
     }
 
     private void CloneBody(MethodDefinition source, MethodDefinition target)
@@ -143,7 +192,7 @@ internal sealed partial class AssemblyWeaver
             target.Methods.Add(bridge);
             if (!isStatic)
             {
-                bridge.Overrides.Add(game.ImportReference(method));
+                bridge.Overrides.Add(TrackReference(game.ImportReference(method)));
             }
 
             ILProcessor il = bridge.Body.GetILProcessor();
@@ -178,7 +227,7 @@ internal sealed partial class AssemblyWeaver
         }
 
         if (staticInterface == false)
-            target.Interfaces.Add(new InterfaceImplementation(game.ImportReference(source)));
+            target.Interfaces.Add(new InterfaceImplementation(TrackReference(game.ImportReference(source))));
     }
 
     private static OpCode LongBranch(OpCode op) => op.Code switch

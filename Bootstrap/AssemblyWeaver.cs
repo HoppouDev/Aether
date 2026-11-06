@@ -21,7 +21,10 @@ internal sealed partial class AssemblyWeaver(ModuleDefinition game, bool debug)
     private readonly Dictionary<MethodDefinition, Declaration> overwrites = new();
     private readonly List<Injection> injections = new();
 
-    internal static HashSet<string> Write(string path, IReadOnlyList<ModPackage> packages, Stream output, bool debug)
+    private readonly Dictionary<string, HashSet<ModPackage>> referenceOwners = new(StringComparer.OrdinalIgnoreCase);
+    private ModPackage? importingPackage;
+
+    internal static Dictionary<string, HashSet<ModPackage>> Write(string path, IReadOnlyList<ModPackage> packages, Stream output, bool debug)
     {
         using var resolver = new DefaultAssemblyResolver();
         resolver.AddSearchDirectory(Path.GetDirectoryName(path)!);
@@ -68,14 +71,14 @@ internal sealed partial class AssemblyWeaver(ModuleDefinition game, bool debug)
             var declarations = weaver.mixinTypes.Values.OrderByDescending(item => item.Priority)
                 .ThenBy(item => item.ModOrder).ThenBy(item => item.Source.FullName, StringComparer.Ordinal).ToArray();
             foreach (Declaration declaration in declarations)
-                WithContext(declaration, () => weaver.DeclareMembers(declaration));
+                weaver.WithContext(declaration, () => weaver.DeclareMembers(declaration));
             foreach (Declaration declaration in declarations)
-                WithContext(declaration, () => weaver.CopyMembers(declaration));
+                weaver.WithContext(declaration, () => weaver.CopyMembers(declaration));
 
             weaver.ApplyInjections();
             game.Write(output);
-            return game.AssemblyReferences.Where(reference => !originalReferences.Contains(reference.FullName))
-                .Select(reference => reference.FullName).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            return weaver.referenceOwners.Where(reference => !originalReferences.Contains(reference.Key))
+                .ToDictionary(reference => reference.Key, reference => reference.Value, StringComparer.OrdinalIgnoreCase);
         }
         finally
         {
@@ -84,13 +87,16 @@ internal sealed partial class AssemblyWeaver(ModuleDefinition game, bool debug)
         }
     }
 
-    private static void WithContext(Declaration declaration, Action action)
+    private void WithContext(Declaration declaration, Action action)
     {
+        ModPackage? previous = importingPackage;
+        importingPackage = declaration.Package;
         try { action(); }
         catch (Exception exception)
         {
             throw new InvalidDataException($"{declaration.Name} targeting '{declaration.Target.FullName}': {exception.Message}", exception);
         }
+        finally { importingPackage = previous; }
     }
 
     private void DeclareMembers(Declaration declaration)

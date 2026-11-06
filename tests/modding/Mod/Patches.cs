@@ -23,7 +23,10 @@ public class TargetMixin
     private static void Entry(int n, CallbackInfoReturnable<int> cir)
     {
         if (n == 7)
-            cir.SetReturnValue(50);
+        {
+            using var reader = new StreamReader(ModResources.OpenRead("test", "nested/value.txt"));
+            cir.SetReturnValue(int.Parse(reader.ReadToEnd()));
+        }
     }
 
     [Inject("Ret", At.RETURN, Cancellable = true)]
@@ -80,6 +83,14 @@ public class Init : IModInitializer
 {
     public void Initialize()
     {
+        using var resource = new StreamReader(ModResources.OpenRead("test", "nested/value.txt"));
+        Check(int.Parse(resource.ReadToEnd()), 50);
+        try
+        {
+            using var outside = ModResources.OpenRead("test", "../aether.mod.json");
+            throw new InvalidOperationException("Resource lookup allowed traversal.");
+        }
+        catch (InvalidDataException) { }
         var target = new Target();
         var access = (ITargetAccess)(object)target;
         Check(target.State(), 23);

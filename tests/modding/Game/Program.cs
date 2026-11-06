@@ -1,4 +1,5 @@
 using System;
+using System.Runtime.InteropServices;
 using Aether.Modding;
 public class Target
 {
@@ -20,8 +21,14 @@ public class Target
 }
 public static class Program
 {
+    [DllImport("aether_fixture_native")]
+    private static extern int FixtureValue();
+
     public static void Main(string[] args)
     {
+        Aether.NativeLibraries.Install();
+        if (Array.IndexOf(args, "-testnative") >= 0)
+            Console.WriteLine($"NATIVE {FixtureValue()}");
         ClientStartup.InitializeMods?.Invoke();
         Console.WriteLine("GAME");
     }

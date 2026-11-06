@@ -2,6 +2,7 @@ using System.Reflection;
 using System.Runtime.ExceptionServices;
 using System.Runtime.InteropServices;
 using System.Runtime.Loader;
+using System.Security.Cryptography;
 using Aether.Modding;
 
 namespace Aether.Bootstrap;
@@ -28,15 +29,22 @@ internal static class Program
 
             temporary = Directory.CreateTempSubdirectory("aether-mods-").FullName;
             var packages = new List<ModPackage>();
-            Version version = AssemblyName.GetAssemblyName(clientPath).Version!;
+            string terrariaVersion = AssemblyName.GetAssemblyName(clientPath).Version!.ToString();
+            string aetherVersion = typeof(Program).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()!.InformationalVersion;
             foreach (string archive in archives)
             {
                 phase = archive;
-                packages.Add(ModPackage.Read(archive, Path.Combine(temporary, packages.Count.ToString()), version));
+                packages.Add(ModPackage.Read(archive, Path.Combine(temporary, packages.Count.ToString())));
             }
 
             phase = "dependency resolution";
-            packages = ModPackage.Sort(packages);
+            packages = ModPackage.Sort(packages, aetherVersion, terrariaVersion);
+            var packagesById = packages.ToDictionary(package => package.Manifest.Id, StringComparer.Ordinal);
+            ModPackage FindPackage(string modId) => packagesById.TryGetValue(modId, out var package)
+                ? package
+                : throw new KeyNotFoundException($"Mod '{modId}' is not loaded.");
+            ModResources.OpenResource = (modId, path) => FindPackage(modId).OpenResource(path);
+            ModResources.OpenPackageIcon = modId => FindPackage(modId).OpenIcon();
             var contexts = new Dictionary<string, (ModPackage Package, ModContext Context)>(StringComparer.OrdinalIgnoreCase);
             foreach (ModPackage package in packages)
             {
@@ -51,7 +59,7 @@ internal static class Program
             if (packages.Any(package => package.Manifest.Mixins is { Length: > 0 }))
             {
                 using var image = new MemoryStream();
-                HashSet<string> references = AssemblyWeaver.Write(clientPath, packages, image, parameters.ContainsKey("-mixindebug"));
+                var references = AssemblyWeaver.Write(clientPath, packages, image, parameters.ContainsKey("-mixindebug"));
                 var dependencies = ResolveWovenDependencies(contexts.Values, references);
                 var gameContext = new GameContext(dependencies);
                 image.Position = 0;
@@ -65,6 +73,7 @@ internal static class Program
             foreach (var (_, context) in contexts.Values)
                 context.Game = game;
 
+            ModCatalog.LoadedMods = Array.AsReadOnly(packages.Select(package => package.Info).ToArray());
             ClientStartup.InitializeMods = () =>
             {
                 var initializers = new List<(ModPackage Package, Type Type)>();
@@ -110,6 +119,9 @@ internal static class Program
         finally
         {
             ClientStartup.InitializeMods = null;
+            ModResources.OpenResource = null;
+            ModResources.OpenPackageIcon = null;
+            ModCatalog.LoadedMods = Array.Empty<ModInfo>();
             if (temporary != null)
             {
                 try { Directory.Delete(temporary, recursive: true); }
@@ -125,39 +137,67 @@ internal static class Program
     };
 
     private static Dictionary<string, (string Path, ModContext Context)> ResolveWovenDependencies(
-        IEnumerable<(ModPackage Package, ModContext Context)> mods, HashSet<string> references)
+        IEnumerable<(ModPackage Package, ModContext Context)> mods, Dictionary<string, HashSet<ModPackage>> references)
     {
-        var result = new Dictionary<string, (string, ModContext)>(StringComparer.OrdinalIgnoreCase);
-        foreach (var (package, context) in mods)
-        {
-            foreach (string path in Directory.EnumerateFiles(package.Root, "*", SearchOption.AllDirectories)
-                .Where(path => Path.GetExtension(path).Equals(".dll", StringComparison.OrdinalIgnoreCase)))
-            {
-                AssemblyName identity;
-                try { identity = AssemblyName.GetAssemblyName(path); }
-                catch (BadImageFormatException) { continue; }
-
-                if (!references.Contains(identity.FullName))
-                    continue;
-                if (SharedNames.Contains(identity.Name!))
-                    throw new InvalidDataException($"Mod '{package.Manifest.Id}' in '{package.Archive}' bundles shared assembly '{identity.Name}'.");
-                if (!result.TryAdd(identity.FullName, (path, context)))
-                    throw new InvalidDataException($"Woven reference '{identity.FullName}' is ambiguous between '{path}' and '{result[identity.FullName].Item1}'.");
-            }
-        }
+        var contexts = mods.ToDictionary(mod => mod.Package, mod => mod.Context);
+        var result = new Dictionary<string, (string Path, ModContext Context)>(StringComparer.OrdinalIgnoreCase);
         string[] platformAssemblies = ((string?)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES") ?? "")
             .Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries);
-        var platformNames = platformAssemblies.Select(path => Path.GetFileNameWithoutExtension(path))
+        var platformNames = platformAssemblies.Select(Path.GetFileNameWithoutExtension)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
-        foreach (string reference in references)
+
+        foreach (var (reference, owners) in references)
         {
-            string name = new AssemblyName(reference).Name!;
-            if (!result.ContainsKey(reference) && !platformNames.Contains(name) && !SharedNames.Contains(name))
-                throw new InvalidDataException($"No packaged or platform assembly satisfies woven reference '{reference}'.");
-            if (result.ContainsKey(reference) && platformNames.Contains(name))
-                throw new InvalidDataException($"Woven reference '{reference}' conflicts with a platform assembly.");
+            var identity = new AssemblyName(reference);
+            string name = identity.Name!;
+            if (SharedNames.Contains(name))
+                continue;
+
+            var candidates = new List<(ModPackage Package, string Path, ModContext Context)>();
+            foreach (ModPackage owner in owners.OrderBy(owner => owner.Manifest.Id, StringComparer.Ordinal))
+            {
+                ModContext context = contexts[owner];
+                string? path = context.ResolveManagedPath(identity);
+                if (path == null)
+                {
+                    if (platformNames.Contains(name))
+                        continue;
+                    throw new InvalidDataException($"Mod '{owner.Manifest.Id}' in '{owner.Archive}' is missing woven reference '{reference}'.");
+                }
+
+                if (platformNames.Contains(name))
+                    throw new InvalidDataException($"Woven reference '{reference}' in mod '{owner.Manifest.Id}' conflicts with a platform assembly.");
+                if (!string.Equals(AssemblyName.GetAssemblyName(path).FullName, reference, StringComparison.OrdinalIgnoreCase))
+                    throw new InvalidDataException($"'{path}' in mod '{owner.Manifest.Id}' does not match woven reference '{reference}'.");
+
+                candidates.Add((owner, path, context));
+            }
+
+            if (candidates.Count == 0)
+                continue;
+            var primary = candidates.FirstOrDefault(item => item.Path == item.Package.EntryPath, candidates[0]);
+            if (candidates.Count > 1)
+            {
+                byte[] hash = HashFile(primary.Path);
+                foreach (var candidate in candidates)
+                {
+                    if (candidate.Context == primary.Context)
+                        continue;
+                    if (!HashFile(candidate.Path).AsSpan().SequenceEqual(hash))
+                        throw new InvalidDataException($"Woven reference '{reference}' differs between mods '{primary.Package.Manifest.Id}' and '{candidate.Package.Manifest.Id}'.");
+
+                    candidate.Context.ShareWovenDependency(reference, primary.Path, primary.Context);
+                }
+            }
+            result.Add(reference, (primary.Path, primary.Context));
         }
         return result;
+    }
+
+    private static byte[] HashFile(string path)
+    {
+        using FileStream stream = File.OpenRead(path);
+        return SHA256.HashData(stream);
     }
 
     // The host lists the pristine client in its dependency graph. A separate context ensures
@@ -195,7 +235,14 @@ internal static class Program
     private static void ShowError(string message)
     {
         if (Console.IsErrorRedirected)
-            return;
+        {
+            // A Windows GUI launch has no stderr handle, which the console API reports as redirected.
+            if (!OperatingSystem.IsWindows())
+                return;
+            using Stream stderr = Console.OpenStandardError();
+            if (stderr != Stream.Null)
+                return;
+        }
         string name = OperatingSystem.IsWindows() ? "SDL3.dll" : OperatingSystem.IsMacOS() ? "libSDL3.0.dylib" : "libSDL3.so.0";
         if (!NativeLibrary.TryLoad(Path.Combine(AppContext.BaseDirectory, name), out nint library))
             return;

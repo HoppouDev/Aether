@@ -25,7 +25,7 @@
     </ItemGroup>
     <Copy SourceFiles="@(ModFiles)" DestinationFolder="$(ModStaging)" />
     <WriteLinesToFile File="$(ModStaging)/aether.mod.json" Overwrite="true"
-      Lines="{ &quot;schemaVersion&quot;: 1, &quot;id&quot;: &quot;startup-example&quot;, &quot;version&quot;: &quot;1.0.0&quot;, &quot;gameVersion&quot;: &quot;$(GameVersion)&quot;, &quot;assembly&quot;: &quot;$(AssemblyName).dll&quot;, &quot;entrypoint&quot;: &quot;Aether.Examples.Startup&quot;, &quot;mixins&quot;: [ &quot;Aether.Examples.StartupMixin&quot; ] }" />
+      Lines="{ &quot;schemaVersion&quot;: 1, &quot;id&quot;: &quot;startup-example&quot;, &quot;version&quot;: &quot;1.0.0&quot;, &quot;name&quot;: &quot;Startup Example&quot;, &quot;description&quot;: &quot;Demonstrates an initializer and a startup mixin.&quot;, &quot;authors&quot;: [], &quot;assembly&quot;: &quot;$(AssemblyName).dll&quot;, &quot;entrypoint&quot;: &quot;Aether.Examples.Startup&quot;, &quot;mixins&quot;: [ &quot;Aether.Examples.StartupMixin&quot; ], &quot;depends&quot;: { &quot;aether&quot;: &quot;&gt;=0.1.0&quot;, &quot;terraria&quot;: &quot;$(GameVersion)&quot; } }" />
     <ZipDirectory SourceDirectory="$(ModStaging)" DestinationFile="$(ModArchive)" Overwrite="true" />
   </Target>
 </Project>

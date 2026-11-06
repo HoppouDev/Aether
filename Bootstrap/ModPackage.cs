@@ -7,14 +7,28 @@ using Aether.Modding;
 
 namespace Aether.Bootstrap;
 
-internal sealed record ModManifest(int SchemaVersion, string Id, string Version, string GameVersion,
-    string Assembly, string[]? Depends, string? Entrypoint, string[]? Mixins, string? Mappings);
+internal sealed record ModManifest(int SchemaVersion, string Id, string Version,
+    string Assembly, JsonElement Depends, string? Entrypoint, string[]? Mixins, string? Mappings,
+    string? Name, string? Description, JsonElement Authors, JsonElement Contributors,
+    JsonElement Source, JsonElement Homepage, JsonElement License);
 
-internal sealed record ModPackage(string Archive, string Root, ModManifest Manifest)
+internal sealed record ModPackage(string Archive, string Root, ModManifest Manifest, ModInfo Info, ModDependency[] Dependencies)
 {
     internal string EntryPath => Path.Combine(Root, Manifest.Assembly);
 
-    internal static ModPackage Read(string archive, string root, Version gameVersion)
+    internal Stream OpenResource(string path)
+    {
+        ValidatePath(path);
+        return File.OpenRead(Path.Combine(Root, "resources", path));
+    }
+
+    internal Stream OpenIcon()
+    {
+        string icon = Info.IconPath ?? throw new FileNotFoundException($"Mod '{Manifest.Id}' has no icon.png.");
+        return File.OpenRead(Path.Combine(Root, icon));
+    }
+
+    internal static ModPackage Read(string archive, string root)
     {
         using var zip = ZipFile.OpenRead(archive);
         var paths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -48,13 +62,16 @@ internal sealed record ModPackage(string Archive, string Root, ModManifest Manif
             ?? throw new InvalidDataException("Missing root aether.mod.json.");
         if (metadata.Length > 1024 * 1024)
             throw new InvalidDataException("Manifest exceeds 1 MiB.");
-        using Stream json = metadata.Open();
+        var buffer = new byte[81920];
+        using var json = new MemoryStream((int)metadata.Length);
+        CopyEntry(metadata, json, buffer);
+        json.Position = 0;
         var manifest = JsonSerializer.Deserialize<ModManifest>(json, new JsonSerializerOptions(JsonSerializerDefaults.Web))
             ?? throw new InvalidDataException("Empty manifest.");
         if (manifest.SchemaVersion != 1 || !IsId(manifest.Id) || string.IsNullOrWhiteSpace(manifest.Version))
             throw new InvalidDataException($"Invalid schema, ID or version for mod '{manifest.Id}'.");
-        if (!Version.TryParse(manifest.GameVersion, out Version? version) || version != gameVersion)
-            throw new InvalidDataException($"Mod '{manifest.Id}' requires game {manifest.GameVersion}; found {gameVersion}.");
+        if (manifest.Id is "aether" or "terraria")
+            throw new InvalidDataException($"Mod ID '{manifest.Id}' is reserved for the client.");
         ValidatePath(manifest.Assembly);
         if (!manifest.Assembly.EndsWith(".dll", StringComparison.OrdinalIgnoreCase) || zip.GetEntry(manifest.Assembly) == null)
             throw new InvalidDataException($"Mod '{manifest.Id}' has no entry assembly '{manifest.Assembly}'.");
@@ -64,14 +81,45 @@ internal sealed record ModPackage(string Archive, string Root, ModManifest Manif
             if (zip.GetEntry(mappings) == null)
                 throw new InvalidDataException($"Mod '{manifest.Id}' has no mappings file '{mappings}'.");
         }
-        if ((manifest.Depends ?? []).Any(id => !IsId(id)))
-            throw new InvalidDataException($"Mod '{manifest.Id}' declares an invalid dependency ID.");
+        ModDependency[] dependencies = ModDependency.Read(manifest.Depends);
 
-        zip.ExtractToDirectory(root);
-        return new ModPackage(archive, root, manifest);
+        string? iconPath = zip.GetEntry("icon.png") != null ? "icon.png" : null;
+        ModInfo info = ModMetadata.Read(manifest, iconPath);
+        foreach (ZipArchiveEntry entry in zip.Entries)
+        {
+            string path = Path.Combine(root, entry.FullName);
+            if (entry.FullName.EndsWith('/'))
+            {
+                Directory.CreateDirectory(path);
+                continue;
+            }
+
+            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+            using var destination = new FileStream(path, FileMode.CreateNew);
+            CopyEntry(entry, destination, buffer);
+        }
+        return new ModPackage(archive, root, manifest, info, dependencies);
     }
 
-    private static bool IsId(string? id) => id != null && Regex.IsMatch(id, @"\A[a-z][a-z0-9_.-]{0,63}\z");
+    private static void CopyEntry(ZipArchiveEntry entry, Stream destination, byte[] buffer)
+    {
+        // The archive-wide limit is based on declared sizes. Each stream must honor its size.
+        using Stream source = entry.Open();
+        long remaining = entry.Length;
+        while (remaining > 0)
+        {
+            int count = source.Read(buffer, 0, (int)Math.Min(remaining, buffer.Length));
+            if (count == 0)
+                throw new InvalidDataException($"Archive entry '{entry.FullName}' ended before its declared size.");
+            destination.Write(buffer, 0, count);
+            remaining -= count;
+        }
+
+        if (source.ReadByte() != -1)
+            throw new InvalidDataException($"Archive entry '{entry.FullName}' exceeds its declared size.");
+    }
+
+    internal static bool IsId(string? id) => id != null && Regex.IsMatch(id, @"\A[a-z][a-z0-9_.-]{0,63}\z");
 
     private static void ValidatePath(string? name)
     {
@@ -82,7 +130,7 @@ internal sealed record ModPackage(string Archive, string Root, ModManifest Manif
             throw new InvalidDataException($"Unsafe archive path '{name}'.");
     }
 
-    internal static List<ModPackage> Sort(IEnumerable<ModPackage> packages)
+    internal static List<ModPackage> Sort(IEnumerable<ModPackage> packages, string aetherVersion, string terrariaVersion)
     {
         var pending = new SortedDictionary<string, ModPackage>(StringComparer.Ordinal);
         foreach (ModPackage package in packages)
@@ -90,16 +138,26 @@ internal sealed record ModPackage(string Archive, string Root, ModManifest Manif
             if (!pending.TryAdd(package.Manifest.Id, package))
                 throw new InvalidDataException($"Duplicate mod ID '{package.Manifest.Id}' in '{package.Archive}' and '{pending[package.Manifest.Id].Archive}'.");
         }
+        var versions = pending.Values.ToDictionary(package => package.Manifest.Id, package => package.Manifest.Version, StringComparer.Ordinal);
+        versions.Add("aether", aetherVersion);
+        versions.Add("terraria", terrariaVersion);
+        var parsedVersions = versions.ToDictionary(entry => entry.Key, entry => ModVersion.Parse(entry.Value), StringComparer.Ordinal);
         foreach (ModPackage package in pending.Values)
-            foreach (string dependency in package.Manifest.Depends ?? [])
-                if (!pending.ContainsKey(dependency))
-                    throw new InvalidDataException($"Mod '{package.Manifest.Id}' in '{package.Archive}' requires missing mod '{dependency}'.");
+        {
+            foreach (ModDependency dependency in package.Dependencies)
+            {
+                if (!versions.TryGetValue(dependency.Id, out string? actual))
+                    throw new InvalidDataException($"Mod '{package.Manifest.Id}' in '{package.Archive}' requires missing mod '{dependency.Id}' ({dependency.Requirement}).");
+                if (!dependency.Alternatives.Any(matches => matches(parsedVersions[dependency.Id])))
+                    throw new InvalidDataException($"Mod '{package.Manifest.Id}' in '{package.Archive}' requires '{dependency.Id}' {dependency.Requirement}; found {actual}.");
+            }
+        }
 
         var ordered = new List<ModPackage>();
-        var loaded = new HashSet<string>(StringComparer.Ordinal);
+        var loaded = new HashSet<string>(StringComparer.Ordinal) { "aether", "terraria" };
         while (pending.Count > 0)
         {
-            ModPackage? next = pending.Values.FirstOrDefault(package => (package.Manifest.Depends ?? []).All(loaded.Contains));
+            ModPackage? next = pending.Values.FirstOrDefault(package => package.Dependencies.All(dependency => loaded.Contains(dependency.Id)));
             if (next == null)
                 throw new InvalidDataException($"Dependency cycle blocks: {string.Join(", ", pending.Keys)}.");
             pending.Remove(next.Manifest.Id);
@@ -116,6 +174,16 @@ internal sealed class ModContext(ModPackage package) : AssemblyLoadContext(packa
 
     private readonly AssemblyDependencyResolver resolver = new(package.EntryPath);
     private readonly Dictionary<string, Assembly> images = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, (string Path, ModContext Context)> wovenDependencies = new(StringComparer.OrdinalIgnoreCase);
+
+    internal string? ResolveManagedPath(AssemblyName name)
+    {
+        string path = resolver.ResolveAssemblyToPath(name) ?? Path.Combine(Path.GetDirectoryName(package.EntryPath)!, name.Name + ".dll");
+        return File.Exists(path) ? path : null;
+    }
+
+    internal void ShareWovenDependency(string name, string path, ModContext context) =>
+        wovenDependencies.Add(name, (path, context));
 
     internal Assembly LoadManaged(string path)
     {
@@ -137,8 +205,11 @@ internal sealed class ModContext(ModPackage package) : AssemblyLoadContext(packa
         if (name.Name != null && Program.SharedNames.Contains(name.Name))
             return Default.LoadFromAssemblyName(name);
 
-        string path = resolver.ResolveAssemblyToPath(name) ?? Path.Combine(Path.GetDirectoryName(package.EntryPath)!, name.Name + ".dll");
-        return File.Exists(path) ? LoadManaged(path) : null;
+        if (wovenDependencies.TryGetValue(name.FullName, out var dependency))
+            return dependency.Context.LoadManaged(dependency.Path);
+
+        string? path = ResolveManagedPath(name);
+        return path == null ? null : LoadManaged(path);
     }
 
     protected override nint LoadUnmanagedDll(string name)

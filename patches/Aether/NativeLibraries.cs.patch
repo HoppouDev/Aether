@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/Aether/NativeLibraries.cs
-@@ -0,0 +1,39 @@
+@@ -0,0 +1,44 @@
 +using System;
 +using System.IO;
 +using System.Reflection;
@@ -24,7 +24,12 @@
 +
 +    public static void Install()
 +    {
++        var context = AssemblyLoadContext.GetLoadContext(typeof(NativeLibraries).Assembly);
 +        AssemblyLoadContext.Default.ResolvingUnmanagedDll += Resolve;
++        if (context != null && context != AssemblyLoadContext.Default)
++        {
++            context.ResolvingUnmanagedDll += Resolve;
++        }
 +    }
 +
 +    private static IntPtr Resolve(Assembly assembly, string name)
