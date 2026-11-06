@@ -1,0 +1,49 @@
+{
+	"$schema": "http://json.schemastore.org/template",
+	"author": "Aether",
+	"identity": "Aether.Templates.Mod",
+	"name": "Aether Mod",
+	"description": "Create a .NET 10 Aether mod with mixins, resources, and a launcher that prepares a local Aether client.",
+	"shortName": "aethermod",
+	"sourceName": "ModProjectName",
+	"preferNameDirectory": true,
+	"tags": {
+		"language": "C#",
+		"type": "project"
+	},
+	"sources": [{ "rename": { "gitignore.template": ".gitignore" } }],
+	"primaryOutputs": [{ "path": "ModProjectName.csproj" }],
+	"symbols": {
+		"mod-id": {
+			"type": "parameter",
+			"datatype": "string",
+			"description": "Unique lowercase ID for the mod manifest.",
+			"isRequired": true,
+			"replaces": "example-mod-id"
+		},
+		"game-version": {
+			"type": "parameter",
+			"datatype": "string",
+			"description": "Terraria version constraint written to depends.terraria.",
+			"defaultValue": "1.4.5.8",
+			"replaces": "1.4.5.8"
+		},
+		"aether-version": {
+			"type": "parameter",
+			"datatype": "string",
+			"description": "Aether version constraint written to depends.aether.",
+			"defaultValue": ">=0.1.0",
+			"replaces": ">=0.1.0"
+		}
+	},
+	"postActions": [
+		{
+			"condition": "(OS != \"Windows_NT\")",
+			"description": "Make the mod launcher executable",
+			"manualInstructions": [{ "text": "Run chmod +x aether" }],
+			"actionId": "CB9A6CF3-4F5C-4860-B9D2-03A574959774",
+			"args": { "+x": "aether" },
+			"continueOnError": true
+		}
+	]
+}

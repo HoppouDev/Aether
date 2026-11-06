@@ -1,0 +1,22 @@
+{
+	"schemaVersion": 1,
+	"id": "example-mod-id",
+	"name": "ModProjectName",
+	"version": "0.1.0",
+
+	"description": "Describe what your mod does.",
+	"authors": ["Me"],
+	"contributors": [],
+	"license": "MIT",
+	"homepage": "https://example.org",
+	"source": null,
+
+	"assembly": "ModProjectName.dll",
+	"entrypoint": "ModProjectName.Startup",
+	"mixins": ["ModProjectName.Mixins.StartupMixin"],
+
+	"depends": {
+		"aether": ">=0.1.0",
+		"terraria": "1.4.5.8"
+	}
+}

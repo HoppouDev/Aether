@@ -1,0 +1,4 @@
+bin/
+obj/
+.aether/
+.aether-root

@@ -1,0 +1,61 @@
+<Project>
+  <PropertyGroup>
+    <ModManifestPath>$(MSBuildProjectDirectory)/aether.mod.json</ModManifestPath>
+    <AetherRoot Condition="'$(AETHER_ROOT)' != ''">$(AETHER_ROOT)</AetherRoot>
+    <AetherRoot Condition="'$(AetherRoot)' == '' And Exists('$(MSBuildProjectDirectory)/.aether-root')">$([System.IO.File]::ReadAllText('$(MSBuildProjectDirectory)/.aether-root').Trim())</AetherRoot>
+    <AetherRoot Condition="'$(AetherRoot)' == ''">.aether/client</AetherRoot>
+    <AetherClientConfiguration Condition="'$(AETHER_CONFIGURATION)' != ''">$(AETHER_CONFIGURATION)</AetherClientConfiguration>
+    <AetherClientConfiguration Condition="'$(AetherClientConfiguration)' == ''">Debug</AetherClientConfiguration>
+    <AetherClientDirectory Condition="'$(AetherClientDirectory)' == '' And '$(AetherRoot)' != ''">$([System.IO.Path]::GetFullPath('$(AetherRoot)', '$(MSBuildProjectDirectory)'))/Bootstrap/bin/$(AetherClientConfiguration)/net10.0</AetherClientDirectory>
+    <AetherSaveDirectory Condition="'$(AetherSaveDirectory)' == ''">$(MSBuildProjectDirectory)/.aether/saves</AetherSaveDirectory>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="Aether.Modding" HintPath="$(AetherClientDirectory)/Aether.Modding.dll" Private="false" />
+    <Reference Include="FNA" HintPath="$(AetherClientDirectory)/FNA.dll" Private="false" />
+    <Reference Include="Terraria" HintPath="$(AetherClientDirectory)/Terraria.dll" Private="false" />
+  </ItemGroup>
+
+  <Target Name="ValidateAetherReferences" BeforeTargets="ResolveAssemblyReferences">
+    <Error Condition="'$(AetherClientConfiguration)' != 'Debug' And '$(AetherClientConfiguration)' != 'Release'"
+      Text="Set AETHER_CONFIGURATION to Debug or Release." />
+    <Error Condition="'$(AetherClientDirectory)' == '' Or !Exists('$(AetherClientDirectory)/Aether.Modding.dll') Or !Exists('$(AetherClientDirectory)/Terraria.dll') Or !Exists('$(AetherClientDirectory)/FNA.dll')"
+      Text="Run the mod launcher with setup to prepare the local Aether client. For an external checkout, build that client first." />
+    <Error Condition="!Exists('$(ModManifestPath)')" Text="Missing aether.mod.json." />
+    <PropertyGroup>
+      <ModManifest>$([System.IO.File]::ReadAllText('$(ModManifestPath)'))</ModManifest>
+      <ModId>$([System.Text.RegularExpressions.Regex]::Match('$(ModManifest)', '\x22id\x22\s*:\s*\x22([^\x22]*)\x22').Groups[1].Value)</ModId>
+      <ModEntryAssembly>$([System.Text.RegularExpressions.Regex]::Match('$(ModManifest)', '\x22assembly\x22\s*:\s*\x22([^\x22]*)\x22').Groups[1].Value)</ModEntryAssembly>
+    </PropertyGroup>
+    <Error Condition="!$([System.Text.RegularExpressions.Regex]::IsMatch('$(ModId)', '^[a-z][a-z0-9_.-]{0,63}$'))"
+      Text="The mod ID in aether.mod.json must start with a lowercase ASCII letter and contain only lowercase letters, digits, periods, underscores, or hyphens (64 characters maximum)." />
+    <Error Condition="'$(ModEntryAssembly)' != '$(TargetFileName)'"
+      Text="aether.mod.json points to '$(ModEntryAssembly)', but the project builds '$(TargetFileName)'." />
+  </Target>
+
+  <Target Name="PackMod" DependsOnTargets="Build">
+    <PropertyGroup>
+      <ModStaging>$(IntermediateOutputPath)mod-package/</ModStaging>
+      <ModArchive>$(TargetDir)$(AssemblyName).aethermod</ModArchive>
+    </PropertyGroup>
+    <RemoveDir Directories="$(ModStaging)" />
+    <MakeDir Directories="$(ModStaging)" />
+    <Copy SourceFiles="$(ModManifestPath);$(TargetPath);$(ProjectDepsFilePath)" DestinationFolder="$(ModStaging)" />
+    <Copy SourceFiles="$(MSBuildProjectDirectory)/icon.png" DestinationFolder="$(ModStaging)"
+      Condition="Exists('$(MSBuildProjectDirectory)/icon.png')" />
+    <ItemGroup>
+      <ModResource Include="$(MSBuildProjectDirectory)/resources/**/*" />
+      <ModDependency Include="@(ReferenceCopyLocalPaths)"
+        Condition="'%(ReferenceCopyLocalPaths.Filename)' != 'Terraria' And '%(ReferenceCopyLocalPaths.Filename)' != 'Aether.Modding' And '%(ReferenceCopyLocalPaths.Filename)' != 'FNA' And '%(ReferenceCopyLocalPaths.Filename)' != 'ReLogic'" />
+    </ItemGroup>
+    <Copy SourceFiles="@(ModResource)"
+      DestinationFiles="@(ModResource->'$(ModStaging)resources/%(RecursiveDir)%(Filename)%(Extension)')" />
+    <Copy SourceFiles="@(ModDependency)"
+      DestinationFiles="@(ModDependency->'$(ModStaging)%(DestinationSubDirectory)%(Filename)%(Extension)')" />
+    <ZipDirectory SourceDirectory="$(ModStaging)" DestinationFile="$(ModArchive)" Overwrite="true" />
+  </Target>
+
+  <Target Name="InstallMod" DependsOnTargets="PackMod">
+    <Copy SourceFiles="$(ModArchive)" DestinationFolder="$(AetherSaveDirectory)/Mods" />
+  </Target>
+</Project>

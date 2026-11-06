@@ -38,6 +38,9 @@ project.lock.json
 *.swp
 *~
 
+# Editor lock files created in Dropbox folders
+*~lock~:com.dropbox.ignored
+
 # OS
 .DS_Store
 Thumbs.db

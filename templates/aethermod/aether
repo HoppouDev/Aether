@@ -1,0 +1,80 @@
+#!/bin/sh
+set -eu
+
+prepare_only=false
+case "${1:-}" in
+    run) shift ;;
+    setup) prepare_only=true; shift ;;
+esac
+case "${1:-}" in
+    -h|--help)
+        printf '%s\n' 'Usage: ./aether [run | setup] [-- game-args...]' \
+            'On first use, clone and build Aether under .aether/client.' \
+            'Use setup to prepare the client without starting the game.'
+        exit 0
+        ;;
+    --)
+        shift
+        ;;
+esac
+
+configuration=${AETHER_CONFIGURATION:-Debug}
+case "$configuration" in
+    Debug|Release) ;;
+    *)
+        printf '%s\n' 'AETHER_CONFIGURATION must be Debug or Release.' >&2
+        exit 1
+        ;;
+esac
+
+mod_root=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
+client_root=${AETHER_ROOT:-}
+if [ -z "$client_root" ] && [ -f "$mod_root/.aether-root" ]; then
+    client_root=$(tr -d '\r' < "$mod_root/.aether-root")
+fi
+
+managed=false
+if [ -z "$client_root" ]; then
+    managed=true
+    client_root="$mod_root/.aether/client"
+    if [ ! -e "$client_root" ]; then
+        mkdir -p "$mod_root/.aether"
+        git clone -- "${AETHER_REPOSITORY:-https://github.com/HoppouDev/Aether.git}" "$client_root"
+    fi
+fi
+case "$client_root" in
+    /*) ;;
+    *) client_root="$mod_root/$client_root" ;;
+esac
+if [ ! -x "$client_root/aether" ] || [ ! -f "$client_root/Bootstrap/Aether.Bootstrap.csproj" ]; then
+    printf '%s\n' 'The Aether checkout needs a mod-capable revision with the bootstrap project.' >&2
+    exit 1
+fi
+client_root=$(CDPATH= cd -- "$client_root" && pwd -P)
+
+client_build="$client_root/Bootstrap/bin/$configuration/net10.0"
+save_dir="$mod_root/.aether/saves"
+
+if [ "$managed" = true ] && { [ ! -f "$client_build/Aether.Bootstrap.dll" ] ||
+    [ ! -f "$client_build/Aether.Modding.dll" ] || [ ! -f "$client_build/Terraria.dll" ]; }; then
+    (
+        cd "$client_root"
+        if [ ! -f src/Terraria/Main.cs ]; then
+            ./aether setup
+        fi
+        if [ "$configuration" = Release ]; then
+            ./aether build --release
+        else
+            ./aether build
+        fi
+    )
+fi
+if [ "$prepare_only" = true ]; then
+    exit 0
+fi
+
+dotnet build "$mod_root" -t:InstallMod \
+    "-p:AetherClientDirectory=$client_build" "-p:AetherSaveDirectory=$save_dir"
+
+cd "$client_root"
+exec ./aether launch --configuration "$configuration" --save-dir "$save_dir" -- "$@"
