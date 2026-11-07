@@ -86,6 +86,96 @@ def run(game, save, *args):
     )
 
 
+@pytest.fixture(scope="module")
+def api_assemblies(game_fixture, tmp_path_factory):
+    output = tmp_path_factory.mktemp("aether-api")
+    for name in ("FirstConsumer", "SecondConsumer"):
+        build = output / name
+        result = subprocess.run(
+            [
+                "dotnet",
+                "build",
+                str(FIXTURES / "ApiConsumer" / "ApiConsumer.csproj"),
+                "-m:1",
+                "-nodeReuse:false",
+                "-p:NuGetAudit=false",
+                f"-p:ConsumerName={name}",
+                "-o",
+                str(build),
+            ],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+        assert result.returncode == 0, result.stdout + result.stderr
+        shutil.copy2(build / f"{name}.dll", output)
+    shutil.copy2(build / "Aether.Api.dll", output)
+    return output
+
+
+def api_archive(save, assemblies):
+    archive(
+        save,
+        "aether-api",
+        files=[assemblies / "Aether.Api.dll"],
+        assembly="Aether.Api.dll",
+        version="0.1.0",
+    )
+
+
+def test_api_assembly_is_shared_with_consumers_and_woven_game(
+    game_fixture, api_assemblies, tmp_path
+):
+    api_archive(tmp_path, api_assemblies)
+    for name, mixins in [("FirstConsumer", ["ApiHook"]), ("SecondConsumer", [])]:
+        archive(
+            tmp_path,
+            name.lower(),
+            files=[api_assemblies / f"{name}.dll"],
+            assembly=f"{name}.dll",
+            entrypoint="ApiConsumer",
+            mixins=mixins,
+            depends={"aether-api": "0.1.0"},
+        )
+
+    result = run(game_fixture, tmp_path, "-testapi")
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.splitlines() == ["1", "2", "3", "GAME"]
+
+
+@pytest.mark.parametrize(
+    ("install_api", "constraint", "bundle", "diagnostic"),
+    [
+        (False, "0.1.0", False, "requires missing mod 'aether-api'"),
+        (True, "0.2.0", False, "requires 'aether-api' 0.2.0; found 0.1.0"),
+        (True, None, False, "references require a declared dependency"),
+        (True, "0.1.0", True, "must be installed as a separate package"),
+    ],
+)
+def test_rejects_invalid_api_dependencies(
+    game_fixture, api_assemblies, tmp_path, install_api, constraint, bundle, diagnostic
+):
+    if install_api:
+        api_archive(tmp_path, api_assemblies)
+    files = [api_assemblies / "FirstConsumer.dll"]
+    if bundle:
+        files.append(api_assemblies / "Aether.Api.dll")
+    archive(
+        tmp_path,
+        "consumer",
+        files=files,
+        assembly="FirstConsumer.dll",
+        entrypoint="ApiConsumer",
+        depends={"aether-api": constraint} if constraint else {},
+    )
+
+    result = run(game_fixture, tmp_path)
+    assert result.returncode != 0
+    assert diagnostic in result.stderr
+    assert not result.stdout
+
+
 def gameplay_archive(save, mixins=MIXINS, **manifest):
     mappings = {
         "schemaVersion": 1,

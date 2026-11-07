@@ -1,0 +1,13 @@
+--- a/Terraria/GameContent/CraftingRequests.cs
++++ b/Terraria/GameContent/CraftingRequests.cs
+@@ -96,6 +96,10 @@
+ 
+     public static void CraftItem(Recipe recipe, int qty = 1, bool quickCraft = false)
+     {
++        if (Aether.Modding.ClientStartup.BlockCraft?.Invoke(recipe) == true)
++        {
++            return;
++        }
+         Player localPlayer = Main.LocalPlayer;
+         List<Chest> chests = Recipe._recipeChests;
+         List<Recipe.RequiredItemEntry> list = new List<Recipe.RequiredItemEntry>();

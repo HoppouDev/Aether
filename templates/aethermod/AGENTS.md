@@ -45,3 +45,6 @@ Relative paths are resolved from the mod repo.
   On Windows use `.\aether.cmd -- -mixindebug` or `.\aether.ps1 -- -mixindebug`.
 
 For manual builds, `-p:AetherClientDirectory=/path/to/client-output` can point directly to the folder containing `Aether.Modding.dll` and `Terraria.dll`.
+
+The optional Aether API provides shared client and recipe hooks.
+See `docs/api/index.md` in the Aether checkout for its dependency and compile-reference instructions.

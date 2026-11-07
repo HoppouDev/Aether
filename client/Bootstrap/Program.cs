@@ -1,4 +1,6 @@
 using System.Reflection;
+using System.Reflection.Metadata;
+using System.Reflection.PortableExecutable;
 using System.Runtime.ExceptionServices;
 using System.Runtime.InteropServices;
 using System.Runtime.Loader;
@@ -50,8 +52,20 @@ internal static class Program
             {
                 phase = $"mod '{package.Manifest.Id}' in '{package.Archive}'";
                 string name = AssemblyName.GetAssemblyName(package.EntryPath).Name!;
+                if ((package.Manifest.Id == "aether-api") != name.Equals("Aether.Api", StringComparison.OrdinalIgnoreCase))
+                    throw new InvalidDataException("The 'aether-api' package ID and 'Aether.Api' entry assembly are reserved for each other.");
                 if (SharedNames.Contains(name) || !contexts.TryAdd(name, (package, new ModContext(package))))
                     throw new InvalidDataException($"Reserved or duplicate entry assembly identity '{name}'.");
+            }
+
+            contexts.TryGetValue("Aether.Api", out var api);
+            foreach (var (package, context) in contexts.Values)
+            {
+                phase = $"mod '{package.Manifest.Id}' in '{package.Archive}'";
+                bool usesApi = package.Manifest.Id == "aether-api" || package.Dependencies.Any(dependency => dependency.Id == "aether-api");
+                ValidateApiReferences(package, usesApi);
+                if (usesApi && api.Context != null)
+                    context.LoadApi = () => api.Context.LoadManaged(api.Package.EntryPath);
             }
 
             phase = "assembly weaving";
@@ -92,7 +106,15 @@ internal static class Program
                 foreach (var (package, type) in initializers)
                 {
                     phase = $"initializer for mod '{package.Manifest.Id}' in '{package.Archive}'";
-                    ((IModInitializer)Activator.CreateInstance(type)!).Initialize();
+                    ModCatalog.InitializingModId = package.Manifest.Id;
+                    try
+                    {
+                        ((IModInitializer)Activator.CreateInstance(type)!).Initialize();
+                    }
+                    finally
+                    {
+                        ModCatalog.InitializingModId = null;
+                    }
                 }
                 phase = "game startup";
             };
@@ -119,6 +141,8 @@ internal static class Program
         finally
         {
             ClientStartup.InitializeMods = null;
+            ClientStartup.HandleLocalCommand = null;
+            ClientStartup.BlockCraft = null;
             ModResources.OpenResource = null;
             ModResources.OpenPackageIcon = null;
             ModCatalog.LoadedMods = Array.Empty<ModInfo>();
@@ -152,6 +176,18 @@ internal static class Program
             string name = identity.Name!;
             if (SharedNames.Contains(name))
                 continue;
+
+            if (name.Equals("Aether.Api", StringComparison.OrdinalIgnoreCase))
+            {
+                if (owners.Any(owner => owner.Manifest.Id != "aether-api" &&
+                    !owner.Dependencies.Any(dependency => dependency.Id == "aether-api")))
+                    throw new InvalidDataException("A woven Aether.Api reference requires a declared dependency on aether-api.");
+                var provider = contexts.Single(entry => entry.Key.Manifest.Id == "aether-api");
+                if (!string.Equals(AssemblyName.GetAssemblyName(provider.Key.EntryPath).FullName, reference, StringComparison.OrdinalIgnoreCase))
+                    throw new InvalidDataException($"'{provider.Key.Archive}' does not provide woven reference '{reference}'.");
+                result.Add(reference, (provider.Key.EntryPath, provider.Value));
+                continue;
+            }
 
             var candidates = new List<(ModPackage Package, string Path, ModContext Context)>();
             foreach (ModPackage owner in owners.OrderBy(owner => owner.Manifest.Id, StringComparer.Ordinal))
@@ -192,6 +228,34 @@ internal static class Program
             result.Add(reference, (primary.Path, primary.Context));
         }
         return result;
+    }
+
+    private static void ValidateApiReferences(ModPackage package, bool usesApi)
+    {
+        string entryPath = Path.GetFullPath(package.EntryPath);
+        foreach (string path in Directory.EnumerateFiles(package.Root, "*", SearchOption.AllDirectories)
+            .Where(path => Path.GetExtension(path).Equals(".dll", StringComparison.OrdinalIgnoreCase)))
+        {
+            using var image = new PEReader(File.OpenRead(path));
+            MetadataReader metadata;
+            try
+            {
+                if (!image.HasMetadata)
+                    continue;
+                metadata = image.GetMetadataReader();
+            }
+            catch (BadImageFormatException)
+            {
+                continue;
+            }
+
+            if (metadata.IsAssembly && metadata.GetString(metadata.GetAssemblyDefinition().Name)
+                .Equals("Aether.Api", StringComparison.OrdinalIgnoreCase) && Path.GetFullPath(path) != entryPath)
+                throw new InvalidDataException("Aether.Api must be installed as a separate package.");
+            if (!usesApi && metadata.AssemblyReferences.Any(reference => metadata.GetString(metadata.GetAssemblyReference(reference).Name)
+                .Equals("Aether.Api", StringComparison.OrdinalIgnoreCase)))
+                throw new InvalidDataException("Aether.Api references require a declared dependency on aether-api.");
+        }
     }
 
     private static byte[] HashFile(string path)

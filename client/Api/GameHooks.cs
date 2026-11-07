@@ -1,0 +1,137 @@
+using System.ComponentModel;
+using Aether.Modding;
+using Terraria;
+using Terraria.IO;
+using Terraria.Testing;
+
+namespace Aether.Api;
+
+[EditorBrowsable(EditorBrowsableState.Never)]
+public sealed class ApiStartup : IModInitializer
+{
+    public void Initialize()
+    {
+        Registration.SetGameThread();
+        ClientStartup.HandleLocalCommand = LocalCommands.TryExecute;
+        ClientStartup.BlockCraft = recipe => RecipeRegistry.IsBlocked((Recipe)recipe);
+    }
+}
+
+[EditorBrowsable(EditorBrowsableState.Never)]
+public static class GameBridge
+{
+    private static bool ready;
+    private static WorldFileData? activeWorld;
+    private static WorldInfo world;
+
+    public static void Ready()
+    {
+        if (ready)
+            return;
+        ready = true;
+        Keybinds.Load(Program.SavePath);
+        ClientEvents.Ready.Raise(EventArgs.Empty);
+    }
+
+    public static void Update()
+    {
+        UpdateWorld();
+        Keybinds.Update(Main.keyState, activeWorld != null && FocusHelper.AllowInputProcessing &&
+            !Main.gamePaused && !Main.drawingPlayerChat && !Main.blockInput &&
+            !Main.editSign && !Main.editChest && !Main.ingameOptionsWindow && !Main.InGameUI.IsVisible);
+    }
+
+    public static void Tick()
+    {
+        UpdateWorld();
+        if (activeWorld != null && RecordReplay.Mode != RecordReplay.ReplayMode.Replaying &&
+            !WorldUpdateStepper.Paused)
+            WorldEvents.Tick.Raise(world);
+    }
+
+    private static void UpdateWorld()
+    {
+        WorldFileData? current = ready && !Main.gameMenu && Main.CanUpdateGameplay &&
+            !WorldGen.isGeneratingOrLoadingWorld && (Main.netMode != 1 || !Netplay.Disconnect)
+            ? Main.ActiveWorldFileData : null;
+        if (current == activeWorld)
+            return;
+        EndWorld();
+        activeWorld = current;
+        if (current != null)
+        {
+            world = new WorldInfo(current.GetWorldName(), current.WorldId, Main.netMode == 1);
+            WorldEvents.Entered.Raise(world);
+        }
+    }
+
+    public static void EndWorld()
+    {
+        if (activeWorld == null)
+            return;
+        activeWorld = null;
+        WorldEvents.Left.Raise(world);
+        HudOverlays.ClearTextures();
+    }
+
+    public static void DrawHud()
+    {
+        if (activeWorld != null)
+            HudOverlays.Draw(Main.spriteBatch, (int)(Main.screenWidth / Main.UIScale),
+                (int)(Main.screenHeight / Main.UIScale), Main.UIScaleMatrix);
+    }
+
+    public static void InstallRecipes() => RecipeRegistry.Install();
+
+    public static bool IsRecipeBlocked(Recipe recipe) => RecipeRegistry.IsBlocked(recipe);
+
+    public static void FilterGuideRecipes()
+    {
+        if (Main.netMode == 0)
+            return;
+        int write = 0;
+        for (int index = 0; index < Main.numAvailableRecipes; index++)
+        {
+            int recipe = Main.availableRecipe[index];
+            if (!IsRecipeBlocked(Main.recipe[recipe]))
+                Main.availableRecipe[write++] = recipe;
+        }
+        Main.numAvailableRecipes = write;
+    }
+}
+
+[Mixin(typeof(Main))]
+internal static class GameHooks
+{
+    [Inject("DrawMenu", At.RETURN)]
+    private static void Ready(CallbackInfo callback) => GameBridge.Ready();
+
+    [Inject("Update(Microsoft.Xna.Framework.GameTime)", At.RETURN)]
+    private static void Update(CallbackInfo callback) => GameBridge.Update();
+
+    [Inject("DoUpdateInWorld()", At.RETURN)]
+    private static void Tick(CallbackInfo callback) => GameBridge.Tick();
+
+    [Inject("DrawInterface", At.RETURN)]
+    private static void DrawHud(CallbackInfo callback) => GameBridge.DrawHud();
+
+    [Inject("Main_Exiting(System.Object,System.EventArgs)", At.HEAD)]
+    private static void Exit(CallbackInfo callback) => GameBridge.EndWorld();
+}
+
+[Mixin(typeof(Recipe))]
+internal static class RecipeHooks
+{
+    [Inject("SetupRecipes()", At.RETURN, Allow = 1)]
+    private static void Install(CallbackInfo callback) => GameBridge.InstallRecipes();
+
+    [Inject("PlayerMeetsEnvironmentConditions", At.HEAD, Cancellable = true)]
+    private static void Filter(Recipe self, Player player, List<string> missingObjects, CallbackInfoReturnable<bool> callback)
+    {
+        if (GameBridge.IsRecipeBlocked(self))
+            callback.SetReturnValue(false);
+    }
+
+    [Inject("CollectGuideRecipes()", At.RETURN)]
+    private static void FilterGuide(CallbackInfo callback) => GameBridge.FilterGuideRecipes();
+}

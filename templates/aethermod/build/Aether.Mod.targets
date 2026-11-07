@@ -14,6 +14,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Reference Include="Aether.Api" HintPath="$(AetherApiDirectory)/Aether.Api.dll" Private="false"
+      Condition="'$(AetherApiDirectory)' != ''" />
     <Reference Include="Aether.Modding" HintPath="$(AetherClientDirectory)/Aether.Modding.dll" Private="false" />
     <Reference Include="FNA" HintPath="$(AetherClientDirectory)/FNA.dll" Private="false" />
     <Reference Include="Terraria" HintPath="$(AetherClientDirectory)/Terraria.dll" Private="false" />
@@ -24,6 +26,8 @@
       Text="Set AETHER_CONFIGURATION to Debug or Release." />
     <Error Condition="'$(AetherClientDirectory)' == '' Or !Exists('$(AetherClientDirectory)/Aether.Modding.dll') Or !Exists('$(AetherClientDirectory)/Terraria.dll') Or !Exists('$(AetherClientDirectory)/FNA.dll')"
       Text="Run the mod launcher with setup to prepare the local Aether client. For an external checkout, build that client first." />
+    <Error Condition="'$(AetherApiDirectory)' != '' And !Exists('$(AetherApiDirectory)/Aether.Api.dll')"
+      Text="AetherApiDirectory must contain Aether.Api.dll." />
     <Error Condition="!Exists('$(ModManifestPath)')" Text="Missing aether.mod.json." />
     <PropertyGroup>
       <ModManifest>$([System.IO.File]::ReadAllText('$(ModManifestPath)'))</ModManifest>
@@ -70,7 +74,7 @@
     <ItemGroup>
       <ModResource Include="$(MSBuildProjectDirectory)/resources/**/*" />
       <ModDependency Include="@(ReferenceCopyLocalPaths)"
-        Condition="'%(ReferenceCopyLocalPaths.Filename)' != 'Terraria' And '%(ReferenceCopyLocalPaths.Filename)' != 'Aether.Modding' And '%(ReferenceCopyLocalPaths.Filename)' != 'FNA' And '%(ReferenceCopyLocalPaths.Filename)' != 'ReLogic'" />
+        Condition="'%(ReferenceCopyLocalPaths.Filename)' != 'Terraria' And '%(ReferenceCopyLocalPaths.Filename)' != 'Aether.Modding' And '%(ReferenceCopyLocalPaths.Filename)' != 'Aether.Api' And '%(ReferenceCopyLocalPaths.Filename)' != 'FNA' And '%(ReferenceCopyLocalPaths.Filename)' != 'ReLogic'" />
     </ItemGroup>
     <Copy SourceFiles="@(ModResource)"
       DestinationFiles="@(ModResource->'$(ModStaging)resources/%(RecursiveDir)%(Filename)%(Extension)')" />

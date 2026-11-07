@@ -6,5 +6,6 @@
   </PropertyGroup>
   <ItemGroup>
     <InternalsVisibleTo Include="Aether.Bootstrap" />
+    <InternalsVisibleTo Include="Aether.Api" />
   </ItemGroup>
 </Project>

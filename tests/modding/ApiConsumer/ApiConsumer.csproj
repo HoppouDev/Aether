@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <AssemblyName>$(ConsumerName)</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Game/Game.csproj" Private="false" />
+    <ProjectReference Include="../Api/Api.csproj" Private="false" />
+  </ItemGroup>
+</Project>

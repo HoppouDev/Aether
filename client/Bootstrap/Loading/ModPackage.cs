@@ -171,6 +171,7 @@ internal sealed record ModPackage(string Archive, string Root, ModManifest Manif
 internal sealed class ModContext(ModPackage package) : AssemblyLoadContext(package.Manifest.Id)
 {
     internal Assembly? Game { get; set; }
+    internal Func<Assembly>? LoadApi { get; set; }
 
     private readonly AssemblyDependencyResolver resolver = new(package.EntryPath);
     private readonly Dictionary<string, Assembly> images = new(StringComparer.Ordinal);
@@ -204,6 +205,9 @@ internal sealed class ModContext(ModPackage package) : AssemblyLoadContext(packa
             return Game;
         if (name.Name != null && Program.SharedNames.Contains(name.Name))
             return Default.LoadFromAssemblyName(name);
+
+        if (string.Equals(name.Name, "Aether.Api", StringComparison.OrdinalIgnoreCase))
+            return LoadApi?.Invoke() ?? throw new InvalidDataException($"Mod '{package.Manifest.Id}' must declare a dependency on aether-api.");
 
         if (wovenDependencies.TryGetValue(name.FullName, out var dependency))
             return dependency.Context.LoadManaged(dependency.Path);

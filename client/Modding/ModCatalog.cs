@@ -14,6 +14,7 @@ public sealed record ModInfo(
 
 public static class ModCatalog
 {
+    internal static string? InitializingModId { get; set; }
     /// <summary>Metadata for the active mod packages, in initialization order.</summary>
     public static IReadOnlyList<ModInfo> LoadedMods { get; internal set; } = Array.Empty<ModInfo>();
 }

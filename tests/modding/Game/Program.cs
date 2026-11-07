@@ -30,6 +30,8 @@ public static class Program
         if (Array.IndexOf(args, "-testnative") >= 0)
             Console.WriteLine($"NATIVE {FixtureValue()}");
         ClientStartup.InitializeMods?.Invoke();
+        if (Array.IndexOf(args, "-testapi") >= 0)
+            new Target().Entry(0);
         Console.WriteLine("GAME");
     }
 }

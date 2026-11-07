@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <Version>0.1.0</Version>
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+    <AetherProjectMetadata>$([System.IO.File]::ReadAllText('$(MSBuildProjectDirectory)/../../pyproject.toml'))</AetherProjectMetadata>
+    <AetherVersion>$([System.Text.RegularExpressions.Regex]::Match('$(AetherProjectMetadata)', '(?m)^version\s*=\s*"([^"]+)"').Groups[1].Value)</AetherVersion>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Modding/Aether.Modding.csproj" Private="false" />
+    <ProjectReference Include="../Terraria/Terraria.csproj" Private="false" />
+    <Reference Include="FNA" HintPath="../../lib/FNA.dll" Private="false" />
+  </ItemGroup>
+  <Target Name="PackMod" DependsOnTargets="Build">
+    <GetAssemblyIdentity AssemblyFiles="../Terraria/bin/$(Configuration)/net10.0/Terraria.dll">
+      <Output TaskParameter="Assemblies" ItemName="TerrariaAssembly" />
+    </GetAssemblyIdentity>
+    <PropertyGroup>
+      <ModStaging>$(IntermediateOutputPath)api-package</ModStaging>
+    </PropertyGroup>
+    <RemoveDir Directories="$(ModStaging)" />
+    <MakeDir Directories="$(ModStaging)" />
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(ModStaging)" />
+    <WriteLinesToFile File="$(ModStaging)/aether.mod.json" Overwrite="true"
+      Lines="{ &quot;schemaVersion&quot;: 1, &quot;id&quot;: &quot;aether-api&quot;, &quot;version&quot;: &quot;$(Version)&quot;, &quot;name&quot;: &quot;Aether API&quot;, &quot;assembly&quot;: &quot;Aether.Api.dll&quot;, &quot;entrypoint&quot;: &quot;Aether.Api.ApiStartup&quot;, &quot;mixins&quot;: [ &quot;Aether.Api.GameHooks&quot;, &quot;Aether.Api.RecipeHooks&quot; ], &quot;depends&quot;: { &quot;aether&quot;: &quot;$(AetherVersion)&quot;, &quot;terraria&quot;: &quot;%(TerrariaAssembly.Version)&quot; } }" />
+    <ZipDirectory SourceDirectory="$(ModStaging)" DestinationFile="$(TargetDir)aether-api.aethermod" Overwrite="true" />
+  </Target>
+</Project>

@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AetherClientDirectory>../../client/Bootstrap/bin/$(Configuration)/net10.0</AetherClientDirectory>
+    <AetherApiDirectory>../../client/Api/bin/$(Configuration)/net10.0</AetherApiDirectory>
+  </PropertyGroup>
+  <Import Project="../../templates/aethermod/build/Aether.Mod.targets" />
+</Project>

@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "id": "api-example",
+  "name": "Aether API Example",
+  "version": "0.1.0",
+  "assembly": "ApiExample.dll",
+  "entrypoint": "ApiExample.Startup",
+  "depends": {
+    "aether-api": "0.1.0"
+  }
+}
