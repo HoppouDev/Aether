@@ -23,15 +23,7 @@ public readonly record struct ItemKey
 
     public static ItemKey Custom(string id)
     {
-        ArgumentNullException.ThrowIfNull(id);
-        int colon = id.IndexOf(':');
-        if (colon is < 1 or > 64 || colon == id.Length - 1 || id.Length > 1024 || !char.IsAsciiLetterLower(id[0]))
-            throw new ArgumentException("Use a namespaced item ID in the form mod-id:name.", nameof(id));
-        for (int index = 0; index < id.Length; index++)
-        {
-            if (index != colon && !Registration.IsIdCharacter(id[index]))
-                throw new ArgumentException("Use a namespaced item ID in the form mod-id:name.", nameof(id));
-        }
+        Registration.RequireContentId(id);
         return new ItemKey(null, id);
     }
 

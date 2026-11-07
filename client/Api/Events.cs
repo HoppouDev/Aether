@@ -71,6 +71,19 @@ internal static class Registration
             throw new InvalidOperationException($"Registration '{id}' already exists.");
     }
 
+    internal static void RequireContentId(string id)
+    {
+        ArgumentNullException.ThrowIfNull(id);
+        int colon = id.IndexOf(':');
+        if (colon is < 1 or > 64 || colon == id.Length - 1 || id.Length > 1024 || !char.IsAsciiLetterLower(id[0]))
+            throw new ArgumentException("Use a namespaced content ID in the form mod-id:name.", nameof(id));
+        for (int index = 0; index < id.Length; index++)
+        {
+            if (index != colon && !IsIdCharacter(id[index]))
+                throw new ArgumentException("Use a namespaced content ID in the form mod-id:name.", nameof(id));
+        }
+    }
+
     internal static bool IsIdCharacter(char c) => char.IsAsciiLetterLower(c) || char.IsAsciiDigit(c) || c is '_' or '-' or '.';
 }
 

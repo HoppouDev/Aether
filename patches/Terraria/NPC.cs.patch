@@ -8,3 +8,50 @@
          if (Main.getGoodWorld && !IsABestiaryIconDummy && spawnparams.sizeScaleOverride.HasValue)
          {
              spawnparams.sizeScaleOverride = (spawnparams.sizeScaleOverride + spawnparams.sizeScaleOverride * spawnparams.sizeScaleOverride) / 2f;
+@@ -81613,6 +81614,17 @@
+ 
+     public static int NewNPC(IEntitySource source, int X, int Y, int Type, int Start = 0, float ai0 = 0f, float ai1 = 0f, float ai2 = 0f, float ai3 = 0f, int Target = 255)
+     {
++        return NewNPCCore(source, X, Y, Type, Start, ai0, ai1, ai2, ai3, Target, allowEviction: true);
++    }
++
++    [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
++    public static int AetherNewNPC(IEntitySource source, int X, int Y, int Type, float ai0, float ai1, float ai2, float ai3, int Target)
++    {
++        return NewNPCCore(source, X, Y, Type, 0, ai0, ai1, ai2, ai3, Target, allowEviction: false);
++    }
++
++    private static int NewNPCCore(IEntitySource source, int X, int Y, int Type, int Start, float ai0, float ai1, float ai2, float ai3, int Target, bool allowEviction)
++    {
+         if (Main.getGoodWorld && Main.rand.Next(3) != 0)
+         {
+             if (Type == 46)
+@@ -81624,7 +81636,7 @@
+                 Type = 66;
+             }
+         }
+-        int availableNPCSlot = GetAvailableNPCSlot(Type, Start);
++        int availableNPCSlot = GetAvailableNPCSlot(Type, Start, allowEviction);
+         if (availableNPCSlot >= 0)
+         {
+             spawnSlotProtected[availableNPCSlot] = 2;
+@@ -81658,7 +81670,7 @@
+         return Main.maxNPCs;
+     }
+ 
+-    private static int GetAvailableNPCSlot(int Type, int startIndex)
++    private static int GetAvailableNPCSlot(int Type, int startIndex, bool allowEviction)
+     {
+         Type = NPCID.FromNetId(Type);
+         bool b = NPCID.Sets.SearchSpawnSlotsInReverse[Type];
+@@ -81681,6 +81693,10 @@
+                 return i;
+             }
+         }
++        if (!allowEviction)
++        {
++            return -1;
++        }
+         for (int j = startIndex; j != t; j += num)
+         {
+             if (Main.npc[j].CanBeReplacedByOtherNPCs)

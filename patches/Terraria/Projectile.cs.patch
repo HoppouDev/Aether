@@ -8,3 +8,120 @@
          ownerHitCheckDistance = 1000f;
          counterweight = false;
          sentry = false;
+@@ -10823,7 +10824,7 @@
+         return result;
+     }
+ 
+-    internal static Projectile NewProjectileSetup(ProjectileKey key = default(ProjectileKey))
++    internal static Projectile NewProjectileSetup(ProjectileKey key = default(ProjectileKey), bool allowEviction = true)
+     {
+         int num = 1000;
+         int num2 = 0;
+@@ -10845,6 +10846,10 @@
+         }
+         if (num == 1000)
+         {
++            if (!allowEviction)
++            {
++                return null;
++            }
+             num = FindOldestProjectile();
+         }
+         Projectile projectile = Main.projectile[num];
+@@ -10852,6 +10857,8 @@
+         {
+             projectile = (Main.projectile[num] = new Projectile());
+         }
++        projectile.ResetAetherSpawnIdentity();
++        projectile.active = true;
+         if ((int)key == (int)default(ProjectileKey))
+         {
+             key = new ProjectileKey(Main.myPlayer, num, ++slotGenerations[num]);
+@@ -10864,6 +10871,17 @@
+ 
+     public static int NewProjectile(IEntitySource spawnSource, float X, float Y, float SpeedX, float SpeedY, int Type, int Damage, float KnockBack, int Owner = -1, float ai0 = 0f, float ai1 = 0f, float ai2 = 0f, NewProjectileModifier modifer = null)
+     {
++        return NewProjectileCore(spawnSource, X, Y, SpeedX, SpeedY, Type, Damage, KnockBack, Owner, ai0, ai1, ai2, modifer, allowEviction: true);
++    }
++
++    [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
++    public static int AetherNewProjectile(IEntitySource spawnSource, Vector2 position, Vector2 velocity, int Type, int Damage, float KnockBack, int Owner, float ai0, float ai1, float ai2)
++    {
++        return NewProjectileCore(spawnSource, position.X, position.Y, velocity.X, velocity.Y, Type, Damage, KnockBack, Owner, ai0, ai1, ai2, null, allowEviction: false);
++    }
++
++    private static int NewProjectileCore(IEntitySource spawnSource, float X, float Y, float SpeedX, float SpeedY, int Type, int Damage, float KnockBack, int Owner, float ai0, float ai1, float ai2, NewProjectileModifier modifer, bool allowEviction)
++    {
+         if (Owner == -1)
+         {
+             Owner = 255;
+@@ -10874,7 +10892,16 @@
+         {
+             return 1000;
+         }
+-        Projectile projectile = NewProjectileSetup();
++        if (!allowEviction && Owner == Main.myPlayer && Damage <= 0 && ProjectileID.Sets.IsAGolfBall[Type] &&
++            CountActiveGolfBalls(Owner, out _) >= 10)
++        {
++            return 1000;
++        }
++        Projectile projectile = NewProjectileSetup(allowEviction: allowEviction);
++        if (projectile == null)
++        {
++            return 1000;
++        }
+         projectile.SetDefaults(Type);
+         projectile.position.X = X - (float)projectile.width * 0.5f;
+         projectile.position.Y = Y - (float)projectile.height * 0.5f;
+@@ -10936,22 +10963,7 @@
+         {
+             if (ProjectileID.Sets.IsAGolfBall[Type] && Damage <= 0)
+             {
+-                int num2 = 0;
+-                int num3 = 0;
+-                int num4 = 99999999;
+-                for (int i = 0; i < 1000; i++)
+-                {
+-                    if (Main.projectile[i].active && ProjectileID.Sets.IsAGolfBall[Main.projectile[i].type] && Main.projectile[i].owner == Owner && Main.projectile[i].damage <= 0)
+-                    {
+-                        num2++;
+-                        if (num4 > Main.projectile[i].timeLeft)
+-                        {
+-                            num3 = i;
+-                            num4 = Main.projectile[i].timeLeft;
+-                        }
+-                    }
+-                }
+-                if (num2 > 10)
++                if (CountActiveGolfBalls(Owner, out int num3) > 10)
+                 {
+                     Main.projectile[num3].Kill();
+                 }
+@@ -11104,6 +11116,27 @@
+         return projectile.whoAmI;
+     }
+ 
++    private static int CountActiveGolfBalls(int owner, out int oldest)
++    {
++        int count = 0;
++        oldest = 0;
++        int timeLeft = 99999999;
++        for (int i = 0; i < 1000; i++)
++        {
++            Projectile projectile = Main.projectile[i];
++            if (projectile.active && ProjectileID.Sets.IsAGolfBall[projectile.type] && projectile.owner == owner && projectile.damage <= 0)
++            {
++                count++;
++                if (timeLeft > projectile.timeLeft)
++                {
++                    oldest = i;
++                    timeLeft = projectile.timeLeft;
++                }
++            }
++        }
++        return count;
++    }
++
+     private void FindBannerToAssociateTo(IEntitySource spawnSource)
+     {
+         if (spawnSource is EntitySource_Parent entitySource_Parent)
