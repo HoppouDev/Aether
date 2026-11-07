@@ -1,6 +1,40 @@
 --- a/Terraria/Projectile.cs
 +++ b/Terraria/Projectile.cs
-@@ -699,6 +699,7 @@
+@@ -292,7 +292,32 @@
+         }
+     }
+ 
+-    public bool active;
++    private bool aetherActive;
++
++    public bool active
++    {
++        get => aetherActive;
++        set
++        {
++            if (value)
++                aetherActive = true;
++            else
++                AetherRetire(Aether.Modding.EntityRemovalReason.Despawned);
++        }
++    }
++
++    internal bool AetherIsCustom => type >= ProjectileID.VanillaCount && type < ProjectileID.Count;
++
++    [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
++    public void AetherRetire(Aether.Modding.EntityRemovalReason reason)
++    {
++        if (!aetherActive)
++            return;
++
++        aetherActive = false;
++        if (AetherIsCustom)
++            Aether.Modding.ClientContent.ProjectileRemoved?.Invoke(this, reason);
++    }
+ 
+     public static uint[,] perIDStaticNPCImmunity = new uint[ProjectileID.Count, InitData.MaxNPCs];
+ 
+@@ -699,6 +724,7 @@
  
      public void SetDefaults(int Type)
      {
@@ -8,7 +42,18 @@
          ownerHitCheckDistance = 1000f;
          counterweight = false;
          sentry = false;
-@@ -10823,7 +10824,7 @@
+@@ -10667,6 +10693,10 @@
+             usesIDStaticNPCImmunity = true;
+             idStaticNPCHitCooldown = 10;
+         }
++        else if (AetherIsCustom)
++        {
++            Aether.Modding.ClientContent.ApplyProjectileDefaults?.Invoke(type, this);
++        }
+         else
+         {
+             active = false;
+@@ -10823,7 +10853,7 @@
          return result;
      }
  
@@ -17,7 +62,7 @@
      {
          int num = 1000;
          int num2 = 0;
-@@ -10845,6 +10846,10 @@
+@@ -10845,13 +10875,25 @@
          }
          if (num == 1000)
          {
@@ -28,7 +73,14 @@
              num = FindOldestProjectile();
          }
          Projectile projectile = Main.projectile[num];
-@@ -10852,6 +10857,8 @@
+-        if (Main.NoPooling)
++        if (projectile.AetherIsCustom)
++        {
++            Projectile previous = projectile;
++            projectile = Main.projectile[num] = new Projectile { active = true, netImportant = true };
++            previous.AetherRetire(Aether.Modding.EntityRemovalReason.Replaced);
++        }
++        else if (Main.NoPooling)
          {
              projectile = (Main.projectile[num] = new Projectile());
          }
@@ -37,25 +89,28 @@
          if ((int)key == (int)default(ProjectileKey))
          {
              key = new ProjectileKey(Main.myPlayer, num, ++slotGenerations[num]);
-@@ -10864,6 +10871,17 @@
+@@ -10864,6 +10906,20 @@
  
      public static int NewProjectile(IEntitySource spawnSource, float X, float Y, float SpeedX, float SpeedY, int Type, int Damage, float KnockBack, int Owner = -1, float ai0 = 0f, float ai1 = 0f, float ai2 = 0f, NewProjectileModifier modifer = null)
      {
-+        return NewProjectileCore(spawnSource, X, Y, SpeedX, SpeedY, Type, Damage, KnockBack, Owner, ai0, ai1, ai2, modifer, allowEviction: true);
++        return NewProjectileCore(spawnSource, X, Y, SpeedX, SpeedY, Type, Damage, KnockBack, Owner, ai0, ai1, ai2, modifer, allowEviction: true, out _);
 +    }
 +
 +    [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
-+    public static int AetherNewProjectile(IEntitySource spawnSource, Vector2 position, Vector2 velocity, int Type, int Damage, float KnockBack, int Owner, float ai0, float ai1, float ai2)
++    public static int AetherNewProjectile(IEntitySource spawnSource, Vector2 position, Vector2 velocity, int Type, int Damage, float KnockBack, int Owner, float ai0, float ai1, float ai2, out long spawnIdentity)
 +    {
-+        return NewProjectileCore(spawnSource, position.X, position.Y, velocity.X, velocity.Y, Type, Damage, KnockBack, Owner, ai0, ai1, ai2, null, allowEviction: false);
++        return NewProjectileCore(spawnSource, position.X, position.Y, velocity.X, velocity.Y, Type, Damage, KnockBack, Owner, ai0, ai1, ai2, null, allowEviction: false, out spawnIdentity);
 +    }
 +
-+    private static int NewProjectileCore(IEntitySource spawnSource, float X, float Y, float SpeedX, float SpeedY, int Type, int Damage, float KnockBack, int Owner, float ai0, float ai1, float ai2, NewProjectileModifier modifer, bool allowEviction)
++    private static int NewProjectileCore(IEntitySource spawnSource, float X, float Y, float SpeedX, float SpeedY, int Type, int Damage, float KnockBack, int Owner, float ai0, float ai1, float ai2, NewProjectileModifier modifer, bool allowEviction, out long spawnIdentity)
 +    {
++        spawnIdentity = 0;
++        if (Type >= ProjectileID.VanillaCount && Main.netMode != 0)
++            return 1000;
          if (Owner == -1)
          {
              Owner = 255;
-@@ -10874,7 +10892,16 @@
+@@ -10874,7 +10930,16 @@
          {
              return 1000;
          }
@@ -73,7 +128,7 @@
          projectile.SetDefaults(Type);
          projectile.position.X = X - (float)projectile.width * 0.5f;
          projectile.position.Y = Y - (float)projectile.height * 0.5f;
-@@ -10936,22 +10963,7 @@
+@@ -10936,22 +11001,7 @@
          {
              if (ProjectileID.Sets.IsAGolfBall[Type] && Damage <= 0)
              {
@@ -97,7 +152,22 @@
                  {
                      Main.projectile[num3].Kill();
                  }
-@@ -11104,6 +11116,27 @@
+@@ -11096,6 +11146,14 @@
+         }
+         projectile.FinalizeProjectile();
+         modifer?.Invoke(projectile);
++        if (!allowEviction || projectile.AetherIsCustom)
++            spawnIdentity = projectile.AetherSpawnIdentity;
++        if (projectile.AetherIsCustom)
++        {
++            Aether.Modding.ClientContent.ProjectileSpawned?.Invoke(projectile, spawnSource);
++            if (!projectile.active)
++                return projectile.whoAmI;
++        }
+         NetMessage.SendData(27, -1, -1, null, projectile.whoAmI);
+         if (Owner == Main.myPlayer)
+         {
+@@ -11104,6 +11162,27 @@
          return projectile.whoAmI;
      }
  
@@ -125,3 +195,109 @@
      private void FindBannerToAssociateTo(IEntitySource spawnSource)
      {
          if (spawnSource is EntitySource_Parent entitySource_Parent)
+@@ -12518,11 +12597,13 @@
+                 CutTiles();
+             }
+             Damage_TryUsingPowders(projRectangle);
+-            if (owner == Main.myPlayer)
++            if (owner == Main.myPlayer || (Main.netMode == 0 && AetherIsCustom && friendly && owner == 255))
+             {
+                 float projectileSpecificDamageMultiplier = Damage_GetProjectileSpecificDamageMultiplier();
+-                Damage_PVE(projRectangle, projectileSpecificDamageMultiplier);
+-                Damage_PVP(projRectangle, projectileSpecificDamageMultiplier);
++                if (!AetherIsCustom || friendly)
++                    Damage_PVE(projRectangle, projectileSpecificDamageMultiplier);
++                if (!AetherIsCustom)
++                    Damage_PVP(projRectangle, projectileSpecificDamageMultiplier);
+             }
+             if (Main.netMode != 2)
+             {
+@@ -13702,6 +13783,8 @@
+         Invariant.Assert(Main.netMode == 0 || owner == Main.myPlayer, "Cannot simulate someone else's projectile dealing damage. ({0})", this);
+         Invariant.Assert((Main.netMode != 1) | ownedBySomeone, "Must be ownedBySomeone to do damage on client. ({0})", this);
+         int num41 = targetNPC.StrikeNPC(dmg, num5, num40, crit, fromNet: false, ownedBySomeone ? owner : 255);
++        if (AetherIsCustom && num41 > 0)
++            Aether.Modding.ClientContent.ProjectileHitNpc?.Invoke(this, targetNPC, num41, crit);
+         if (ownedBySomeone && attempt.DidNPCDie())
+         {
+             Main.player[owner].OnKillNPC(ref attempt, this);
+@@ -14942,9 +15025,17 @@
+             {
+                 playerIndex = (int)ai[0];
+             }
+-            if (Main.player[myPlayer].Hurt(PlayerDeathReason.ByProjectile(playerIndex, whoAmI), num5, num2, pvp: false, quiet: false, Crit: false, num, dodgeable) > 0.0 && !Main.player[myPlayer].dead)
++            double damageTaken = Main.player[myPlayer].Hurt(PlayerDeathReason.ByProjectile(playerIndex, whoAmI), num5, num2, pvp: false, quiet: false, Crit: false, num, dodgeable);
++            if (damageTaken > 0.0)
+             {
+-                StatusPlayer(Main.player[myPlayer]);
++                if (!Main.player[myPlayer].dead)
++                    StatusPlayer(Main.player[myPlayer]);
++                if (AetherIsCustom)
++                {
++                    Aether.Modding.ClientContent.ProjectileHitPlayer?.Invoke(this, Main.player[myPlayer], (int)damageTaken);
++                    if (penetrate > 0)
++                        penetrate--;
++                }
+             }
+             if (trap)
+             {
+@@ -16880,6 +16971,8 @@
+             if (active)
+             {
+                 AI();
++                if (!active && AetherIsCustom)
++                    return;
+             }
+             if (ShouldUseWindPhysics() && (double)Center.Y < Main.worldSurface * 16.0 && Main.tile[(int)Center.X / 16, (int)Center.Y / 16] != null && Main.tile[(int)Center.X / 16, (int)Center.Y / 16].wall == 0 && ((velocity.X > 0f && Main.windSpeedCurrent < 0f) || (velocity.X < 0f && Main.windSpeedCurrent > 0f) || Math.Abs(velocity.X) < Math.Abs(Main.windSpeedCurrent * Main.windPhysicsStrength) * 180f) && Math.Abs(velocity.X) < 16f)
+             {
+@@ -18016,6 +18109,11 @@
+             }
+             if (flag)
+             {
++                if (AetherIsCustom)
++                {
++                    AetherKill(Aether.Modding.EntityRemovalReason.TileCollision);
++                    return;
++                }
+                 if (ProjectileID.Sets.BreaksFromToyBreaker[type] && Collision.AnyCollisionWithSpecificTiles(vector, lastVelocity, colWidth, colHeight, TileID.Sets.BreaksToys) != lastVelocity)
+                 {
+                     Kill();
+@@ -23405,6 +23503,13 @@
+ 
+     public void AI()
+     {
++        if (AetherIsCustom)
++        {
++            Aether.Modding.ClientContent.ProjectileUpdated?.Invoke(this);
++            if (active)
++                Aether.Modding.EntitySprites.AnimateProjectile(this);
++            return;
++        }
+         if (aiStyle == 1)
+         {
+             AI_001();
+@@ -71662,7 +71767,12 @@
+         }
+     }
+ 
+-    public void Kill()
++    public void Kill() => KillCore(null);
++
++    [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
++    public void AetherKill(Aether.Modding.EntityRemovalReason reason) => KillCore(reason);
++
++    private void KillCore(Aether.Modding.EntityRemovalReason? reason)
+     {
+         if (!active)
+         {
+@@ -78891,7 +79001,9 @@
+         {
+             Kill_ExplodeTiles();
+         }
+-        active = false;
++        AetherRetire(reason ?? (num <= 0 ? Aether.Modding.EntityRemovalReason.Expired
++            : penetrate == 0 ? Aether.Modding.EntityRemovalReason.Hit
++            : Aether.Modding.EntityRemovalReason.Despawned));
+     }
+ 
+     private void Kill_ExplodeTiles()

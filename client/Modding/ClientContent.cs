@@ -11,13 +11,19 @@ public sealed record ClientEntitySprite(int VanillaType, string? ResourcePath, i
 [EditorBrowsable(EditorBrowsableState.Never)]
 public sealed record ClientNpcDefinition(string Id, string Name, ClientEntitySprite Sprite);
 
+[EditorBrowsable(EditorBrowsableState.Never)]
+public sealed record ClientProjectileDefinition(string Id, string Name, ClientEntitySprite Sprite);
+
 public enum EntityRemovalReason
 {
     Despawned,
     Defeated,
     Replaced,
     WorldUnloaded,
-    BehaviorFailed
+    BehaviorFailed,
+    Expired,
+    Hit,
+    TileCollision
 }
 
 [EditorBrowsable(EditorBrowsableState.Never)]
@@ -29,6 +35,7 @@ public static class ClientContent
     private static readonly object itemTableLock = new();
     private static bool itemTablesSized;
     private static bool npcTablesSized;
+    private static bool projectileTablesSized;
     private static string? profile;
 
     public static IReadOnlyList<ClientItemDefinition> Items { get; private set; } = Array.Empty<ClientItemDefinition>();
@@ -44,6 +51,13 @@ public static class ClientContent
     public static Action<object, int, int, bool>? NpcHit { get; internal set; }
     public static Action<object, object, int>? NpcHitPlayer { get; internal set; }
     public static Action<object, EntityRemovalReason>? NpcRemoved { get; internal set; }
+    public static IReadOnlyList<ClientProjectileDefinition> Projectiles { get; private set; } = Array.Empty<ClientProjectileDefinition>();
+    public static Action<int, object>? ApplyProjectileDefaults { get; private set; }
+    public static Action<object, object>? ProjectileSpawned { get; internal set; }
+    public static Action<object>? ProjectileUpdated { get; internal set; }
+    public static Action<object, object, int, bool>? ProjectileHitNpc { get; internal set; }
+    public static Action<object, object, int>? ProjectileHitPlayer { get; internal set; }
+    public static Action<object, EntityRemovalReason>? ProjectileRemoved { get; internal set; }
     public static bool HasItems => Items.Count != 0;
     public static bool IsDedicatedServer { get; internal set; }
     public static string? ConnectionVersion { get; internal set; }
@@ -94,6 +108,26 @@ public static class ClientContent
         }
     }
 
+    public static int SizeProjectileTables()
+    {
+        lock (itemTableLock)
+        {
+            projectileTablesSized = true;
+            return Projectiles.Count;
+        }
+    }
+
+    internal static void ConfigureProjectiles(ClientProjectileDefinition[] projectiles, Action<int, object> applyDefaults)
+    {
+        lock (itemTableLock)
+        {
+            if (projectileTablesSized)
+                throw new InvalidOperationException("Terraria's projectile tables were initialized before custom projectile registration finished. Read game content from ClientEvents.Ready.");
+            Projectiles = Array.AsReadOnly(projectiles);
+            ApplyProjectileDefaults = applyDefaults;
+        }
+    }
+
     public static string SaveRoot(string vanillaRoot) => profile == null
         ? vanillaRoot : Path.Combine(vanillaRoot, "AetherContent", profile);
 
@@ -114,6 +148,13 @@ public static class ClientContent
             NpcHit = null;
             NpcHitPlayer = null;
             NpcRemoved = null;
+            Projectiles = Array.Empty<ClientProjectileDefinition>();
+            ApplyProjectileDefaults = null;
+            ProjectileSpawned = null;
+            ProjectileUpdated = null;
+            ProjectileHitNpc = null;
+            ProjectileHitPlayer = null;
+            ProjectileRemoved = null;
             IsDedicatedServer = false;
             ConnectionVersion = null;
             ServerReady = null;
@@ -123,6 +164,7 @@ public static class ClientContent
             profile = null;
             itemTablesSized = false;
             npcTablesSized = false;
+            projectileTablesSized = false;
         }
     }
 }

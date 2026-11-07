@@ -18,6 +18,7 @@ public sealed class ApiStartup : IModInitializer
         {
             ItemRegistry.Freeze();
             NpcRegistry.Freeze();
+            ProjectileRegistry.Freeze();
         };
         ClientContent.ApplyPlayerModifiers = player => PlayerModifiers.Apply((Player)player);
         ClientContent.ServerReady = GameBridge.ReadyServer;
@@ -97,6 +98,7 @@ public static class GameBridge
         endingWorld = true;
         try
         {
+            ProjectileRegistry.EndWorld();
             NpcRegistry.EndWorld();
             PlayerModifiers.ClearWorld();
             WorldEvents.Left.Raise(world);

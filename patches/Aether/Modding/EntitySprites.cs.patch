@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/Aether/Modding/EntitySprites.cs
-@@ -0,0 +1,79 @@
+@@ -0,0 +1,103 @@
 +using System;
 +using System.Buffers.Binary;
 +using System.IO;
@@ -25,6 +25,15 @@
 +            frames[NPCID.VanillaCount + i] = sprite.ResourcePath == null ? frames[sprite.VanillaType] : sprite.Frames;
 +        }
 +        return frames;
++    }
++
++    internal static void FillProjectileFrames()
++    {
++        for (int i = 0; i < ClientContent.Projectiles.Count; i++)
++        {
++            var sprite = ClientContent.Projectiles[i].Sprite;
++            Main.projFrames[ProjectileID.VanillaCount + i] = sprite.ResourcePath == null ? Main.projFrames[sprite.VanillaType] : sprite.Frames;
++        }
 +    }
 +
 +    internal static Asset<Texture2D> Load(string id, ClientEntitySprite sprite, Asset<Texture2D>[] vanilla)
@@ -73,10 +82,25 @@
 +        npc.frameCounter = (npc.frameCounter + 1) % (frames * ticks);
 +    }
 +
-+    internal static void DisposeNpcSprites()
++    internal static void AnimateProjectile(Projectile projectile)
++    {
++        if (Main.dedServ)
++            return;
++        int ticks = ClientContent.Projectiles[projectile.type - ProjectileID.VanillaCount].Sprite.TicksPerFrame;
++        if (++projectile.frameCounter >= ticks)
++        {
++            projectile.frameCounter = 0;
++            projectile.frame = (projectile.frame + 1) % Main.projFrames[projectile.type];
++        }
++    }
++
++    internal static void Dispose()
 +    {
 +        for (int i = 0; i < ClientContent.Npcs.Count; i++)
 +            if (ClientContent.Npcs[i].Sprite.ResourcePath != null)
 +                TextureAssets.Npc[NPCID.VanillaCount + i]?.Dispose();
++        for (int i = 0; i < ClientContent.Projectiles.Count; i++)
++            if (ClientContent.Projectiles[i].Sprite.ResourcePath != null)
++                TextureAssets.Projectile[ProjectileID.VanillaCount + i]?.Dispose();
 +    }
 +}

@@ -50,6 +50,13 @@ public sealed class Startup : IModInitializer
             if (Worlds.TryGetCurrent(out var world))
                 Console.WriteLine($"[api-example] {world.Name} spawn {world.Spawn}, tile {Tiles.Query(world.Spawn).Status}");
         });
+        var pulse = ProjectileTypeKey.Custom("api-example:pulse");
+        ProjectileRegistry.Register("api-example:pulse", new ProjectileDefinition("Scout Pulse",
+            EntitySprite.Vanilla(ProjectileID.PurpleLaser))
+        {
+            Targets = ProjectileTargets.Players,
+            Lifetime = 120
+        });
         var scout = NpcTypeKey.Custom("api-example:scout");
         NpcRegistry.Register("api-example:scout", new NpcDefinition("Scout", EntitySprite.Vanilla(NPCID.BlueSlime))
         {
@@ -61,8 +68,18 @@ public sealed class Startup : IModInitializer
                 if (Players.TryGetLocal(out var player))
                 {
                     Vector2 offset = player.Center - context.Npc.Center;
-                    if (offset.LengthSquared() > 1)
-                        Entities.TrySetNpcVelocity(context.Npc.Handle, Vector2.Normalize(offset) * 2f);
+                    if (offset.LengthSquared() <= 1)
+                        return;
+                    Vector2 direction = Vector2.Normalize(offset);
+                    Entities.TrySetNpcVelocity(context.Npc.Handle, direction * 2f);
+                    int elapsed = context.State.Value is int count ? count + 1 : 1;
+                    context.State.Value = elapsed % 90;
+                    if (elapsed == 90)
+                    {
+                        var source = new EntitySource_Parent(Terraria.Main.npc[context.Npc.Handle.Slot]);
+                        Entities.TrySpawnProjectile(pulse, new ProjectileSpawn(context.Npc.Center, direction * 6f,
+                            8, 1f, Terraria.Main.maxPlayers, source), out _);
+                    }
                 }
             },
             OnRemoved = context => Console.WriteLine($"[api-example] Scout removed ({context.Reason})")

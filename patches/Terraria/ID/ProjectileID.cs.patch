@@ -1,0 +1,23 @@
+--- a/Terraria/ID/ProjectileID.cs
++++ b/Terraria/ID/ProjectileID.cs
+@@ -2721,7 +2721,18 @@
+ 
+     public const short KrakenWave = 1135;
+ 
+-    public static readonly short Count = 1136;
++    public const int VanillaCount = 1136;
+ 
+-    public static readonly IdDictionary Search = IdDictionary.Create<ProjectileID, short>();
++    public static readonly short Count = (short)(VanillaCount + Aether.Modding.ClientContent.SizeProjectileTables());
++
++    public static readonly IdDictionary Search = CreateSearch();
++
++    private static IdDictionary CreateSearch()
++    {
++        IdDictionary search = IdDictionary.Create<ProjectileID, short>();
++        var projectiles = Aether.Modding.ClientContent.Projectiles;
++        for (int i = 0; i < projectiles.Count; i++)
++            search.Add(projectiles[i].Id, VanillaCount + i);
++        return search;
++    }
+ }

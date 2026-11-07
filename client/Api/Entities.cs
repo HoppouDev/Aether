@@ -69,7 +69,7 @@ public static partial class Entities
     {
         Registration.RequireGameThread();
         handle = default;
-        if (!CanSpawn || type.VanillaId is not int id)
+        if (!CanSpawn || !ProjectileRegistry.TryResolve(type, out int id))
             return false;
 
         ArgumentNullException.ThrowIfNull(spawn.Source);
@@ -85,11 +85,12 @@ public static partial class Entities
         RequireFinite(spawn.Ai1, nameof(spawn.Ai1));
         RequireFinite(spawn.Ai2, nameof(spawn.Ai2));
 
+        long revision = GameBridge.WorldRevision;
         int slot = Projectile.AetherNewProjectile(spawn.Source, spawn.Center, spawn.Velocity, id,
-            spawn.Damage, spawn.Knockback, spawn.Owner, spawn.Ai0, spawn.Ai1, spawn.Ai2);
+            spawn.Damage, spawn.Knockback, spawn.Owner, spawn.Ai0, spawn.Ai1, spawn.Ai2, out long identity);
         if (slot == Main.maxProjectiles)
             return false;
-        handle = new(slot, GameBridge.WorldRevision, Main.projectile[slot].AetherSpawnIdentity);
+        handle = new(slot, revision, identity);
         return true;
     }
 
@@ -153,12 +154,35 @@ public static partial class Entities
         Registration.RequireGameThread();
         snapshot = default;
         if (!GameBridge.WorldReady || (uint)slot >= Main.maxProjectiles ||
-            Main.projectile[slot] is not { active: true, type: > 0 } projectile || !IsObserved(projectile.Center))
+            Main.projectile[slot] is not { active: true } projectile ||
+            !ProjectileRegistry.TryGetKey(projectile.type, out var type) || !IsObserved(projectile.Center))
             return false;
 
-        snapshot = new(new(slot, GameBridge.WorldRevision, projectile.AetherSpawnIdentity),
-            ProjectileTypeKey.Vanilla(projectile.type), projectile.Center, projectile.velocity, projectile.Hitbox,
-            projectile.damage, projectile.owner, projectile.timeLeft, projectile.friendly, projectile.hostile);
+        snapshot = SnapshotProjectile(projectile, new(slot, GameBridge.WorldRevision, projectile.AetherSpawnIdentity), type);
+        return true;
+    }
+
+    internal static ProjectileSnapshot SnapshotProjectile(Projectile projectile, ProjectileHandle handle, ProjectileTypeKey type) =>
+        new(handle, type, projectile.Center, projectile.velocity, projectile.Hitbox, projectile.damage,
+            projectile.owner, projectile.timeLeft, projectile.friendly, projectile.hostile);
+
+    public static bool TrySetProjectileVelocity(ProjectileHandle handle, Vector2 velocity)
+    {
+        Registration.RequireGameThread();
+        RequireFinite(velocity.X, nameof(velocity));
+        RequireFinite(velocity.Y, nameof(velocity));
+        if (!CanSpawn || !TryGetProjectile(handle, out _) || !ProjectileRegistry.IsManaged(Main.projectile[handle.Slot]))
+            return false;
+        Main.projectile[handle.Slot].velocity = velocity;
+        return true;
+    }
+
+    public static bool TryDespawnProjectile(ProjectileHandle handle)
+    {
+        Registration.RequireGameThread();
+        if (!CanSpawn || !TryGetProjectile(handle, out _) || !ProjectileRegistry.IsManaged(Main.projectile[handle.Slot]))
+            return false;
+        Main.projectile[handle.Slot].AetherKill(EntityRemovalReason.Despawned);
         return true;
     }
 

@@ -71,3 +71,29 @@ A spawn callback can immediately remove it.
 Custom NPCs are currently transient and single-player.
 They are omitted from vanilla NPC save tables, bestiary kill progress, and banner tracking.
 The example mod registers a Scout and spawns one with `/api-example:spawn-npc`.
+
+## Registering custom projectiles
+
+Call `ProjectileRegistry.Register("mod-id:name", definition)` from your initializer.
+The definition declares a name, sprite, hitbox, lifetime in simulation ticks, tile collision, penetration, and eligible targets.
+Use `Penetration = -1` for unlimited hits.
+`ProjectileTargets.NpcEnemies` uses Terraria's friendly projectile targeting, and `ProjectileTargets.Players` uses its hostile projectile targeting.
+`ProjectileTargets.None` gives the projectile a visual and simulation lifetime without damaging targets.
+
+Use `ProjectileTypeKey.Custom` with `Entities.TrySpawnProjectile` and supply the center, velocity, damage, knockback, owner slot, and spawn source.
+Custom projectiles currently spawn in single-player.
+Sprites use the same resource format as NPCs, or a compatible vanilla projectile texture and frame count.
+`ProjectileRegistry.TryResolve` and `ProjectileRegistry.TryGetKey` convert between stable keys and runtime IDs.
+
+| Callback | When it runs |
+| --- | --- |
+| `OnSpawn` | Once after the projectile is live, with its spawn source. |
+| `OnTick` | Once in the native projectile update before movement. |
+| `OnHitNpc` | After the projectile deals damage to an NPC. Includes the target snapshot and critical-hit flag. |
+| `OnHitPlayer` | After a hostile projectile deals damage to a player. |
+| `OnRemoved` | Once after the handle expires, with the final snapshot and reason. |
+
+Use `Entities.TrySetProjectileVelocity` and `Entities.TryDespawnProjectile` with a live custom projectile handle.
+The callbacks share per-spawn `EntityBehaviorState`, and use the same callback failure policy as NPCs.
+A projectile can expire, run out of penetration, hit a solid tile, be replaced by a native spawn, or leave with its world.
+The example Scout fires a short-lived pulse using its tick callback.

@@ -35,7 +35,7 @@ public readonly record struct ProjectileTypeKey
 
     public static ProjectileTypeKey Vanilla(int id)
     {
-        if (id <= 0 || id >= ProjectileID.Count)
+        if (id <= 0 || id >= ProjectileID.VanillaCount)
             throw new ArgumentOutOfRangeException(nameof(id));
         return new(id, null);
     }
