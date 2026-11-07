@@ -118,6 +118,21 @@ internal static class Program
                 }
                 phase = "mod content registration";
                 ClientContent.FinalizeRegistration?.Invoke();
+                if (ClientContent.HasItems)
+                {
+                    var required = new SortedSet<string>(StringComparer.Ordinal);
+                    void Require(string id)
+                    {
+                        if (!packagesById.TryGetValue(id, out ModPackage? package) || !required.Add(id))
+                            return;
+                        foreach (ModDependency dependency in package.Dependencies)
+                            Require(dependency.Id);
+                    }
+                    foreach (ClientItemDefinition item in ClientContent.Items)
+                        Require(item.Id[..item.Id.IndexOf(':')]);
+                    ClientContent.SaveRequirements = Array.AsReadOnly(required.Select(id =>
+                        new ContentModRequirement(id, packagesById[id].Manifest.Version)).ToArray());
+                }
                 phase = "game startup";
             };
 

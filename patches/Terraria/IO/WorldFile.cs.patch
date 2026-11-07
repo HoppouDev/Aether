@@ -22,7 +22,19 @@
              int num = binaryReader.ReadInt32();
              if (num > 326)
              {
-@@ -706,8 +710,9 @@
+@@ -584,6 +588,11 @@
+             worldFileData.DefeatedMoonlord = binaryReader.ReadBoolean();
+             return worldFileData;
+         }
++        catch (ContentSaveException exception)
++        {
++            Console.Error.WriteLine($"{file}: {exception.Message}");
++            return WorldFileData.FromInvalidWorld(file, cloudSave, StatusID.LaterVersion, exception);
++        }
+         catch (Exception exception)
+         {
+             return WorldFileData.FromInvalidWorld(file, cloudSave, StatusID.UnknownError, exception);
+@@ -706,8 +715,9 @@
          }
          try
          {
@@ -34,7 +46,7 @@
              try
              {
                  WorldGen.loadFailed = false;
-@@ -736,6 +741,7 @@
+@@ -736,6 +746,7 @@
                          Main.ActiveWorldFileData.CreationTime = DateTime.Now;
                      }
                  }
@@ -42,7 +54,41 @@
                  binaryReader.Close();
                  memoryStream.Close();
                  if (num3 != StatusID.Ok)
-@@ -938,15 +944,31 @@
+@@ -863,6 +874,26 @@
+         }
+     }
+ 
++    internal static bool ReportContentLoadError()
++    {
++        if (LastThrownLoadException is not ContentSaveException error)
++        {
++            return false;
++        }
++        Console.Error.WriteLine($"{Main.worldPathName}: {error.Message}");
++        WorldGen.worldBackup = false;
++        Main.statusText = error.Message;
++        Main.menuMode = 15;
++        return true;
++    }
++
++    internal static bool CanRecoverBackup(string path, bool cloud)
++    {
++        string backup = path + ".bak";
++        return FileUtilities.Exists(backup, cloud) &&
++            (cloud || ItemSave.CanRecover(path, ItemSave.Kind.World) && ItemSave.CanRecover(backup, ItemSave.Kind.World));
++    }
++
+     public static void SaveNewWorld()
+     {
+         _isWorldOnCloud = Main.ActiveWorldFileData.IsCloudSave;
+@@ -935,18 +966,38 @@
+         {
+             return;
+         }
++        if (!useCloudSaving)
++        {
++            ItemSave.CheckCompatibility(Main.worldPathName, ItemSave.Kind.World);
++        }
          new Stopwatch().Start();
          int num;
          byte[] array;
@@ -75,7 +121,7 @@
          byte[] array2 = null;
          if (FileUtilities.Exists(Main.worldPathName, useCloudSaving))
          {
-@@ -1691,7 +1713,7 @@
+@@ -1691,7 +1742,7 @@
                  writer.Write((short)item.stack);
                  if (item.stack > 0)
                  {
@@ -84,7 +130,7 @@
                      writer.Write(item.prefix);
                  }
              }
-@@ -2786,13 +2808,13 @@
+@@ -2786,13 +2837,13 @@
                  Item item = new Item();
                  if (num6 > 0)
                  {
@@ -100,7 +146,7 @@
                      item.Prefix(reader.ReadByte());
                      item.stack = 1;
                  }
-@@ -3284,8 +3306,10 @@
+@@ -3284,8 +3335,10 @@
              {
                  num = 0;
              }

@@ -1416,6 +1416,15 @@
          {
              array9[0] = Lang.menu[102].Value;
              num2 = 200;
+@@ -49955,7 +50114,7 @@
+             array9[2] = Lang.menu[6].Value;
+             if (selectedMenu == 1)
+             {
+-                if (FileUtilities.Exists(worldPathName + ".bak", ActiveWorldFileData.IsCloudSave))
++                if (WorldFile.CanRecoverBackup(worldPathName, ActiveWorldFileData.IsCloudSave))
+                 {
+                     FileUtilities.Move(worldPathName, worldPathName + ".bad", ActiveWorldFileData.IsCloudSave);
+                     FileUtilities.Move(worldPathName + ".bak", worldPathName, ActiveWorldFileData.IsCloudSave);
 @@ -52202,7 +52361,7 @@
          selectedMenu2 = -1;
          focusMenu = -1;

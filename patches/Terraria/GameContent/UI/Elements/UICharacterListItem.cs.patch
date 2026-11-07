@@ -9,3 +9,16 @@
      private Asset<Texture2D> _dividerTexture;
  
      private Asset<Texture2D> _innerPanelTexture;
+@@ -255,6 +257,12 @@
+ 
+     private void PlayGame(UIMouseEvent evt, UIElement listeningElement)
+     {
++        if (listeningElement == evt.Target && _data.ContentLoadError != null)
++        {
++            Main.statusText = _data.ContentLoadError;
++            Main.menuMode = 15;
++            return;
++        }
+         if (listeningElement == evt.Target && _data.Player.loadStatus == StatusID.Ok)
+         {
+             Main.SelectPlayer(_data);

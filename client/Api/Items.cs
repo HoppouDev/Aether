@@ -43,7 +43,7 @@ public static class ItemRegistry
         string owner = Registration.Owner();
         ArgumentNullException.ThrowIfNull(id);
         ArgumentNullException.ThrowIfNull(definition);
-        if (string.IsNullOrWhiteSpace(definition.Name) || definition.TextureItemId is <= 0 or >= ItemID.VanillaCount ||
+        if (id.Length > 1024 || string.IsNullOrWhiteSpace(definition.Name) || definition.TextureItemId is <= 0 or >= ItemID.VanillaCount ||
             definition.Width is < 1 or > 512 || definition.Height is < 1 or > 512 ||
             definition.MaxStack is < 1 or > 9999 || definition.Value < 0 || definition.Damage < 0 ||
             definition.Defense < 0 || definition.UseTime < 1 || !float.IsFinite(definition.Knockback) ||

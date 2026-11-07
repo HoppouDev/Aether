@@ -6,6 +6,9 @@ namespace Aether.Modding;
 public sealed record ClientItemDefinition(string Id, string Name, string? Tooltip, int TextureItemId);
 
 [EditorBrowsable(EditorBrowsableState.Never)]
+public sealed record ContentModRequirement(string Id, string Version);
+
+[EditorBrowsable(EditorBrowsableState.Never)]
 public static class ClientContent
 {
     private static readonly object itemTableLock = new();
@@ -19,6 +22,7 @@ public static class ClientContent
     public static Action<object, object, int>? ItemEquipped { get; internal set; }
     public static bool HasItems => Items.Count != 0;
     public static string? SaveIdentity => profile;
+    public static IReadOnlyList<ContentModRequirement> SaveRequirements { get; internal set; } = Array.Empty<ContentModRequirement>();
     internal static Action? FinalizeRegistration { get; set; }
 
     public static int SizeItemTables()
@@ -55,6 +59,7 @@ public static class ClientContent
             ItemHitNpc = null;
             ItemEquipped = null;
             FinalizeRegistration = null;
+            SaveRequirements = Array.Empty<ContentModRequirement>();
             profile = null;
             itemTablesSized = false;
         }

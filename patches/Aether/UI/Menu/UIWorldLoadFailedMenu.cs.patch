@@ -1,8 +1,9 @@
 --- /dev/null
 +++ b/Aether/UI/Menu/UIWorldLoadFailedMenu.cs
-@@ -0,0 +1,60 @@
+@@ -0,0 +1,61 @@
 +using Terraria;
 +using Terraria.Audio;
++using Terraria.IO;
 +using Terraria.Utilities;
 +
 +namespace Aether.UI.Menu;
@@ -38,7 +39,7 @@
 +    private static void LoadBackup()
 +    {
 +        bool isCloudSave = Main.ActiveWorldFileData.IsCloudSave;
-+        if (FileUtilities.Exists(Main.worldPathName + ".bak", isCloudSave))
++        if (WorldFile.CanRecoverBackup(Main.worldPathName, isCloudSave))
 +        {
 +            FileUtilities.Move(Main.worldPathName, Main.worldPathName + ".bad", isCloudSave);
 +            FileUtilities.Move(Main.worldPathName + ".bak", Main.worldPathName, isCloudSave);

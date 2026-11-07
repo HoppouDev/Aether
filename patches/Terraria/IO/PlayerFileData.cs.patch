@@ -1,0 +1,11 @@
+--- a/Terraria/IO/PlayerFileData.cs
++++ b/Terraria/IO/PlayerFileData.cs
+@@ -11,6 +11,8 @@
+ {
+     private Player _player;
+ 
++    internal string ContentLoadError;
++
+     private TimeSpan _playTime = TimeSpan.Zero;
+ 
+     private readonly Stopwatch _timer = new Stopwatch();

@@ -9,3 +9,16 @@
      private Asset<Texture2D> _dividerTexture;
  
      private Asset<Texture2D> _innerPanelTexture;
+@@ -359,6 +361,12 @@
+ 
+     private void PlayGame(UIMouseEvent evt, UIElement listeningElement)
+     {
++        if (listeningElement == evt.Target && _data.LoadException is Aether.Modding.ContentSaveException error)
++        {
++            Main.statusText = error.Message;
++            Main.menuMode = 15;
++            return;
++        }
+         if (listeningElement == evt.Target && _data.IsValid && !TryMovingToRejectionMenuIfNeeded(_data.GameMode))
+         {
+             _data.SetAsActive();

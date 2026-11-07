@@ -49,12 +49,16 @@
      }
  
      private void FreeUpPetsAndMinions(Item sItem)
-@@ -55511,21 +55525,26 @@
+@@ -55511,21 +55525,30 @@
          {
              return;
          }
 -        if (FileUtilities.Exists(path, isCloudSave))
 +        bool modded = ClientContent.HasItems && !isCloudSave;
++        if (!isCloudSave)
++        {
++            ItemSave.CheckCompatibility(path, ItemSave.Kind.Player);
++        }
 +        if (!modded && FileUtilities.Exists(path, isCloudSave))
          {
              FileUtilities.Copy(path, path + ".bak", isCloudSave);
@@ -80,7 +84,7 @@
          {
              SocialAPI.Cloud.Write(playerFile.Path, ((MemoryStream)stream).ToArray());
          }
-@@ -55595,51 +55614,51 @@
+@@ -55595,51 +55618,51 @@
          fileIO.Write(newPlayer.shoeColor.B);
          for (int k = 0; k < newPlayer.armor.Length; k++)
          {
@@ -141,7 +145,7 @@
              fileIO.Write(newPlayer.bank4.item[num4].stack);
              fileIO.Write(newPlayer.bank4.item[num4].prefix);
              fileIO.Write(newPlayer.bank4.item[num4].favorited);
-@@ -55857,10 +55876,10 @@
+@@ -55857,10 +55880,10 @@
          {
              RijndaelManaged rijndaelManaged = new RijndaelManaged();
              rijndaelManaged.Padding = PaddingMode.None;
@@ -155,7 +159,7 @@
                  int num = binaryReader.ReadInt32();
                  if (num >= 135)
                  {
-@@ -55878,6 +55897,7 @@
+@@ -55878,6 +55901,7 @@
                      return playerFileData;
                  }
                  Deserialize(playerFileData, player, binaryReader, num, out gotToReadName);
@@ -163,13 +167,14 @@
                  if (player.lastTimePlayerWasSaved == 0L && !cloudSave)
                  {
                      player.lastTimePlayerWasSaved = File.GetLastWriteTimeUtc(playerPath).ToBinary();
-@@ -55888,6 +55908,14 @@
+@@ -55888,6 +55912,15 @@
              playerFileData.Player = player;
              return playerFileData;
          }
 +        catch (ContentSaveException exception)
 +        {
 +            Console.Error.WriteLine($"{playerPath}: {exception.Message}");
++            playerFileData.ContentLoadError = exception.Message;
 +            player.loadStatus = StatusID.LaterVersion;
 +            player.name = Path.GetFileNameWithoutExtension(playerPath);
 +            playerFileData.Player = player;
@@ -178,7 +183,7 @@
          catch
          {
          }
-@@ -56084,7 +56112,7 @@
+@@ -56084,7 +56117,7 @@
                      {
                          num2 += 2;
                      }
@@ -187,7 +192,7 @@
                      newPlayer.armor[num2].Prefix(fileIO.ReadByte());
                  }
              }
-@@ -56093,7 +56121,7 @@
+@@ -56093,7 +56126,7 @@
                  int num3 = 20;
                  for (int m = 0; m < num3; m++)
                  {
@@ -196,7 +201,7 @@
                      newPlayer.armor[m].Prefix(fileIO.ReadByte());
                      if (release >= 322)
                      {
-@@ -56115,7 +56143,7 @@
+@@ -56115,7 +56148,7 @@
                  for (int n = 0; n < num4; n++)
                  {
                      int num5 = n;
@@ -205,7 +210,7 @@
                      newPlayer.dye[num5].Prefix(fileIO.ReadByte());
                      if (release >= 322)
                      {
-@@ -56140,7 +56168,7 @@
+@@ -56140,7 +56173,7 @@
                      }
                      else
                      {
@@ -214,7 +219,7 @@
                          newPlayer.inventory[num6].stack = fileIO.ReadInt32();
                          newPlayer.inventory[num6].Prefix(fileIO.ReadByte());
                          if (release >= 114)
-@@ -56214,7 +56242,7 @@
+@@ -56214,7 +56247,7 @@
                          }
                          else
                          {
@@ -223,7 +228,7 @@
                              newPlayer.miscEquips[num12].Prefix(fileIO.ReadByte());
                          }
                          num13 = fileIO.ReadInt32();
-@@ -56225,7 +56253,7 @@
+@@ -56225,7 +56258,7 @@
                          }
                          else
                          {
@@ -232,7 +237,7 @@
                              newPlayer.miscDyes[num12].Prefix(fileIO.ReadByte());
                          }
                      }
-@@ -56235,13 +56263,13 @@
+@@ -56235,13 +56268,13 @@
              {
                  for (int num14 = 0; num14 < 40; num14++)
                  {
@@ -248,7 +253,7 @@
                      newPlayer.bank2.item[num15].stack = fileIO.ReadInt32();
                      newPlayer.bank2.item[num15].Prefix(fileIO.ReadByte());
                  }
-@@ -56250,13 +56278,13 @@
+@@ -56250,13 +56283,13 @@
              {
                  for (int num16 = 0; num16 < 20; num16++)
                  {
@@ -264,7 +269,7 @@
                      newPlayer.bank2.item[num17].stack = fileIO.ReadInt32();
                      newPlayer.bank2.item[num17].Prefix(fileIO.ReadByte());
                  }
-@@ -56265,7 +56293,7 @@
+@@ -56265,7 +56298,7 @@
              {
                  for (int num18 = 0; num18 < 40; num18++)
                  {
@@ -273,7 +278,7 @@
                      newPlayer.bank3.item[num18].stack = fileIO.ReadInt32();
                      newPlayer.bank3.item[num18].Prefix(fileIO.ReadByte());
                  }
-@@ -56274,7 +56302,7 @@
+@@ -56274,7 +56307,7 @@
              {
                  for (int num19 = 0; num19 < 40; num19++)
                  {
@@ -282,3 +287,13 @@
                      newPlayer.bank4.item[num19].stack = fileIO.ReadInt32();
                      newPlayer.bank4.item[num19].Prefix(fileIO.ReadByte());
                      if (release >= 255)
+@@ -56658,7 +56691,8 @@
+         {
+             if (playerFileData.Player.loadStatus != StatusID.Ok && playerFileData.Player.loadStatus != StatusID.LaterVersion)
+             {
+-                if (FileUtilities.Exists(file + ".bak", cloudSave))
++                if (FileUtilities.Exists(file + ".bak", cloudSave) &&
++                    (cloudSave || ItemSave.CanRecover(file, ItemSave.Kind.Player) && ItemSave.CanRecover(file + ".bak", ItemSave.Kind.Player)))
+                 {
+                     FileUtilities.Move(file + ".bak", file, cloudSave);
+                 }
