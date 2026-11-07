@@ -29,6 +29,9 @@ public static class GameBridge
 
     internal static bool IsReady => ready;
 
+    internal static bool WorldReady => ready && !Main.gameMenu && !WorldGen.isGeneratingOrLoadingWorld &&
+        (Main.dedServ || Main.CanUpdateGameplay) && (Main.netMode != 1 || !Netplay.Disconnect);
+
     internal static void ReadyServer()
     {
         ready = true;
@@ -66,9 +69,7 @@ public static class GameBridge
 
     private static void UpdateWorld()
     {
-        WorldFileData? current = ready && !Main.gameMenu && Main.CanUpdateGameplay &&
-            !WorldGen.isGeneratingOrLoadingWorld && (Main.netMode != 1 || !Netplay.Disconnect)
-            ? Main.ActiveWorldFileData : null;
+        WorldFileData? current = WorldReady ? Main.ActiveWorldFileData : null;
         if (current == activeWorld)
             return;
         EndWorld();

@@ -49,6 +49,12 @@ internal static class Registration
 
     internal static void SetGameThread() => gameThread = Environment.CurrentManagedThreadId;
 
+    internal static void RequireGameThread()
+    {
+        if (Environment.CurrentManagedThreadId != gameThread)
+            throw new InvalidOperationException("Call the gameplay API on the game thread.");
+    }
+
     internal static string Owner()
     {
         if (Environment.CurrentManagedThreadId != gameThread || ModCatalog.InitializingModId is not { } owner)

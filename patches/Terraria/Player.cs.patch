@@ -8,7 +8,17 @@
  using System.Linq;
  using System.Security.Cryptography;
  using System.Text;
-@@ -5161,6 +5162,10 @@
+@@ -1636,6 +1637,9 @@
+ 
+     public byte difficulty;
+ 
++    [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
++    public PlayerObservation AetherObservedStats { get; internal set; }
++
+     public byte wetSlime;
+ 
+     public HitTile hitTile;
+@@ -5161,6 +5165,10 @@
  
      public void DropSelectedItem(int slot, ref Item theItemWeDrop)
      {
@@ -19,7 +29,7 @@
          bool flag = false;
          if (theItemWeDrop.favorited)
          {
-@@ -5656,6 +5661,13 @@
+@@ -5656,6 +5664,13 @@
      {
          if ((whoAmI != Main.myPlayer || (!UsingOrReusingItem && !CCed && !dead)) && loadoutIndex != CurrentLoadoutIndex && loadoutIndex >= 0 && loadoutIndex < Loadouts.Length)
          {
@@ -33,7 +43,7 @@
              Loadouts[CurrentLoadoutIndex].Swap(this);
              Loadouts[loadoutIndex].Swap(this);
              CurrentLoadoutIndex = loadoutIndex;
-@@ -13021,6 +13033,10 @@
+@@ -13021,6 +13036,10 @@
                      GrantPrefixBenefits(effectiveArmor);
                  }
                  GrantArmorBenefits(effectiveArmor);
@@ -44,7 +54,7 @@
              }
          }
          if (flag)
-@@ -35247,6 +35263,10 @@
+@@ -35247,6 +35266,10 @@
          {
              WorldItem worldItem = Main.item[j];
              Invariant.Assert(worldItem.whoAmI == j, "WorldItem index desync");
@@ -55,7 +65,7 @@
              if (!worldItem.active || worldItem.shimmerTime != 0f || (worldItem.grabDelayTime > 0 && (worldItem.grabDelayPlayer == i || worldItem.grabDelayPlayer == 255)) || worldItem.playerIndexTheItemIsReservedFor != i || !CanAcceptItemIntoInventory(worldItem) || (worldItem.shimmered && !((double)worldItem.velocity.Length() < 0.2)))
              {
                  continue;
-@@ -37767,6 +37787,7 @@
+@@ -37767,6 +37790,7 @@
  
      public void Teleport(Vector2 newPos, int Style = 0, int extraInfo = 0)
      {
@@ -63,7 +73,7 @@
          try
          {
              _funkytownAchievementCheckCooldown = 100;
-@@ -39721,6 +39742,10 @@
+@@ -39721,6 +39745,10 @@
  
      public Item GetItem(Item newItem, GetItemSettings settings)
      {
@@ -74,7 +84,7 @@
          bool isACoin = newItem.IsACoin;
          Item item = newItem;
          int num = 50;
-@@ -44849,6 +44874,10 @@
+@@ -44849,6 +44877,10 @@
              NPCDamageTracker.SetSourceForNextHit(nPC, PlayerNPCHitSource.FromItem(sItem.type));
              int num4 = nPC.StrikeNPC(num3, knockBack, direction, crit, fromNet: false, whoAmI);
              ApplyNPCOnHitEffects(sItem, itemRectangle, damage, knockBack, nPC, num3, num4);
@@ -85,7 +95,7 @@
              int num5 = BannerSystem.NPCtoBanner(nPC.BannerID());
              if (num5 >= 0)
              {
-@@ -52412,6 +52441,10 @@
+@@ -52412,6 +52444,10 @@
                  SoundEngine.PlaySound(sItem.UseSound, Center, sItem.useSoundPitch);
              }
          }
@@ -96,7 +106,7 @@
      }
  
      private void FreeUpPetsAndMinions(Item sItem)
-@@ -55137,12 +55170,21 @@
+@@ -55137,12 +55173,21 @@
          {
              loadouts[i].TryDroppingItems(this, itemSource_Death);
          }
@@ -124,7 +134,7 @@
      }
  
      public void TryDroppingSingleItem(IEntitySource source, Item theItem)
-@@ -55152,6 +55194,10 @@
+@@ -55152,6 +55197,10 @@
  
      public void TryDroppingSingleItem(IEntitySource source, Item theItem, int stack)
      {
@@ -135,7 +145,7 @@
          if (stack > 0 && Main.netMode != 1)
          {
              Item.NewItem(velocity: new Vector2((float)Main.rand.Next(-20, 21) * 0.2f, (float)Main.rand.Next(-20, 1) * 0.2f), source: source, X: (int)position.X, Y: (int)position.Y, Width: width, Height: height, type: theItem.type, stack: stack, noBroadcast: false, prefix: theItem.prefix);
-@@ -55511,21 +55557,30 @@
+@@ -55511,21 +55560,30 @@
          {
              return;
          }
@@ -170,7 +180,7 @@
          {
              SocialAPI.Cloud.Write(playerFile.Path, ((MemoryStream)stream).ToArray());
          }
-@@ -55595,54 +55650,63 @@
+@@ -55595,54 +55653,63 @@
          fileIO.Write(newPlayer.shoeColor.B);
          for (int k = 0; k < newPlayer.armor.Length; k++)
          {
@@ -261,7 +271,7 @@
          }
          fileIO.Write(newPlayer.voidVaultInfo);
          for (int num5 = 0; num5 < maxBuffs; num5++)
-@@ -55857,10 +55921,10 @@
+@@ -55857,10 +55924,10 @@
          {
              RijndaelManaged rijndaelManaged = new RijndaelManaged();
              rijndaelManaged.Padding = PaddingMode.None;
@@ -275,7 +285,7 @@
                  int num = binaryReader.ReadInt32();
                  if (num >= 135)
                  {
-@@ -55878,6 +55942,7 @@
+@@ -55878,6 +55945,7 @@
                      return playerFileData;
                  }
                  Deserialize(playerFileData, player, binaryReader, num, out gotToReadName);
@@ -283,7 +293,7 @@
                  if (player.lastTimePlayerWasSaved == 0L && !cloudSave)
                  {
                      player.lastTimePlayerWasSaved = File.GetLastWriteTimeUtc(playerPath).ToBinary();
-@@ -55888,6 +55953,15 @@
+@@ -55888,6 +55956,15 @@
              playerFileData.Player = player;
              return playerFileData;
          }
@@ -299,7 +309,7 @@
          catch
          {
          }
-@@ -56084,7 +56158,7 @@
+@@ -56084,7 +56161,7 @@
                      {
                          num2 += 2;
                      }
@@ -308,7 +318,7 @@
                      newPlayer.armor[num2].Prefix(fileIO.ReadByte());
                  }
              }
-@@ -56093,7 +56167,7 @@
+@@ -56093,7 +56170,7 @@
                  int num3 = 20;
                  for (int m = 0; m < num3; m++)
                  {
@@ -317,7 +327,7 @@
                      newPlayer.armor[m].Prefix(fileIO.ReadByte());
                      if (release >= 322)
                      {
-@@ -56115,7 +56189,7 @@
+@@ -56115,7 +56192,7 @@
                  for (int n = 0; n < num4; n++)
                  {
                      int num5 = n;
@@ -326,7 +336,7 @@
                      newPlayer.dye[num5].Prefix(fileIO.ReadByte());
                      if (release >= 322)
                      {
-@@ -56140,7 +56214,7 @@
+@@ -56140,7 +56217,7 @@
                      }
                      else
                      {
@@ -335,7 +345,7 @@
                          newPlayer.inventory[num6].stack = fileIO.ReadInt32();
                          newPlayer.inventory[num6].Prefix(fileIO.ReadByte());
                          if (release >= 114)
-@@ -56214,7 +56288,7 @@
+@@ -56214,7 +56291,7 @@
                          }
                          else
                          {
@@ -344,7 +354,7 @@
                              newPlayer.miscEquips[num12].Prefix(fileIO.ReadByte());
                          }
                          num13 = fileIO.ReadInt32();
-@@ -56225,7 +56299,7 @@
+@@ -56225,7 +56302,7 @@
                          }
                          else
                          {
@@ -353,7 +363,7 @@
                              newPlayer.miscDyes[num12].Prefix(fileIO.ReadByte());
                          }
                      }
-@@ -56235,13 +56309,13 @@
+@@ -56235,13 +56312,13 @@
              {
                  for (int num14 = 0; num14 < 40; num14++)
                  {
@@ -369,7 +379,7 @@
                      newPlayer.bank2.item[num15].stack = fileIO.ReadInt32();
                      newPlayer.bank2.item[num15].Prefix(fileIO.ReadByte());
                  }
-@@ -56250,13 +56324,13 @@
+@@ -56250,13 +56327,13 @@
              {
                  for (int num16 = 0; num16 < 20; num16++)
                  {
@@ -385,7 +395,7 @@
                      newPlayer.bank2.item[num17].stack = fileIO.ReadInt32();
                      newPlayer.bank2.item[num17].Prefix(fileIO.ReadByte());
                  }
-@@ -56265,7 +56339,7 @@
+@@ -56265,7 +56342,7 @@
              {
                  for (int num18 = 0; num18 < 40; num18++)
                  {
@@ -394,7 +404,7 @@
                      newPlayer.bank3.item[num18].stack = fileIO.ReadInt32();
                      newPlayer.bank3.item[num18].Prefix(fileIO.ReadByte());
                  }
-@@ -56274,7 +56348,7 @@
+@@ -56274,7 +56351,7 @@
              {
                  for (int num19 = 0; num19 < 40; num19++)
                  {
@@ -403,7 +413,7 @@
                      newPlayer.bank4.item[num19].stack = fileIO.ReadInt32();
                      newPlayer.bank4.item[num19].Prefix(fileIO.ReadByte());
                      if (release >= 255)
-@@ -56658,7 +56732,8 @@
+@@ -56658,7 +56735,8 @@
          {
              if (playerFileData.Player.loadStatus != StatusID.Ok && playerFileData.Player.loadStatus != StatusID.LaterVersion)
              {
