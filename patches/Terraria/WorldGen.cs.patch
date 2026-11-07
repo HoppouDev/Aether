@@ -144,15 +144,16 @@
                      {
                          return 2;
                      }
-@@ -63965,6 +64000,7 @@
+@@ -63965,6 +64000,8 @@
  
      public static void KillTile(int i, int j, bool fail = false, bool effectOnly = false, bool noItem = false)
      {
++        Aether.Modding.BlockBreakSync.ObserveTile(i, j);
 +        Aether.Graphics.Terrain.TerrainSnapshotPump.InvalidateTile(Main.tile, i, j);
          if (i < 0 || j < 0 || i >= Main.maxTilesX || j >= Main.maxTilesY)
          {
              return;
-@@ -75764,6 +75800,7 @@
+@@ -75764,6 +75801,7 @@
  
      public static void PlaceWall(int i, int j, int type, bool mute = false)
      {
@@ -160,10 +161,11 @@
          if (i <= 1 || j <= 1 || i >= Main.maxTilesX - 2 || j >= Main.maxTilesY - 2)
          {
              return;
-@@ -81985,6 +82022,7 @@
+@@ -81985,6 +82023,8 @@
  
      public static void TileFrame(int i, int j, bool resetFrame = false, bool noBreak = false)
      {
++        Aether.Modding.BlockBreakSync.ObserveTile(i, j);
 +        Aether.Graphics.Terrain.TerrainSnapshotPump.InvalidateTile(Main.tile, i, j);
          if (i <= 5 || j <= 5 || i >= Main.maxTilesX - 5 || j >= Main.maxTilesY - 5 || Main.tile[i, j] == null)
          {

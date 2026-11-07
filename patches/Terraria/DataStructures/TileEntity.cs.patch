@@ -1,6 +1,14 @@
 --- a/Terraria/DataStructures/TileEntity.cs
 +++ b/Terraria/DataStructures/TileEntity.cs
-@@ -210,6 +210,8 @@
+@@ -117,6 +117,7 @@
+ 
+     public static void Remove(TileEntity entity, bool ignorePosition = false)
+     {
++        Aether.Modding.BlockBreakSync.ObserveEntity(entity);
+         lock (EntityCreationLock)
+         {
+             if (entity.RequiresUpdates)
+@@ -210,6 +211,8 @@
      {
      }
  

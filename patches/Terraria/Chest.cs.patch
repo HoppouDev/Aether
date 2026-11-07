@@ -17,3 +17,11 @@
      public readonly int x;
  
      public readonly int y;
+@@ -128,6 +138,7 @@
+         Chest chest = Main.chest[chestIndex];
+         if (chest != null)
+         {
++            Aether.Modding.BlockBreakSync.ObserveChest(chest);
+             _chestsByCoords.Remove(new Point(chest.x, chest.y));
+         }
+         Main.chest[chestIndex] = null;

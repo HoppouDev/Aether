@@ -28,7 +28,7 @@ Call `Tiles.GetBlockBreakability(position, options)` to check a foreground block
 The preview reports `Eligible`, `Ineligible`, or `Unsupported` and supplies a reason and a footprint when known.
 It does not create tiles, roll random outcomes, drop items, or remove container data.
 
-Call `Tiles.BreakBlock(position, options)` on the game thread in single-player.
+Call `Tiles.BreakBlock(position, options)` on the game thread in single-player or on an Aether dedicated server.
 It checks the target again and attempts one direct break through the game's destruction and framing path.
 A direct break skips tool and reach requirements and leaves the wall in place.
 The result contains snapshots at the requested cell and the bounds of the target.
@@ -46,6 +46,9 @@ A later attempt can remove the empty display.
 Drops are enabled by default.
 `new BlockBreakOptions(SuppressBlockDrop: true)` suppresses the target block's drop for dirt, stone, wood, and clay.
 Native framing can also break attachments, which still use their normal drop rules.
+On a dedicated server, the break sends changed cells and container or display updates to clients that have the affected sections.
+Drops use the server's normal item synchronization.
+A multiplayer client can inspect its loaded tiles with `Tiles.Query` and receives `UnsupportedContext` when it tries to break a loaded tile.
 
 ## Mining with a held pickaxe
 

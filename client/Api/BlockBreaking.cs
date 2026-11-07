@@ -1,3 +1,4 @@
+using Aether.Modding;
 using Microsoft.Xna.Framework;
 using Terraria;
 using Terraria.DataStructures;
@@ -112,7 +113,10 @@ public static partial class Tiles
         int damage = 0;
         if (miner == null)
         {
+            using var sync = BlockBreakSync.Begin();
             WorldGen.KillTile(bounds.X, bounds.Y, noItem: options.SuppressBlockDrop);
+            if (entity != null && stack != DisplayedStack(entity))
+                BlockBreakSync.ObserveEntity(entity);
         }
         else
         {
@@ -143,9 +147,11 @@ public static partial class Tiles
             return Ineligible(BlockBreakReason.WorldUnavailable);
         if (query.Status == TileQueryStatus.Unloaded)
             return Ineligible(BlockBreakReason.Unloaded);
-        if (Main.netMode != 0)
+        bool server = !mining && Main.netMode == 2 && ServerEvents.IsDedicatedServer;
+        if (Main.netMode != 0 && !server)
             return Unsupported(BlockBreakReason.UnsupportedContext);
-        if (!WorldGen.InWorld(position.X, position.Y, 2))
+        int margin = server ? 7 : 2;
+        if (!WorldGen.InWorld(position.X, position.Y, margin))
             return Ineligible(BlockBreakReason.WorldBoundary);
         if (query.Tile?.BlockType is not int type)
             return Ineligible(BlockBreakReason.Empty);
@@ -164,7 +170,9 @@ public static partial class Tiles
         var bounds = new Rectangle(position.X, position.Y, 1, 1);
         if (!terrain && !TileObjectData.TryGetTileBounds(position.X, position.Y, out bounds))
             return Unsupported(BlockBreakReason.IncompleteObject);
-        if (!WorldGen.InWorld(bounds.X, bounds.Y, 2) || !WorldGen.InWorld(bounds.Right - 1, bounds.Bottom - 1, 2))
+        if (!terrain)
+            margin = 7;
+        if (!WorldGen.InWorld(bounds.X, bounds.Y, margin) || !WorldGen.InWorld(bounds.Right - 1, bounds.Bottom - 1, margin))
             return Ineligible(BlockBreakReason.WorldBoundary, bounds);
         if (chest && !Chest.CanDestroyChest(bounds.X, bounds.Y))
             return Ineligible(BlockBreakReason.NonemptyContainer, bounds);

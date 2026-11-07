@@ -1,0 +1,107 @@
+--- /dev/null
++++ b/Aether/Modding/BlockBreakSync.cs
+@@ -0,0 +1,104 @@
++using System;
++using System.Collections.Generic;
++using System.ComponentModel;
++using Microsoft.Xna.Framework;
++using Terraria;
++using Terraria.DataStructures;
++using Terraria.ID;
++
++namespace Aether.Modding;
++
++[EditorBrowsable(EditorBrowsableState.Never)]
++public sealed class BlockBreakSync : IDisposable
++{
++    [ThreadStatic]
++    private static BlockBreakSync current;
++
++    private readonly Dictionary<Point, Tile> tiles = new();
++    private readonly Dictionary<int, Point> entities = new();
++    private readonly List<(Chest Chest, int Action)> chests = new();
++
++    private BlockBreakSync() { }
++
++    public static BlockBreakSync Begin()
++    {
++        if (Main.netMode != 2 || !Main.dedServ || current != null)
++            return null;
++
++        current = new BlockBreakSync();
++        return current;
++    }
++
++    internal static void ObserveTile(int x, int y)
++    {
++        if (current == null || !WorldGen.InWorld(x, y))
++            return;
++
++        var point = new Point(x, y);
++        if (!current.tiles.ContainsKey(point) && Main.tile[x, y] is { } tile)
++            current.tiles.Add(point, (Tile)tile.Clone());
++    }
++
++    public static void ObserveEntity(TileEntity entity)
++    {
++        if (current != null)
++            current.entities[entity.ID] = new Point(entity.Position.X, entity.Position.Y);
++    }
++
++    internal static void ObserveChest(Chest chest)
++    {
++        if (current == null)
++            return;
++
++        int action = Main.tile[chest.x, chest.y]?.type switch
++        {
++            TileID.Containers => 1,
++            TileID.Dressers => 3,
++            TileID.Containers2 => 5,
++            _ => 0
++        };
++        if (action != 0)
++            current.chests.Add((chest, action));
++    }
++
++    public void Dispose()
++    {
++        if (current != this)
++            return;
++
++        current = null;
++        var changed = new List<Point>();
++        foreach (var (point, before) in tiles)
++        {
++            if (!before.isTheSameAs(Main.tile[point.X, point.Y]))
++                changed.Add(point);
++        }
++
++        for (int i = 0; i < Main.maxPlayers; i++)
++        {
++            RemoteClient client = Netplay.Clients[i];
++            if (client.State < 3 || !client.IsConnected())
++                continue;
++
++            foreach (var (chest, action) in chests)
++            {
++                if (HasSection(client, Section(new Point(chest.x, chest.y))))
++                    NetMessage.SendData(MessageID.ChestUpdates, i, -1, null, action, chest.x, chest.y, 0, chest.index);
++            }
++            foreach (var (id, point) in entities)
++            {
++                if (HasSection(client, Section(point)))
++                    NetMessage.SendData(MessageID.TileEntitySharing, i, -1, null, id);
++            }
++            foreach (var point in changed)
++            {
++                if (HasSection(client, Section(point)))
++                    NetMessage.SendTileSquare(i, point.X, point.Y);
++            }
++        }
++    }
++
++    private static Point Section(Point point) => new(Netplay.GetSectionX(point.X), Netplay.GetSectionY(point.Y));
++
++    private static bool HasSection(RemoteClient client, Point section) => client.TileSections[section.X, section.Y];
++}
