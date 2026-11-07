@@ -15,6 +15,7 @@ public sealed class ApiStartup : IModInitializer
         ClientStartup.HandleLocalCommand = LocalCommands.TryExecute;
         ClientStartup.BlockCraft = recipe => RecipeRegistry.IsBlocked((Recipe)recipe);
         ClientContent.FinalizeRegistration = ItemRegistry.Freeze;
+        ClientContent.ServerReady = GameBridge.ReadyServer;
     }
 }
 
@@ -27,6 +28,12 @@ public static class GameBridge
 
     internal static bool IsReady => ready;
 
+    internal static void ReadyServer()
+    {
+        ready = true;
+        ServerEvents.Ready.Raise(EventArgs.Empty);
+    }
+
     public static void Ready()
     {
         if (ready)
@@ -38,6 +45,8 @@ public static class GameBridge
 
     public static void Update()
     {
+        if (Main.dedServ)
+            return;
         UpdateWorld();
         Keybinds.Update(Main.keyState, activeWorld != null && FocusHelper.AllowInputProcessing &&
             !Main.gamePaused && !Main.drawingPlayerChat && !Main.blockInput &&
@@ -46,6 +55,8 @@ public static class GameBridge
 
     public static void Tick()
     {
+        if (Main.dedServ)
+            return;
         UpdateWorld();
         if (activeWorld != null && RecordReplay.Mode != RecordReplay.ReplayMode.Replaying &&
             !WorldUpdateStepper.Paused)

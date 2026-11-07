@@ -25,6 +25,8 @@ DOWNLOADED_GAME_DIR = STATE / "game"
 STEAMCMD_DIR = STATE / "steamcmd"
 # Scratch game folder `aether run` launches the client from, and its default saves.
 RUN_DIR = STATE / "run"
+SERVER_RUN_DIR = STATE / "server-run"
+SERVER_SAVES_DIR = STATE / "server-saves"
 SAVES_DIR = STATE / "saves"
 STAMP = BASE / ".stamp"
 

@@ -21,6 +21,8 @@ public static class ClientContent
     public static Action<object, object, object, int>? ItemHitNpc { get; internal set; }
     public static Action<object, object, int>? ItemEquipped { get; internal set; }
     public static bool HasItems => Items.Count != 0;
+    public static bool IsDedicatedServer { get; internal set; }
+    public static Action? ServerReady { get; internal set; }
     public static string? SaveIdentity => profile;
     public static IReadOnlyList<ContentModRequirement> SaveRequirements { get; internal set; } = Array.Empty<ContentModRequirement>();
     internal static Action? FinalizeRegistration { get; set; }
@@ -58,6 +60,8 @@ public static class ClientContent
             ItemUsed = null;
             ItemHitNpc = null;
             ItemEquipped = null;
+            IsDedicatedServer = false;
+            ServerReady = null;
             FinalizeRegistration = null;
             SaveRequirements = Array.Empty<ContentModRequirement>();
             profile = null;

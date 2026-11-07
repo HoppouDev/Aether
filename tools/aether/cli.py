@@ -400,6 +400,30 @@ def run_game(
     )
 
 
+@app.command("server", context_settings=GAME_ARGS)
+def server_command(
+    ctx: typer.Context,
+    game_dir: GameDirOption = None,
+    save_dir: SaveDirOption = None,
+) -> None:
+    """Launch the latest build as a Linux dedicated server with its own save profile."""
+    if host_platform() != "linux":
+        raise AetherError("the Aether dedicated server currently runs on Linux")
+    client = latest_build()
+    check_build(client, "linux")
+    prepare_run_dir(
+        "linux",
+        (game_dir or default_game_dir()).expanduser(),
+        None,
+        client,
+        paths.SERVER_RUN_DIR,
+    )
+    saves = (save_dir or paths.SERVER_SAVES_DIR).expanduser().resolve()
+    code = launch("linux", paths.SERVER_RUN_DIR, saves, ["-aetherserver", *ctx.args])
+    if code != 0:
+        raise typer.Exit(code)
+
+
 @app.command("screens", context_settings=GAME_ARGS)
 def screens(
     ctx: typer.Context,

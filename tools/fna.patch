@@ -34,3 +34,20 @@ index 0481f45..3d63f78 100644
  			}
  			if (handle == IntPtr.Zero)
  			{
+diff --git a/src/FNAPlatform/SDL3_FNAPlatform.cs b/src/FNAPlatform/SDL3_FNAPlatform.cs
+index d816dcf..68959c4 100644
+--- a/src/FNAPlatform/SDL3_FNAPlatform.cs
++++ b/src/FNAPlatform/SDL3_FNAPlatform.cs
+@@ -343,7 +343,11 @@ namespace Microsoft.Xna.Framework
+ 				SDL.SDL_WindowFlags.SDL_WINDOW_HIDDEN |
+ 				SDL.SDL_WindowFlags.SDL_WINDOW_INPUT_FOCUS |
+ 				SDL.SDL_WindowFlags.SDL_WINDOW_MOUSE_FOCUS
+-			) | (SDL.SDL_WindowFlags) FNA3D.FNA3D_PrepareWindowAttributes();
++			);
++			if (Environment.GetEnvironmentVariable("AETHER_DEDICATED_SERVER") != "1")
++			{
++				initFlags |= (SDL.SDL_WindowFlags) FNA3D.FNA3D_PrepareWindowAttributes();
++			}
+
+ 			if ((initFlags & SDL.SDL_WindowFlags.SDL_WINDOW_VULKAN) == SDL.SDL_WindowFlags.SDL_WINDOW_VULKAN)
+ 			{

@@ -1,0 +1,11 @@
+--- a/Terraria/MessageBuffer.cs
++++ b/Terraria/MessageBuffer.cs
+@@ -200,7 +200,7 @@
+                 {
+                     break;
+                 }
+-                if (reader.ReadString() == "Terraria" + 326)
++                if (!Aether.Modding.ClientContent.HasItems && reader.ReadString() == "Terraria" + 326)
+                 {
+                     if (string.IsNullOrEmpty(Netplay.ServerPassword))
+                     {

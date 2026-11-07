@@ -54,27 +54,58 @@
              }
          }
      }
-@@ -180,16 +206,13 @@
+@@ -180,20 +206,45 @@
      public static void LaunchGame(string[] args, bool monoArgs = false)
      {
          Thread.CurrentThread.Name = "Main Thread";
 -        if (monoArgs)
--        {
++        LaunchParameters = Aether.Modding.ClientStartup.ParseArguments(args, monoArgs);
++        bool dedicated = Aether.Modding.ClientContent.IsDedicatedServer;
++        if (!dedicated)
+         {
 -            args = Utils.ConvertMonoArgsToDotNet(args);
--        }
-         LogFNANativeLibVersions();
++            LogFNANativeLibVersions();
+         }
+-        LogFNANativeLibVersions();
 -        LaunchParameters = Utils.ParseArguements(args);
 -        SavePath = (LaunchParameters.ContainsKey("-savedirectory") ? LaunchParameters["-savedirectory"] : Platform.Get<IPathService>().GetStoragePath("Terraria"));
-+        LaunchParameters = Aether.Modding.ClientStartup.ParseArguments(args, monoArgs);
 +        SavePath = Aether.Modding.ClientStartup.ResolveSavePath(LaunchParameters);
          ThreadPool.SetMinThreads(8, 8);
          InitializeConsoleOutput();
          SetupLogging();
 +        Aether.Modding.ClientStartup.InitializeMods?.Invoke();
++        if (dedicated)
++        {
++            RunDedicatedServer();
++            return;
++        }
          Platform.Get<IWindowService>().SetQuickEditEnabled(enabled: false);
          RunGame();
      }
-@@ -240,7 +263,8 @@
+ 
++    [MethodImpl(MethodImplOptions.NoInlining)]
++    private static void RunDedicatedServer()
++    {
++        Main.dedServ = true;
++        Environment.SetEnvironmentVariable("AETHER_DEDICATED_SERVER", "1");
++        SDL.SDL_SetHintWithPriority(SDL.SDL_HINT_VIDEO_DRIVER, "dummy", SDL.SDL_HintPriority.SDL_HINT_OVERRIDE);
++        SDL.SDL_SetHintWithPriority(SDL.SDL_HINT_AUDIO_DRIVER, "dummy", SDL.SDL_HintPriority.SDL_HINT_OVERRIDE);
++        LanguageManager.Instance.SetLanguage(GameCulture.DefaultCulture);
++        using Main main = new Main();
++        Lang.InitializeLegacyLocalization();
++        SocialAPI.Initialize(SocialMode.None);
++        LaunchInitializer.LoadParameters(main);
++        main.DedServ();
++        if (WorldGen.loadFailed)
++        {
++            Environment.ExitCode = 1;
++        }
++    }
++
+     public static void RunGame()
+     {
+         LanguageManager.Instance.SetLanguage(GameCulture.DefaultCulture);
+@@ -240,7 +291,8 @@
      private static void LogFNANativeLibVersions()
      {
          Console.WriteLine(("SDL v" + SDL.SDL_GetVersion() + "." + SDL.SDL_GetRevision()) ?? "");

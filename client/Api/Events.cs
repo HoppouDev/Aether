@@ -28,6 +28,12 @@ public static class ClientEvents
     public static ApiEvent<EventArgs> Ready { get; } = new();
 }
 
+public static class ServerEvents
+{
+    public static bool IsDedicatedServer => ClientContent.IsDedicatedServer;
+    public static ApiEvent<EventArgs> Ready { get; } = new();
+}
+
 public static class WorldEvents
 {
     public static ApiEvent<WorldInfo> Entered { get; } = new();

@@ -17,10 +17,15 @@ internal static class Program
         string? temporary = null;
         string savePath = ".";
         string phase = "startup";
+        bool dedicated = false;
         try
         {
             var parameters = ClientStartup.ParseArguments(args, monoArgs: true);
             savePath = ClientStartup.ResolveSavePath(parameters);
+            dedicated = parameters.ContainsKey("-aetherserver");
+            if (dedicated && !OperatingSystem.IsLinux())
+                throw new PlatformNotSupportedException("Aether's dedicated server currently runs on Linux.");
+            ClientContent.IsDedicatedServer = dedicated;
             string clientPath = Path.Combine(AppContext.BaseDirectory, "Terraria.dll");
             string modsPath = Path.Combine(savePath, "Mods");
             string[] archives = parameters.ContainsKey("-nomods") || !Directory.Exists(modsPath)
@@ -152,7 +157,8 @@ internal static class Program
             catch (UnauthorizedAccessException) { }
 
             Console.Error.WriteLine(message);
-            ShowError(message);
+            if (!dedicated)
+                ShowError(message);
             return 1;
         }
         finally
