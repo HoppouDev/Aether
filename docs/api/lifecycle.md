@@ -15,8 +15,8 @@ WorldEvents.Left.Register(world => Console.WriteLine($"Left {world.Name}"));
 | Event | Timing |
 | --- | --- |
 | `ClientEvents.Ready` | Once after the engine has loaded and the title menu has drawn. |
-| `WorldEvents.Entered` | Once when the local client reaches playable state in a world. |
-| `WorldEvents.Left` | Once when the world session ends, the client switches worlds, or the client exits normally from a world. |
+| `WorldEvents.Entered` | Once when the client reaches playable state or the dedicated server starts the world. |
+| `WorldEvents.Left` | Once when the world session ends, including normal client exit or dedicated server shutdown. |
 | `WorldEvents.Tick` | After a gameplay update in the active world. Paused gameplay, debugger world steps, and replay updates are skipped. |
 | `ServerEvents.Ready` | Once after a dedicated server loads the world and opens its listener. |
 | `ServerEvents.PlayerJoined` | After an accepted player finishes joining the world. The listener receives the server's live `Terraria.Player` instance. |
@@ -26,5 +26,5 @@ The `Entered` and `Left` events delimit a session.
 Use `Left` to release resources you acquired in `Entered`.
 
 `ServerEvents.IsDedicatedServer` is available during initialization so a mod can register side-specific listeners.
-Register custom item definitions on both sides in the same order-independent set.
+Register the same custom item and entity definitions on the client and server.
 See [dedicated servers](server.md) for launch arguments and connection rules.

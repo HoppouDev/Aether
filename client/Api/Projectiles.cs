@@ -156,7 +156,7 @@ public static class ProjectileRegistry
 
     private static void OnSpawn(Projectile projectile, IEntitySource source)
     {
-        if (Main.netMode != 0 || !GameBridge.WorldReady || !Registration.IsGameThread)
+        if (!Registration.IsGameThread || !GameBridge.AuthoritativeWorld)
             return;
         var behavior = callbacks[projectile.type - ProjectileID.VanillaCount];
         var handle = new ProjectileHandle(projectile.whoAmI, GameBridge.WorldRevision, projectile.AetherSpawnIdentity);

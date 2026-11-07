@@ -144,7 +144,7 @@ internal static class Program
                     ClientContent.SaveRequirements = Array.AsReadOnly(required.Select(id =>
                         new ContentModRequirement(id, packagesById[id].Manifest.Version)).ToArray());
                 }
-                if (requestModdedConnection || ClientContent.HasItems)
+                if (requestModdedConnection || ClientContent.HasItems || ClientContent.HasEntities)
                     ConfigureConnection(terrariaVersion, aetherVersion, packages);
                 phase = "game startup";
             };
@@ -194,10 +194,12 @@ internal static class Program
             terrariaVersion,
             aetherVersion,
             itemMapping = ClientContent.SaveIdentity,
+            npcMapping = ClientContent.Npcs.Select(npc => npc.Id),
+            projectileMapping = ClientContent.Projectiles.Select(projectile => projectile.Id),
             mods = packages.OrderBy(package => package.Manifest.Id, StringComparer.Ordinal)
                 .Select(package => new { package.Manifest.Id, package.Manifest.Version, package.Digest })
         });
-        ClientContent.ConnectionVersion = "Aether/1/" + Convert.ToHexStringLower(SHA256.HashData(profile));
+        ClientContent.ConnectionVersion = "Aether/2/" + Convert.ToHexStringLower(SHA256.HashData(profile));
     }
 
     internal static readonly HashSet<string> SharedNames = new(StringComparer.OrdinalIgnoreCase)

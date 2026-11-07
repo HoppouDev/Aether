@@ -1,6 +1,14 @@
 --- a/Terraria/Netplay.cs
 +++ b/Terraria/Netplay.cs
-@@ -777,11 +777,16 @@
+@@ -424,6 +424,7 @@
+ 
+     private static void ClientLoopSetup(RemoteAddress address)
+     {
++        Aether.Modding.EntityWire.ResetClient();
+         Connection.ResetSpecialFlags();
+         ResetNetDiag();
+         Main.ServerSideCharacter = false;
+@@ -777,11 +778,16 @@
          return y / 150;
      }
  
@@ -20,7 +28,7 @@
          new DateTime(0L);
          int num = 0;
          byte[] array;
-@@ -808,7 +813,7 @@
+@@ -808,7 +814,7 @@
              binaryWriter.Flush();
              array = memoryStream.ToArray();
          }
@@ -29,7 +37,7 @@
          {
              int num2 = 0;
              for (int i = 0; i < 255; i++)
-@@ -821,7 +826,7 @@
+@@ -821,7 +827,7 @@
              array[num] = (byte)num2;
              try
              {
@@ -38,7 +46,7 @@
              }
              catch
              {
-@@ -836,7 +841,9 @@
+@@ -836,7 +842,9 @@
          {
              StopBroadCasting();
          }
@@ -49,7 +57,7 @@
          broadcastThread.Start();
      }
  
-@@ -844,7 +851,7 @@
+@@ -844,7 +852,7 @@
      {
          if (broadcastThread != null)
          {

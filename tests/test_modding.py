@@ -98,7 +98,7 @@ def test_connection_profile_uses_exact_archives(game_fixture, tmp_path):
     assembly = FIXTURES / "Mod" / CONFIG / MOD
     dependency = FIXTURES / "Dependency" / CONFIG / DEPENDENCY
     empty = connection_profile(game_fixture, tmp_path, "-aetherjoin")
-    assert empty.startswith("Aether/1/")
+    assert empty.startswith("Aether/2/")
     assert connection_profile(game_fixture, tmp_path) == "VANILLA"
 
     archive(tmp_path, "alpha", [assembly], extras=[("resources/data.txt", "first")])

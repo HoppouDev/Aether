@@ -1,0 +1,11 @@
+--- a/Terraria/Net/NetModule.cs
++++ b/Terraria/Net/NetModule.cs
+@@ -6,6 +6,8 @@
+ {
+     public abstract bool Deserialize(BinaryReader reader, int userId);
+ 
++    internal virtual bool Deserialize(BinaryReader reader, int userId, int payloadLength) => Deserialize(reader, userId);
++
+     protected static NetPacket CreatePacket<T>(int maxSize = 65530) where T : NetModule
+     {
+         ushort id = NetManager.Instance.GetId<T>();

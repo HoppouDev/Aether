@@ -7,7 +7,18 @@
  using Ionic.Zlib;
  using Microsoft.Xna.Framework;
  using Microsoft.Xna.Framework.Graphics.PackedVector;
-@@ -130,7 +131,7 @@
+@@ -84,6 +85,10 @@
+         {
+             return;
+         }
++        if ((msgType == 23 || msgType == 28 && Main.netMode == 2) && Main.npc[number].AetherIsCustom ||
++            msgType == 27 && Main.projectile[number].AetherIsCustom)
++            return;
++
+         switch (msgType)
+         {
+         case 21:
+@@ -130,7 +135,7 @@
              switch (msgType)
              {
              case 1:
@@ -16,7 +27,7 @@
                  break;
              case 2:
                  text.Serialize(writer);
-@@ -219,6 +220,7 @@
+@@ -219,6 +224,7 @@
                      [0] = item5.favorited,
                      [1] = number3 != 0f
                  });
@@ -24,7 +35,7 @@
                  break;
              }
              case 7:
-@@ -669,6 +671,7 @@
+@@ -669,6 +675,7 @@
                  {
                      writer.Write((byte)MathHelper.Clamp(worldItem4.enemyGrabDelayTime, 0f, 255f));
                  }
@@ -32,7 +43,16 @@
                  break;
              }
              case 151:
-@@ -870,13 +873,17 @@
+@@ -851,6 +858,8 @@
+                 writer.Write(number3);
+                 writer.Write((byte)(number4 + 1f));
+                 writer.Write((byte)number5);
++                if (Main.netMode == 1 && Main.npc[number].AetherIsCustom)
++                    writer.Write(Aether.Modding.EntityWire.NpcIdentity(number));
+                 break;
+             case 29:
+                 writer.Write(number);
+@@ -870,13 +879,17 @@
                  writer.Write((short)number);
                  writer.Write((byte)number2);
                  short value2 = (short)item6.type;
@@ -51,7 +71,7 @@
                  break;
              }
              case 33:
-@@ -1818,6 +1825,7 @@
+@@ -1818,6 +1831,7 @@
                          if (num22 != ignoreClient && (buffer[num22].broadcast || (Netplay.Clients[num22].State >= 3 && msgType == 10)) && Netplay.Clients[num22].IsConnected())
                          {
                              SendPacket(buffer[num].writeBuffer, num22);
@@ -59,7 +79,7 @@
                          }
                      }
                      break;
-@@ -1836,6 +1844,7 @@
+@@ -1836,6 +1850,7 @@
                      break;
                  }
                  SendPacket(buffer[num].writeBuffer, remoteClient);

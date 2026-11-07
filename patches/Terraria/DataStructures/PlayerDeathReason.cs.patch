@@ -1,0 +1,27 @@
+--- a/Terraria/DataStructures/PlayerDeathReason.cs
++++ b/Terraria/DataStructures/PlayerDeathReason.cs
+@@ -37,7 +37,7 @@
+     {
+         get
+         {
+-            if (_sourceProjectileLocalIndex >= 0)
++            if (_sourceProjectileLocalIndex >= 0 || _sourceProjectileType >= ID.ProjectileID.VanillaCount)
+             {
+                 return _sourceProjectileType;
+             }
+@@ -47,6 +47,15 @@
+ 
+     public string CustomReason => _sourceCustomReason;
+ 
++    internal bool AetherCustomEntityDamage => _sourceProjectileType >= ID.ProjectileID.VanillaCount ||
++        (uint)_sourceNPCIndex < Main.maxNPCs && Main.npc[_sourceNPCIndex].AetherIsCustom;
++
++    internal static PlayerDeathReason ByAetherProjectile(Player player, int projectileType) => new PlayerDeathReason
++    {
++        _sourceProjectileType = projectileType,
++        _sourceCustomReason = $"{player.name} was struck by {Lang.GetProjectileName(projectileType).Value}."
++    };
++
+     public bool TryGetCausingEntity(out Entity entity)
+     {
+         entity = null;

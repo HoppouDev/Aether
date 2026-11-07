@@ -5,13 +5,17 @@
  using Terraria.GameContent;
  using Terraria.GameContent.NetModules;
  using Terraria.Net;
-@@ -23,5 +24,9 @@
+@@ -23,5 +24,13 @@
          NetManager.Instance.Register<CraftingRequests.NetCraftingRequestsModule>();
          NetManager.Instance.Register<LeashedEntity.NetModule>();
          NetManager.Instance.Register<UnbreakableWallScan.NetModule>();
 +        if (ClientContent.HasItems)
 +        {
 +            NetManager.Instance.Register<DisplayItemStateModule>();
++        }
++        if (ClientContent.HasEntities)
++        {
++            NetManager.Instance.Register<EntityWire>();
 +        }
      }
  }

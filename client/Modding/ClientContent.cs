@@ -59,9 +59,11 @@ public static class ClientContent
     public static Action<object, object, int>? ProjectileHitPlayer { get; internal set; }
     public static Action<object, EntityRemovalReason>? ProjectileRemoved { get; internal set; }
     public static bool HasItems => Items.Count != 0;
+    public static bool HasEntities => Npcs.Count != 0 || Projectiles.Count != 0;
     public static bool IsDedicatedServer { get; internal set; }
     public static string? ConnectionVersion { get; internal set; }
     public static Action? ServerReady { get; internal set; }
+    public static Action? ServerStopped { get; internal set; }
     public static Action<int>? ServerPlayerJoined { get; internal set; }
     public static string? SaveIdentity => profile;
     public static IReadOnlyList<ContentModRequirement> SaveRequirements { get; internal set; } = Array.Empty<ContentModRequirement>();
@@ -158,6 +160,7 @@ public static class ClientContent
             IsDedicatedServer = false;
             ConnectionVersion = null;
             ServerReady = null;
+            ServerStopped = null;
             ServerPlayerJoined = null;
             FinalizeRegistration = null;
             SaveRequirements = Array.Empty<ContentModRequirement>();

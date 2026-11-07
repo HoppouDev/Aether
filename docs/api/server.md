@@ -30,19 +30,19 @@ To prefill the address and port and go straight to character selection, use the 
 ./aether launch -- -aetherjoin -join 127.0.0.1 -port 7777
 ```
 
-Clients with custom items select the Aether protocol automatically.
+Clients with custom items, NPCs, or projectiles select the Aether protocol automatically.
 Use a character without local custom items for a dedicated server session.
 
 ## Compatibility
 
 The server verifies the connection before sending player or world data.
-The profile includes the Aether protocol revision, Aether and Terraria versions, the full set of mod IDs and versions, each archive's SHA-256 digest, and the ordered custom item mapping.
+The profile includes the Aether protocol revision, Aether and Terraria versions, the full set of mod IDs and versions, each archive's SHA-256 digest, and the ordered custom item, NPC, and projectile mappings.
 Copy the same archives to both machines because repacking can change the digest.
-An extra client archive or a mod that registers different item IDs on the server also causes a mismatch.
+An extra client archive or a mod that registers different content IDs on the server also causes a mismatch.
 
 `-nomods` skips discovery and mod code.
 A dedicated server started with `-nomods` still uses the Aether protocol and requires a client started with `-nomods -aetherjoin` and matching builds.
-Run the client without `-aetherjoin` and without custom items to use the standard Terraria connection protocol.
+Run the client without `-aetherjoin` and without custom content to use the standard Terraria connection protocol.
 Host & Play uses the separate vanilla server.
 
 ## Custom items
@@ -99,3 +99,9 @@ Item use, hit, and equipment callbacks run in single-player.
 Run `Tiles.BreakBlock` from a server-side game-thread callback.
 The server validates and breaks the block, then synchronizes affected cells, containers, display items, and drops.
 See the [world and tile API](world.md#direct-block-breaking) for supported blocks, result values, and drop behavior.
+
+## Custom entities
+
+The Aether connection profile uses protocol revision `2` for custom entity synchronization.
+Custom NPCs and projectiles are simulated on the dedicated server and observed by clients.
+See [NPCs and projectiles](entities.md#dedicated-server-authority) for spawn ownership and behavior rules.

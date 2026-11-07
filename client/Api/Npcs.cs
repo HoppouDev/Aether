@@ -148,7 +148,7 @@ public static class NpcRegistry
 
     private static void OnSpawn(NPC npc, IEntitySource source)
     {
-        if (Main.netMode != 0 || !GameBridge.WorldReady || !Registration.IsGameThread)
+        if (!Registration.IsGameThread || !GameBridge.AuthoritativeWorld)
             return;
         var behavior = callbacks[npc.type - NPCID.VanillaCount];
         var handle = new NpcHandle(npc.whoAmI, GameBridge.WorldRevision, npc.AetherSpawnIdentity);

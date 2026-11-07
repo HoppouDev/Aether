@@ -22,6 +22,7 @@ public sealed class ApiStartup : IModInitializer
         };
         ClientContent.ApplyPlayerModifiers = player => PlayerModifiers.Apply((Player)player);
         ClientContent.ServerReady = GameBridge.ReadyServer;
+        ClientContent.ServerStopped = GameBridge.EndWorld;
         ClientContent.ServerPlayerJoined = index => ServerEvents.PlayerJoined.Raise(Main.player[index]);
     }
 }
@@ -40,9 +41,13 @@ public static class GameBridge
     internal static bool WorldReady => ready && !endingWorld && !Main.gameMenu && !WorldGen.isGeneratingOrLoadingWorld &&
         (Main.dedServ || Main.CanUpdateGameplay) && (Main.netMode != 1 || !Netplay.Disconnect);
 
+    internal static bool AuthoritativeWorld => WorldReady &&
+        (Main.netMode == 0 || Main.netMode == 2 && ServerEvents.IsDedicatedServer);
+
     internal static void ReadyServer()
     {
         ready = true;
+        UpdateWorld();
         ServerEvents.Ready.Raise(EventArgs.Empty);
     }
 
@@ -67,8 +72,6 @@ public static class GameBridge
 
     public static void Tick()
     {
-        if (Main.dedServ)
-            return;
         UpdateWorld();
         if (activeWorld != null && RecordReplay.Mode != RecordReplay.ReplayMode.Replaying &&
             !WorldUpdateStepper.Paused)
@@ -84,7 +87,7 @@ public static class GameBridge
         activeWorld = current;
         if (current != null)
         {
-            world = new WorldInfo(current.GetWorldName(), current.WorldId, Main.netMode == 1);
+            world = new WorldInfo(current.GetWorldName(), current.WorldId, Main.netMode != 0);
             WorldEvents.Entered.Raise(world);
         }
     }

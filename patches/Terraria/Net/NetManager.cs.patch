@@ -1,0 +1,20 @@
+--- a/Terraria/Net/NetManager.cs
++++ b/Terraria/Net/NetManager.cs
+@@ -55,7 +55,7 @@
+         ushort num = reader.ReadUInt16();
+         if (_modules.ContainsKey(num))
+         {
+-            _modules[num].Deserialize(reader, userId);
++            _modules[num].Deserialize(reader, userId, readLength - 3);
+         }
+         if (addToDiagnostics)
+         {
+@@ -92,7 +92,7 @@
+     private void SendToSelf(NetPacket packet)
+     {
+         packet.Reader.BaseStream.Position = 3L;
+-        Read(packet.Reader, Main.myPlayer, packet.Length, addToDiagnostics: false);
++        Read(packet.Reader, Main.myPlayer, packet.Length - sizeof(ushort), addToDiagnostics: false);
+         packet.Recycle();
+     }
+ 

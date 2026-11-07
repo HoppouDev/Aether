@@ -15,7 +15,7 @@ Snapshots are detached values.
 
 Use `NpcTypeKey.Vanilla` with an `NPCID` and `ProjectileTypeKey.Vanilla` with a `ProjectileID`.
 NPC keys accept vanilla variants with negative IDs.
-Both spawn methods currently run in single-player.
+Vanilla spawning through these methods runs in single-player.
 Pass a Terraria `IEntitySource` so the native spawn path has the source of the action.
 NPC positions use the bottom-center point.
 Projectile positions use the center.
@@ -40,7 +40,7 @@ The engine's per-owner golf ball limit also applies.
 
 Call `NpcRegistry.Register("mod-id:name", definition)` from your initializer.
 The definition declares a display name, sprite, hitbox, maximum health, contact damage, defense, knockback resistance, gravity, tile collision, and optional behavior callbacks.
-Spawn it with `Entities.TrySpawnNpc(NpcTypeKey.Custom("mod-id:name"), spawn, out handle)` after entering a single-player world.
+Spawn it with `Entities.TrySpawnNpc(NpcTypeKey.Custom("mod-id:name"), spawn, out handle)` after entering a single-player world or from an Aether dedicated server.
 Numeric types are allocated by ordinal ID at startup.
 Keep the namespaced key when referring to a definition across launches.
 `NpcRegistry.TryResolve` and `NpcRegistry.TryGetKey` translate between keys and the current runtime IDs.
@@ -68,7 +68,7 @@ A failed spawn or tick callback also retires the NPC with `BehaviorFailed`.
 A successful spawn call means the engine created the entity.
 A spawn callback can immediately remove it.
 
-Custom NPCs are currently transient and single-player.
+Custom NPCs are transient by default.
 They are omitted from vanilla NPC save tables, bestiary kill progress, and banner tracking.
 The example mod registers a Scout and spawns one with `/api-example:spawn-npc`.
 
@@ -81,7 +81,7 @@ Use `Penetration = -1` for unlimited hits.
 `ProjectileTargets.None` gives the projectile a visual and simulation lifetime without damaging targets.
 
 Use `ProjectileTypeKey.Custom` with `Entities.TrySpawnProjectile` and supply the center, velocity, damage, knockback, owner slot, and spawn source.
-Custom projectiles currently spawn in single-player.
+Custom projectiles can spawn in single-player or on an Aether dedicated server.
 Sprites use the same resource format as NPCs, or a compatible vanilla projectile texture and frame count.
 `ProjectileRegistry.TryResolve` and `ProjectileRegistry.TryGetKey` convert between stable keys and runtime IDs.
 
@@ -97,3 +97,17 @@ Use `Entities.TrySetProjectileVelocity` and `Entities.TryDespawnProjectile` with
 The callbacks share per-spawn `EntityBehaviorState`, and use the same callback failure policy as NPCs.
 A projectile can expire, run out of penetration, hit a solid tile, be replaced by a native spawn, or leave with its world.
 The example Scout fires a short-lived pulse using its tick callback.
+
+## Dedicated-server authority
+
+Install the same archives and register the same entity definitions on the server and clients.
+Spawn custom entities on the server from a game-thread callback such as `ServerEvents.Ready`, `ServerEvents.PlayerJoined`, or `WorldEvents.Tick`.
+Set the projectile owner to `255` for server ownership.
+The server runs gameplay callbacks, moves entities, handles collisions and damage, and sends snapshots to clients.
+Clients animate and extrapolate those snapshots between updates.
+They can look up replicas in loaded sections and receive a fresh set when joining.
+
+The server owns custom entity spawns, state, and removal.
+A vanilla strike against a custom NPC sends a request with the spawn identity.
+The server checks the actor, identity, distance, damage fields, and hit cooldown before applying it.
+See [dedicated servers](server.md) for connection requirements.

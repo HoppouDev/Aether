@@ -44,7 +44,7 @@ public static partial class Entities
     {
         Registration.RequireGameThread();
         handle = default;
-        if (!CanSpawn || !NpcRegistry.TryResolve(type, out int id))
+        if (!CanSpawn || Main.netMode == 2 && type.CustomId == null || !NpcRegistry.TryResolve(type, out int id))
             return false;
 
         ArgumentNullException.ThrowIfNull(spawn.Source);
@@ -69,16 +69,18 @@ public static partial class Entities
     {
         Registration.RequireGameThread();
         handle = default;
-        if (!CanSpawn || !ProjectileRegistry.TryResolve(type, out int id))
+        if (!CanSpawn || Main.netMode == 2 && type.CustomId == null || !ProjectileRegistry.TryResolve(type, out int id))
             return false;
 
         ArgumentNullException.ThrowIfNull(spawn.Source);
         RequireWorldPosition(spawn.Center);
-        if (spawn.Owner != Main.myPlayer && spawn.Owner != Main.maxPlayers)
-            throw new ArgumentOutOfRangeException(nameof(spawn.Owner), "Use the local player or 255 for a world-owned projectile.");
+        if (spawn.Owner != Main.maxPlayers && (Main.netMode != 0 || spawn.Owner != Main.myPlayer))
+            throw new ArgumentOutOfRangeException(nameof(spawn.Owner), "Use 255 for a world-owned projectile, or the local player in single-player.");
         RequireFinite(spawn.Velocity.X, nameof(spawn.Velocity));
         RequireFinite(spawn.Velocity.Y, nameof(spawn.Velocity));
         ArgumentOutOfRangeException.ThrowIfNegative(spawn.Damage);
+        if (Main.netMode == 2)
+            ArgumentOutOfRangeException.ThrowIfGreaterThan(spawn.Damage, short.MaxValue);
         RequireFinite(spawn.Knockback, nameof(spawn.Knockback));
         ArgumentOutOfRangeException.ThrowIfNegative(spawn.Knockback);
         RequireFinite(spawn.Ai0, nameof(spawn.Ai0));
@@ -214,7 +216,7 @@ public static partial class Entities
         return result.AsReadOnly();
     }
 
-    private static bool CanSpawn => GameBridge.WorldReady && Main.netMode == 0;
+    private static bool CanSpawn => GameBridge.AuthoritativeWorld;
 
     private static bool IsObserved(Vector2 center)
     {
