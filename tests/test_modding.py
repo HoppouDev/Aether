@@ -86,6 +86,37 @@ def run(game, save, *args):
     )
 
 
+def connection_profile(game, save, *args):
+    result = run(game, save, "-testconnection", *args)
+    assert result.returncode == 0, result.stderr
+    profile, end = result.stdout.splitlines()
+    assert end == "GAME"
+    return profile
+
+
+def test_connection_profile_uses_exact_archives(game_fixture, tmp_path):
+    assembly = FIXTURES / "Mod" / CONFIG / MOD
+    dependency = FIXTURES / "Dependency" / CONFIG / DEPENDENCY
+    empty = connection_profile(game_fixture, tmp_path, "-aetherjoin")
+    assert empty.startswith("Aether/1/")
+    assert connection_profile(game_fixture, tmp_path) == "VANILLA"
+
+    archive(tmp_path, "alpha", [assembly], extras=[("resources/data.txt", "first")])
+    archive(tmp_path, "beta", [dependency], assembly=DEPENDENCY)
+    profile = connection_profile(game_fixture, tmp_path, "-aetherjoin")
+    assert profile != empty
+    assert connection_profile(game_fixture, tmp_path) == "VANILLA"
+    assert connection_profile(game_fixture, tmp_path, "-aetherjoin", "-nomods") == empty
+
+    mods = tmp_path / "Mods"
+    (mods / "alpha.aethermod").rename(mods / "zz-alpha.aethermod")
+    assert connection_profile(game_fixture, tmp_path, "-aetherjoin") == profile
+
+    (mods / "zz-alpha.aethermod").unlink()
+    archive(tmp_path, "alpha", [assembly], extras=[("resources/data.txt", "changed")])
+    assert connection_profile(game_fixture, tmp_path, "-aetherjoin") != profile
+
+
 @pytest.fixture(scope="module")
 def api_assemblies(game_fixture, tmp_path_factory):
     output = tmp_path_factory.mktemp("aether-api")

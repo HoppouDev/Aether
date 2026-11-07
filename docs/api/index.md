@@ -40,3 +40,4 @@ Install `examples/ApiExample/bin/Debug/net10.0/ApiExample.aethermod` alongside t
 - [Keybinds, commands, and HUD](client-tools.md)
 - [Recipes](recipes.md)
 - [Custom items](items.md)
+- [Dedicated servers and multiplayer compatibility](server.md)

@@ -2,7 +2,8 @@
 
 Aether loads trusted .NET 10 mods before starting the game.
 A mod can run an initializer, declare changes to the client assembly, or do both.
-For shared lifecycle, client, and recipe hooks, see the [optional Aether API](api/index.md).
+For shared lifecycle hooks, client tools, recipes, and custom items, see the [optional Aether API](api/index.md).
+See [dedicated servers](api/server.md) for multiplayer setup and compatibility.
 Changes are applied in memory for the current run.
 
 ## Build and install

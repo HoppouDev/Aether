@@ -19,6 +19,7 @@ Other fields set dimensions, stack limit, sell value, defense, swing time, and t
 The registry accepts up to 1,024 definitions.
 
 After `ClientEvents.Ready`, call `ItemRegistry.Create(id, stack)` to construct a Terraria `Item`.
+On a dedicated server, create items from `ServerEvents.Ready` onward.
 `TryGetType` resolves an ID to the session's numeric type, and `GetId` returns the stable ID for a custom type.
 Read game item tables and instantiate items after `ClientEvents.Ready` so the client can size its tables once all mods have registered.
 
@@ -37,7 +38,7 @@ If a callback throws, Aether logs it and disables that callback for the session.
 
 ## Save profiles
 
-Custom-item sessions currently use single-player local saves under `AetherContent/` in the active save directory.
+Custom-item profiles use local saves under `AetherContent/` in the active save directory.
 The subfolder is derived from the game version, registered IDs, and owning mod versions.
 Player and world saves in these profiles use a versioned Aether format.
 Use `ItemRegistry.SetState(item, json)` and `ItemRegistry.GetState(item)` to write and read up to 16 KiB of JSON per custom item.
@@ -45,6 +46,8 @@ Passing `null` clears the state.
 Clones keep the state, and items with different state cannot stack.
 The value returned by `GetState` is a detached `JsonElement`; call `SetState` to update it.
 Keep the state schema compatible across releases of your mod.
+In multiplayer, the server owns item state and clients read synchronized copies.
+See [dedicated servers](server.md) for the supported storage locations and how to send updates.
 
 The save header records the ordered item mapping, required content mods, and a profile identity tied to the Terraria build.
 Aether checks compatibility before loading or replacing a save or recovering its backup.
