@@ -1,6 +1,13 @@
 --- a/Terraria/NetMessage.cs
 +++ b/Terraria/NetMessage.cs
-@@ -130,7 +130,7 @@
+@@ -1,5 +1,6 @@
+ using System;
+ using System.IO;
++using Aether.Modding;
+ using Ionic.Zlib;
+ using Microsoft.Xna.Framework;
+ using Microsoft.Xna.Framework.Graphics.PackedVector;
+@@ -130,7 +131,7 @@
              switch (msgType)
              {
              case 1:
@@ -9,3 +16,54 @@
                  break;
              case 2:
                  text.Serialize(writer);
+@@ -219,6 +220,7 @@
+                     [0] = item5.favorited,
+                     [1] = number3 != 0f
+                 });
++                ItemWire.WriteState(writer, item5);
+                 break;
+             }
+             case 7:
+@@ -669,6 +671,7 @@
+                 {
+                     writer.Write((byte)MathHelper.Clamp(worldItem4.enemyGrabDelayTime, 0f, 255f));
+                 }
++                ItemWire.WriteState(writer, worldItem4.inner);
+                 break;
+             }
+             case 151:
+@@ -870,13 +873,17 @@
+                 writer.Write((short)number);
+                 writer.Write((byte)number2);
+                 short value2 = (short)item6.type;
+-                if (item6.Name == null)
++                if (item6.Name == null || (ItemWire.IsCustom(value2) && item6.IsAir))
+                 {
+                     value2 = 0;
+                 }
+                 writer.Write((short)item6.stack);
+                 writer.Write(item6.prefix);
+                 writer.Write(value2);
++                if (value2 != 0)
++                {
++                    ItemWire.WriteState(writer, item6);
++                }
+                 break;
+             }
+             case 33:
+@@ -1818,6 +1825,7 @@
+                         if (num22 != ignoreClient && (buffer[num22].broadcast || (Netplay.Clients[num22].State >= 3 && msgType == 10)) && Netplay.Clients[num22].IsConnected())
+                         {
+                             SendPacket(buffer[num].writeBuffer, num22);
++                            DisplayItemStateModule.SendForPacket(num22, msgType, number, (int)number2, (int)number3, (int)number4);
+                         }
+                     }
+                     break;
+@@ -1836,6 +1844,7 @@
+                     break;
+                 }
+                 SendPacket(buffer[num].writeBuffer, remoteClient);
++                DisplayItemStateModule.SendForPacket(remoteClient, msgType, number, (int)number2, (int)number3, (int)number4);
+             }
+             if (Main.verboseNetplay)
+             {

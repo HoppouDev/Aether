@@ -1,0 +1,17 @@
+--- a/Terraria/Initializers/NetworkInitializer.cs
++++ b/Terraria/Initializers/NetworkInitializer.cs
+@@ -1,3 +1,4 @@
++using Aether.Modding;
+ using Terraria.GameContent;
+ using Terraria.GameContent.NetModules;
+ using Terraria.Net;
+@@ -23,5 +24,9 @@
+         NetManager.Instance.Register<CraftingRequests.NetCraftingRequestsModule>();
+         NetManager.Instance.Register<LeashedEntity.NetModule>();
+         NetManager.Instance.Register<UnbreakableWallScan.NetModule>();
++        if (ClientContent.HasItems)
++        {
++            NetManager.Instance.Register<DisplayItemStateModule>();
++        }
+     }
+ }

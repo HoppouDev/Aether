@@ -8,7 +8,32 @@
  using System.Linq;
  using System.Security.Cryptography;
  using System.Text;
-@@ -13021,6 +13022,10 @@
+@@ -5161,6 +5162,10 @@
+ 
+     public void DropSelectedItem(int slot, ref Item theItemWeDrop)
+     {
++        if (ItemWire.IsReadOnly(theItemWeDrop) || ItemWire.IsReadOnly(Main.mouseItem))
++        {
++            return;
++        }
+         bool flag = false;
+         if (theItemWeDrop.favorited)
+         {
+@@ -5656,6 +5661,13 @@
+     {
+         if ((whoAmI != Main.myPlayer || (!UsingOrReusingItem && !CCed && !dead)) && loadoutIndex != CurrentLoadoutIndex && loadoutIndex >= 0 && loadoutIndex < Loadouts.Length)
+         {
++            if (Main.netMode != 0 && ClientContent.HasItems &&
++                (armor.Any(item => ItemWire.IsCustom(item.type)) || dye.Any(item => ItemWire.IsCustom(item.type)) ||
++                Loadouts[loadoutIndex].Armor.Any(item => ItemWire.IsCustom(item.type)) ||
++                Loadouts[loadoutIndex].Dye.Any(item => ItemWire.IsCustom(item.type))))
++            {
++                return;
++            }
+             Loadouts[CurrentLoadoutIndex].Swap(this);
+             Loadouts[loadoutIndex].Swap(this);
+             CurrentLoadoutIndex = loadoutIndex;
+@@ -13021,6 +13033,10 @@
                      GrantPrefixBenefits(effectiveArmor);
                  }
                  GrantArmorBenefits(effectiveArmor);
@@ -19,7 +44,18 @@
              }
          }
          if (flag)
-@@ -37767,6 +37772,7 @@
+@@ -35247,6 +35263,10 @@
+         {
+             WorldItem worldItem = Main.item[j];
+             Invariant.Assert(worldItem.whoAmI == j, "WorldItem index desync");
++            if (ItemWire.IsReadOnly(worldItem.inner))
++            {
++                continue;
++            }
+             if (!worldItem.active || worldItem.shimmerTime != 0f || (worldItem.grabDelayTime > 0 && (worldItem.grabDelayPlayer == i || worldItem.grabDelayPlayer == 255)) || worldItem.playerIndexTheItemIsReservedFor != i || !CanAcceptItemIntoInventory(worldItem) || (worldItem.shimmered && !((double)worldItem.velocity.Length() < 0.2)))
+             {
+                 continue;
+@@ -37767,6 +37787,7 @@
  
      public void Teleport(Vector2 newPos, int Style = 0, int extraInfo = 0)
      {
@@ -27,7 +63,18 @@
          try
          {
              _funkytownAchievementCheckCooldown = 100;
-@@ -44849,6 +44855,10 @@
+@@ -39721,6 +39742,10 @@
+ 
+     public Item GetItem(Item newItem, GetItemSettings settings)
+     {
++        if (ItemWire.IsReadOnly(newItem))
++        {
++            return newItem;
++        }
+         bool isACoin = newItem.IsACoin;
+         Item item = newItem;
+         int num = 50;
+@@ -44849,6 +44874,10 @@
              NPCDamageTracker.SetSourceForNextHit(nPC, PlayerNPCHitSource.FromItem(sItem.type));
              int num4 = nPC.StrikeNPC(num3, knockBack, direction, crit, fromNet: false, whoAmI);
              ApplyNPCOnHitEffects(sItem, itemRectangle, damage, knockBack, nPC, num3, num4);
@@ -38,7 +85,7 @@
              int num5 = BannerSystem.NPCtoBanner(nPC.BannerID());
              if (num5 >= 0)
              {
-@@ -52412,6 +52422,10 @@
+@@ -52412,6 +52441,10 @@
                  SoundEngine.PlaySound(sItem.UseSound, Center, sItem.useSoundPitch);
              }
          }
@@ -49,7 +96,46 @@
      }
  
      private void FreeUpPetsAndMinions(Item sItem)
-@@ -55511,21 +55525,30 @@
+@@ -55137,12 +55170,21 @@
+         {
+             loadouts[i].TryDroppingItems(this, itemSource_Death);
+         }
+-        inventory[0].SetDefaults(3507);
+-        inventory[0].Prefix(-1);
+-        inventory[1].SetDefaults(3509);
+-        inventory[1].Prefix(-1);
+-        inventory[2].SetDefaults(3506);
+-        inventory[2].Prefix(-1);
++        if (!ItemWire.IsReadOnly(inventory[0]))
++        {
++            inventory[0].SetDefaults(3507);
++            inventory[0].Prefix(-1);
++        }
++        if (!ItemWire.IsReadOnly(inventory[1]))
++        {
++            inventory[1].SetDefaults(3509);
++            inventory[1].Prefix(-1);
++        }
++        if (!ItemWire.IsReadOnly(inventory[2]))
++        {
++            inventory[2].SetDefaults(3506);
++            inventory[2].Prefix(-1);
++        }
+     }
+ 
+     public void TryDroppingSingleItem(IEntitySource source, Item theItem)
+@@ -55152,6 +55194,10 @@
+ 
+     public void TryDroppingSingleItem(IEntitySource source, Item theItem, int stack)
+     {
++        if (ItemWire.IsReadOnly(theItem))
++        {
++            return;
++        }
+         if (stack > 0 && Main.netMode != 1)
+         {
+             Item.NewItem(velocity: new Vector2((float)Main.rand.Next(-20, 21) * 0.2f, (float)Main.rand.Next(-20, 1) * 0.2f), source: source, X: (int)position.X, Y: (int)position.Y, Width: width, Height: height, type: theItem.type, stack: stack, noBroadcast: false, prefix: theItem.prefix);
+@@ -55511,21 +55557,30 @@
          {
              return;
          }
@@ -84,68 +170,98 @@
          {
              SocialAPI.Cloud.Write(playerFile.Path, ((MemoryStream)stream).ToArray());
          }
-@@ -55595,51 +55618,51 @@
+@@ -55595,54 +55650,63 @@
          fileIO.Write(newPlayer.shoeColor.B);
          for (int k = 0; k < newPlayer.armor.Length; k++)
          {
 -            fileIO.Write(newPlayer.armor[k].type);
-+            ItemSave.WriteType(fileIO, newPlayer.armor[k]);
-             fileIO.Write(newPlayer.armor[k].prefix);
-             fileIO.Write(newPlayer.armor[k].favorited);
+-            fileIO.Write(newPlayer.armor[k].prefix);
+-            fileIO.Write(newPlayer.armor[k].favorited);
++            Item item = newPlayer.armor[k].LocalSaveItem;
++            ItemSave.WriteType(fileIO, item);
++            fileIO.Write(item.prefix);
++            fileIO.Write(item.favorited);
          }
          for (int l = 0; l < newPlayer.dye.Length; l++)
          {
 -            fileIO.Write(newPlayer.dye[l].type);
-+            ItemSave.WriteType(fileIO, newPlayer.dye[l]);
-             fileIO.Write(newPlayer.dye[l].prefix);
-             fileIO.Write(newPlayer.dye[l].favorited);
+-            fileIO.Write(newPlayer.dye[l].prefix);
+-            fileIO.Write(newPlayer.dye[l].favorited);
++            Item item = newPlayer.dye[l].LocalSaveItem;
++            ItemSave.WriteType(fileIO, item);
++            fileIO.Write(item.prefix);
++            fileIO.Write(item.favorited);
          }
          for (int m = 0; m < 58; m++)
          {
 -            fileIO.Write(newPlayer.inventory[m].type);
-+            ItemSave.WriteType(fileIO, newPlayer.inventory[m]);
-             fileIO.Write(newPlayer.inventory[m].stack);
-             fileIO.Write(newPlayer.inventory[m].prefix);
-             fileIO.Write(newPlayer.inventory[m].favorited);
+-            fileIO.Write(newPlayer.inventory[m].stack);
+-            fileIO.Write(newPlayer.inventory[m].prefix);
+-            fileIO.Write(newPlayer.inventory[m].favorited);
++            Item item = newPlayer.inventory[m].LocalSaveItem;
++            ItemSave.WriteType(fileIO, item);
++            fileIO.Write(item.stack);
++            fileIO.Write(item.prefix);
++            fileIO.Write(item.favorited);
          }
          for (int n = 0; n < newPlayer.miscEquips.Length; n++)
          {
 -            fileIO.Write(newPlayer.miscEquips[n].type);
-+            ItemSave.WriteType(fileIO, newPlayer.miscEquips[n]);
-             fileIO.Write(newPlayer.miscEquips[n].prefix);
+-            fileIO.Write(newPlayer.miscEquips[n].prefix);
 -            fileIO.Write(newPlayer.miscDyes[n].type);
-+            ItemSave.WriteType(fileIO, newPlayer.miscDyes[n]);
-             fileIO.Write(newPlayer.miscDyes[n].prefix);
+-            fileIO.Write(newPlayer.miscDyes[n].prefix);
++            Item item = newPlayer.miscEquips[n].LocalSaveItem;
++            ItemSave.WriteType(fileIO, item);
++            fileIO.Write(item.prefix);
++            Item miscDye = newPlayer.miscDyes[n].LocalSaveItem;
++            ItemSave.WriteType(fileIO, miscDye);
++            fileIO.Write(miscDye.prefix);
          }
          for (int num = 0; num < newPlayer.bank.maxItems; num++)
          {
 -            fileIO.Write(newPlayer.bank.item[num].type);
-+            ItemSave.WriteType(fileIO, newPlayer.bank.item[num]);
-             fileIO.Write(newPlayer.bank.item[num].stack);
-             fileIO.Write(newPlayer.bank.item[num].prefix);
+-            fileIO.Write(newPlayer.bank.item[num].stack);
+-            fileIO.Write(newPlayer.bank.item[num].prefix);
++            Item item = newPlayer.bank.item[num].LocalSaveItem;
++            ItemSave.WriteType(fileIO, item);
++            fileIO.Write(item.stack);
++            fileIO.Write(item.prefix);
          }
          for (int num2 = 0; num2 < newPlayer.bank2.maxItems; num2++)
          {
 -            fileIO.Write(newPlayer.bank2.item[num2].type);
-+            ItemSave.WriteType(fileIO, newPlayer.bank2.item[num2]);
-             fileIO.Write(newPlayer.bank2.item[num2].stack);
-             fileIO.Write(newPlayer.bank2.item[num2].prefix);
+-            fileIO.Write(newPlayer.bank2.item[num2].stack);
+-            fileIO.Write(newPlayer.bank2.item[num2].prefix);
++            Item item = newPlayer.bank2.item[num2].LocalSaveItem;
++            ItemSave.WriteType(fileIO, item);
++            fileIO.Write(item.stack);
++            fileIO.Write(item.prefix);
          }
          for (int num3 = 0; num3 < newPlayer.bank3.maxItems; num3++)
          {
 -            fileIO.Write(newPlayer.bank3.item[num3].type);
-+            ItemSave.WriteType(fileIO, newPlayer.bank3.item[num3]);
-             fileIO.Write(newPlayer.bank3.item[num3].stack);
-             fileIO.Write(newPlayer.bank3.item[num3].prefix);
+-            fileIO.Write(newPlayer.bank3.item[num3].stack);
+-            fileIO.Write(newPlayer.bank3.item[num3].prefix);
++            Item item = newPlayer.bank3.item[num3].LocalSaveItem;
++            ItemSave.WriteType(fileIO, item);
++            fileIO.Write(item.stack);
++            fileIO.Write(item.prefix);
          }
          for (int num4 = 0; num4 < newPlayer.bank4.maxItems; num4++)
          {
 -            fileIO.Write(newPlayer.bank4.item[num4].type);
-+            ItemSave.WriteType(fileIO, newPlayer.bank4.item[num4]);
-             fileIO.Write(newPlayer.bank4.item[num4].stack);
-             fileIO.Write(newPlayer.bank4.item[num4].prefix);
-             fileIO.Write(newPlayer.bank4.item[num4].favorited);
-@@ -55857,10 +55880,10 @@
+-            fileIO.Write(newPlayer.bank4.item[num4].stack);
+-            fileIO.Write(newPlayer.bank4.item[num4].prefix);
+-            fileIO.Write(newPlayer.bank4.item[num4].favorited);
++            Item item = newPlayer.bank4.item[num4].LocalSaveItem;
++            ItemSave.WriteType(fileIO, item);
++            fileIO.Write(item.stack);
++            fileIO.Write(item.prefix);
++            fileIO.Write(item.favorited);
+         }
+         fileIO.Write(newPlayer.voidVaultInfo);
+         for (int num5 = 0; num5 < maxBuffs; num5++)
+@@ -55857,10 +55921,10 @@
          {
              RijndaelManaged rijndaelManaged = new RijndaelManaged();
              rijndaelManaged.Padding = PaddingMode.None;
@@ -159,7 +275,7 @@
                  int num = binaryReader.ReadInt32();
                  if (num >= 135)
                  {
-@@ -55878,6 +55901,7 @@
+@@ -55878,6 +55942,7 @@
                      return playerFileData;
                  }
                  Deserialize(playerFileData, player, binaryReader, num, out gotToReadName);
@@ -167,7 +283,7 @@
                  if (player.lastTimePlayerWasSaved == 0L && !cloudSave)
                  {
                      player.lastTimePlayerWasSaved = File.GetLastWriteTimeUtc(playerPath).ToBinary();
-@@ -55888,6 +55912,15 @@
+@@ -55888,6 +55953,15 @@
              playerFileData.Player = player;
              return playerFileData;
          }
@@ -183,7 +299,7 @@
          catch
          {
          }
-@@ -56084,7 +56117,7 @@
+@@ -56084,7 +56158,7 @@
                      {
                          num2 += 2;
                      }
@@ -192,7 +308,7 @@
                      newPlayer.armor[num2].Prefix(fileIO.ReadByte());
                  }
              }
-@@ -56093,7 +56126,7 @@
+@@ -56093,7 +56167,7 @@
                  int num3 = 20;
                  for (int m = 0; m < num3; m++)
                  {
@@ -201,7 +317,7 @@
                      newPlayer.armor[m].Prefix(fileIO.ReadByte());
                      if (release >= 322)
                      {
-@@ -56115,7 +56148,7 @@
+@@ -56115,7 +56189,7 @@
                  for (int n = 0; n < num4; n++)
                  {
                      int num5 = n;
@@ -210,7 +326,7 @@
                      newPlayer.dye[num5].Prefix(fileIO.ReadByte());
                      if (release >= 322)
                      {
-@@ -56140,7 +56173,7 @@
+@@ -56140,7 +56214,7 @@
                      }
                      else
                      {
@@ -219,7 +335,7 @@
                          newPlayer.inventory[num6].stack = fileIO.ReadInt32();
                          newPlayer.inventory[num6].Prefix(fileIO.ReadByte());
                          if (release >= 114)
-@@ -56214,7 +56247,7 @@
+@@ -56214,7 +56288,7 @@
                          }
                          else
                          {
@@ -228,7 +344,7 @@
                              newPlayer.miscEquips[num12].Prefix(fileIO.ReadByte());
                          }
                          num13 = fileIO.ReadInt32();
-@@ -56225,7 +56258,7 @@
+@@ -56225,7 +56299,7 @@
                          }
                          else
                          {
@@ -237,7 +353,7 @@
                              newPlayer.miscDyes[num12].Prefix(fileIO.ReadByte());
                          }
                      }
-@@ -56235,13 +56268,13 @@
+@@ -56235,13 +56309,13 @@
              {
                  for (int num14 = 0; num14 < 40; num14++)
                  {
@@ -253,7 +369,7 @@
                      newPlayer.bank2.item[num15].stack = fileIO.ReadInt32();
                      newPlayer.bank2.item[num15].Prefix(fileIO.ReadByte());
                  }
-@@ -56250,13 +56283,13 @@
+@@ -56250,13 +56324,13 @@
              {
                  for (int num16 = 0; num16 < 20; num16++)
                  {
@@ -269,7 +385,7 @@
                      newPlayer.bank2.item[num17].stack = fileIO.ReadInt32();
                      newPlayer.bank2.item[num17].Prefix(fileIO.ReadByte());
                  }
-@@ -56265,7 +56298,7 @@
+@@ -56265,7 +56339,7 @@
              {
                  for (int num18 = 0; num18 < 40; num18++)
                  {
@@ -278,7 +394,7 @@
                      newPlayer.bank3.item[num18].stack = fileIO.ReadInt32();
                      newPlayer.bank3.item[num18].Prefix(fileIO.ReadByte());
                  }
-@@ -56274,7 +56307,7 @@
+@@ -56274,7 +56348,7 @@
              {
                  for (int num19 = 0; num19 < 40; num19++)
                  {
@@ -287,7 +403,7 @@
                      newPlayer.bank4.item[num19].stack = fileIO.ReadInt32();
                      newPlayer.bank4.item[num19].Prefix(fileIO.ReadByte());
                      if (release >= 255)
-@@ -56658,7 +56691,8 @@
+@@ -56658,7 +56732,8 @@
          {
              if (playerFileData.Player.loadStatus != StatusID.Ok && playerFileData.Player.loadStatus != StatusID.LaterVersion)
              {

@@ -1,0 +1,12 @@
+--- a/Terraria/ID/PlayerItemSlotID.cs
++++ b/Terraria/ID/PlayerItemSlotID.cs
+@@ -10,6 +10,9 @@
+ 
+         public readonly int SlotId = slot;
+ 
++        internal bool IsValid => SlotId == TrashItem ||
++            (SlotId >= 0 && TryGetArraySlot(out var array, out int index) && (uint)index < (uint)array.Length);
++
+         public Item Item
+         {
+             get

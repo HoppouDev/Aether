@@ -1,0 +1,19 @@
+--- a/Terraria/UI/ItemSorting.cs
++++ b/Terraria/UI/ItemSorting.cs
+@@ -1,6 +1,7 @@
+ using System;
+ using System.Collections.Generic;
+ using System.Linq;
++using Aether.Modding;
+ using Terraria.ID;
+ using Terraria.Testing;
+ 
+@@ -1446,7 +1447,7 @@
+             if (!ignoreSlots.Contains(i))
+             {
+                 Item item = inv[i];
+-                if (item != null && item.stack != 0 && item.type != 0 && !item.favorited)
++                if (item != null && item.stack != 0 && item.type != 0 && !item.favorited && !ItemWire.IsReadOnly(item))
+                 {
+                     _sort_itemsToSort.Add(i);
+                 }

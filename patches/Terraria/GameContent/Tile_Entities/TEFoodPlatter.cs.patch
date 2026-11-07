@@ -1,13 +1,21 @@
 --- a/Terraria/GameContent/Tile_Entities/TEFoodPlatter.cs
 +++ b/Terraria/GameContent/Tile_Entities/TEFoodPlatter.cs
-@@ -1,4 +1,5 @@
+@@ -1,4 +1,6 @@
++using System.Collections.Generic;
  using System.IO;
 +using Aether.Modding;
  using Terraria.DataStructures;
  using Terraria.ID;
  
-@@ -40,7 +41,7 @@
+@@ -38,9 +40,14 @@
+         return true;
+     }
  
++    internal override IEnumerable<Item> DisplayItems()
++    {
++        yield return item;
++    }
++
      public override void WriteExtraData(BinaryWriter writer, bool networkSend)
      {
 -        writer.Write((short)item.type);
@@ -15,7 +23,7 @@
          writer.Write(item.prefix);
          writer.Write((short)item.stack);
      }
-@@ -48,7 +49,7 @@
+@@ -48,7 +55,7 @@
      public override void ReadExtraData(BinaryReader reader, int gameVersion, bool networkSend)
      {
          item = new Item();
@@ -24,3 +32,43 @@
          item.Prefix(reader.ReadByte());
          item.stack = reader.ReadInt16();
      }
+@@ -62,7 +69,7 @@
+     {
+         if (Main.netMode != 1)
+         {
+-            Item.NewItem(new EntitySource_TileBreak(Position.X, Position.Y), Position.X * 16, Position.Y * 16, 16, 16, item.type, 1, noBroadcast: false, item.prefix);
++            Item.NewItem(new EntitySource_TileBreak(Position.X, Position.Y), Position.X * 16, Position.Y * 16, 16, 16, item.type, 1, noBroadcast: false, item.prefix, modifier: spawned => spawned.inner.AetherState = item.AetherState);
+         }
+         item = new Item();
+     }
+@@ -94,7 +101,7 @@
+             player.GamepadEnableGrappleCooldown();
+             PlaceItemInFrame(player, clickX, clickY);
+         }
+-        else if (TileEntity.TryGetAt<TEFoodPlatter>(clickX, clickY, out result) && result.item.stack > 0)
++        else if (TileEntity.TryGetAt<TEFoodPlatter>(clickX, clickY, out result) && result.item.stack > 0 && !ItemWire.IsReadOnly(result.item))
+         {
+             player.GamepadEnableGrappleCooldown();
+             WorldGen.KillTile(clickX, clickY, fail: true);
+@@ -107,6 +114,10 @@
+ 
+     public static bool FitsFoodPlatter(Item i)
+     {
++        if (ItemWire.IsReadOnly(i))
++        {
++            return false;
++        }
+         if (i.stack > 0)
+         {
+             return ItemID.Sets.IsFood[i.type];
+@@ -120,6 +131,10 @@
+         {
+             return;
+         }
++        if (ItemWire.IsReadOnly(result.item) || ItemWire.IsReadOnly(player.inventory[player.selectedItem]))
++        {
++            return;
++        }
+         if (result.item.stack > 0)
+         {
+             WorldGen.KillTile(x, y, fail: true);

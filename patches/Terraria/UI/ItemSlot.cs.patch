@@ -1,15 +1,34 @@
 --- a/Terraria/UI/ItemSlot.cs
 +++ b/Terraria/UI/ItemSlot.cs
-@@ -885,19 +885,23 @@
+@@ -1,5 +1,6 @@
+ using System;
+ using System.Collections.Generic;
++using Aether.Modding;
+ using Microsoft.Xna.Framework;
+ using Microsoft.Xna.Framework.Graphics;
+ using Terraria.Audio;
+@@ -701,6 +702,10 @@
+ 
+     private static bool OverrideLeftClick(Item[] inv, int context = 0, int slot = 0)
+     {
++        if (ItemWire.IsReadOnly(inv[slot]) || ItemWire.IsReadOnly(Main.mouseItem))
++        {
++            return true;
++        }
+         if (Main.LocalPlayer.tileEntityAnchor.IsInValidUseTileEntity() && ShiftInUse && Main.LocalPlayer.tileEntityAnchor.GetTileEntity().PerformShiftClickAction(inv, context, slot))
+         {
+             return true;
+@@ -885,19 +890,23 @@
  
      public static void LeftClick(Item[] inv, int context = 0, int slot = 0)
      {
+-        if (Main.LocalPlayerHasPendingInventoryActions())
 +        LeftClick(inv, context, slot, Main.mouseLeftRelease && Main.mouseLeft, useCursorOverride: true);
 +    }
 +
 +    internal static void LeftClick(Item[] inv, int context, int slot, bool pressed, bool useCursorOverride)
 +    {
-         if (Main.LocalPlayerHasPendingInventoryActions())
++        if (Main.LocalPlayerHasPendingInventoryActions() || ItemWire.IsReadOnly(inv[slot]) || ItemWire.IsReadOnly(Main.mouseItem))
          {
              return;
          }
@@ -27,7 +46,16 @@
          {
              return;
          }
-@@ -2684,7 +2688,7 @@
+@@ -1613,7 +1622,7 @@
+ 
+     public static void RightClick(Item[] inv, int context = 0, int slot = 0)
+     {
+-        if (Main.LocalPlayerHasPendingInventoryActions())
++        if (Main.LocalPlayerHasPendingInventoryActions() || ItemWire.IsReadOnly(inv[slot]) || ItemWire.IsReadOnly(Main.mouseItem))
+         {
+             return;
+         }
+@@ -2684,7 +2693,7 @@
              }
              if (num22 != -1)
              {
@@ -36,7 +64,7 @@
              }
              if (context != 37 && (item.stack > 1 || drawState.stackTextDrawFadeOverload > 0f) && num22 == -1)
              {
-@@ -2696,11 +2700,11 @@
+@@ -2696,11 +2705,11 @@
                      num23 *= 1.2f;
                  }
                  float num24 = ((drawState.stackTextDrawFadeOverload > 0f) ? drawState.stackTextDrawFadeOverload : 1f);
@@ -50,7 +78,7 @@
                  if (text == "10")
                  {
                      text = "0";
-@@ -2759,7 +2763,7 @@
+@@ -2759,7 +2768,7 @@
          if (context == 0 && slot < 10)
          {
              float num29 = inventoryScale;
@@ -59,7 +87,7 @@
              if (text2 == "10")
              {
                  text2 = "0";
-@@ -3702,9 +3706,9 @@
+@@ -3702,9 +3711,9 @@
                  {
                      CoinSlot.UpdateSavings(i, num, out drawState);
                  }
@@ -71,7 +99,7 @@
              }
              return;
          }
-@@ -3722,7 +3726,7 @@
+@@ -3722,7 +3731,7 @@
                  CoinSlot.UpdateSavings(j, num3, out drawState);
              }
              CoinSlot.DrawItemCoin(sb, new Vector2(shopx + 11f + (float)(24 * j), shopy + 75f - drawState.coinYOffset), 74 - j, drawState.coinAnimFrame, 1f, 1024f, Color.White);
@@ -80,7 +108,7 @@
          }
      }
  
-@@ -3734,11 +3738,11 @@
+@@ -3734,11 +3743,11 @@
              CustomCurrencyManager.DrawSavings(sb, _customCurrencyForSavings, shopx, shopy, horizontal);
              return;
          }
@@ -97,7 +125,7 @@
          if (num5 > 0)
          {
              Main.GetItemDrawFrame(4076, out var itemTexture, out var itemFrame);
-@@ -3761,7 +3765,7 @@
+@@ -3761,7 +3770,7 @@
              {
                  sb.Draw(itemTexture4, Utils.CenteredRectangle(new Vector2(shopx + 70f, shopy + 60f), itemTexture4.Size() * 0.65f), null, Color.White);
              }

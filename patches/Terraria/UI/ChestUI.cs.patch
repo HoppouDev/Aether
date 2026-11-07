@@ -1,6 +1,13 @@
 --- a/Terraria/UI/ChestUI.cs
 +++ b/Terraria/UI/ChestUI.cs
-@@ -85,8 +85,11 @@
+@@ -1,5 +1,6 @@
+ using System;
+ using System.Collections.Generic;
++using Aether.Modding;
+ using Microsoft.Xna.Framework;
+ using Microsoft.Xna.Framework.Graphics;
+ using Microsoft.Xna.Framework.Input;
+@@ -85,8 +86,11 @@
              {
                  Main.player[Main.myPlayer].mouseInterface = true;
              }
@@ -14,7 +21,7 @@
              DrawSlots(spritebatch);
          }
          else
-@@ -323,6 +326,10 @@
+@@ -323,6 +327,10 @@
  
      private static void DrawSlots(SpriteBatch spriteBatch)
      {
@@ -25,3 +32,78 @@
          int num = 10;
          int num2 = 4;
          Player player = Main.player[Main.myPlayer];
+@@ -395,7 +403,7 @@
+             Chest chest = Main.chest[player.chest];
+             for (int i = 0; i < chest.maxItems; i++)
+             {
+-                if (chest.item[i].type > 0)
++                if (chest.item[i].type > 0 && !ItemWire.IsReadOnly(chest.item[i]))
+                 {
+                     Player.GetItemLogger.Start();
+                     chest.item[i] = player.GetItem(chest.item[i], settings);
+@@ -414,7 +422,7 @@
+         {
+             for (int j = 0; j < player.bank2.maxItems; j++)
+             {
+-                if (player.bank2.item[j].type > 0)
++                if (player.bank2.item[j].type > 0 && !ItemWire.IsReadOnly(player.bank2.item[j]))
+                 {
+                     Player.GetItemLogger.Start();
+                     player.bank2.item[j] = player.GetItem(player.bank2.item[j], settings);
+@@ -429,7 +437,7 @@
+         {
+             for (int k = 0; k < player.bank3.maxItems; k++)
+             {
+-                if (player.bank3.item[k].type > 0)
++                if (player.bank3.item[k].type > 0 && !ItemWire.IsReadOnly(player.bank3.item[k]))
+                 {
+                     Player.GetItemLogger.Start();
+                     player.bank3.item[k] = player.GetItem(player.bank3.item[k], settings);
+@@ -457,7 +465,7 @@
+         }
+         for (int m = 0; m < player.bank.maxItems; m++)
+         {
+-            if (player.bank.item[m].type > 0)
++            if (player.bank.item[m].type > 0 && !ItemWire.IsReadOnly(player.bank.item[m]))
+             {
+                 Player.GetItemLogger.Start();
+                 player.bank.item[m] = player.GetItem(player.bank.item[m], settings);
+@@ -558,7 +566,8 @@
+         }
+         for (int num = 49; num >= 10; num--)
+         {
+-            if (player.inventory[num].stack > 0 && player.inventory[num].type > 0 && !player.inventory[num].favorited)
++            if (player.inventory[num].stack > 0 && player.inventory[num].type > 0 && !player.inventory[num].favorited &&
++                !ItemWire.IsReadOnly(player.inventory[num]))
+             {
+                 if (player.inventory[num].maxStack > 1)
+                 {
+@@ -721,7 +730,7 @@
+         }
+         for (int j = num2; j < num; j++)
+         {
+-            if (list.Contains(array[j].type) && !array[j].favorited)
++            if (list.Contains(array[j].type) && !array[j].favorited && !ItemWire.IsReadOnly(array[j]))
+             {
+                 dictionary.Add(j, array[j].type);
+             }
+@@ -895,7 +904,7 @@
+         for (int num = 57; num >= 0; num--)
+         {
+             Item item2 = inventory[num];
+-            if ((num < 50 || num >= 54) && (item2.type < 71 || item2.type > 74))
++            if ((num < 50 || num >= 54) && (item2.type < 71 || item2.type > 74) && !ItemWire.IsReadOnly(item2))
+             {
+                 if (item2.stack == 0 || item2.type == 0 || item2.type == 0)
+                 {
+@@ -1205,6 +1214,10 @@
+     public static bool TryPlacingInChest(Item[] inv, int slot, bool justCheck, int itemSlotContext)
+     {
+         Item item = inv[slot];
++        if (ItemWire.IsReadOnly(item))
++        {
++            return false;
++        }
+         bool flag = Main.LocalPlayer.chest > -1 && Main.netMode == 1;
+         Chest currentContainer = Main.LocalPlayer.GetCurrentContainer();
+         Item[] item2 = currentContainer.item;

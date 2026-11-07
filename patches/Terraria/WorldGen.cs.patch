@@ -1,6 +1,17 @@
 --- a/Terraria/WorldGen.cs
 +++ b/Terraria/WorldGen.cs
-@@ -6719,11 +6719,19 @@
+@@ -6596,6 +6596,10 @@
+         Main.menuMode = 10;
+         Main.gameMenu = true;
+         Netplay.Disconnect = true;
++        if (Main.netMode == 1)
++        {
++            Aether.Modding.ItemWire.RestoreLocalInventory(Main.LocalPlayer);
++        }
+         Main.netMode = 0;
+         SoundEngine.StopTrackedSounds();
+         CaptureInterface.ResetFocus();
+@@ -6719,11 +6723,19 @@
          WorldFile.LoadWorld();
          if (loadFailed)
          {
@@ -21,7 +32,7 @@
                  {
                      worldBackup = true;
                  }
-@@ -6829,11 +6837,19 @@
+@@ -6829,11 +6841,19 @@
          WorldFile.LoadWorld();
          if (loadFailed)
          {
@@ -42,7 +53,7 @@
                  {
                      worldBackup = true;
                  }
-@@ -44379,6 +44395,7 @@
+@@ -44379,6 +44399,7 @@
  
      public static bool paintTile(int x, int y, byte color, bool broadCast = false, bool paintEffects = true)
      {
@@ -50,7 +61,7 @@
          Tile tile = Main.tile[x, y];
          if (tile == null || !tile.active())
          {
-@@ -44403,6 +44420,7 @@
+@@ -44403,6 +44424,7 @@
  
      public static bool paintCoatTile(int x, int y, byte paintCoatId, bool broadcast = false, bool coatingEffects = true)
      {
@@ -58,7 +69,7 @@
          Tile tile = Main.tile[x, y];
          if (tile == null || !tile.active())
          {
-@@ -44451,6 +44469,7 @@
+@@ -44451,6 +44473,7 @@
  
      public static bool paintCoatWall(int x, int y, byte paintCoatId, bool broadcast = false, bool coatingEffects = true)
      {
@@ -66,7 +77,7 @@
          Tile tile = Main.tile[x, y];
          if (tile == null || tile.wall == 0)
          {
-@@ -44499,6 +44518,7 @@
+@@ -44499,6 +44522,7 @@
  
      public static bool paintWall(int x, int y, byte color, bool broadCast = false, bool paintEffects = true)
      {
@@ -74,7 +85,7 @@
          Tile tile = Main.tile[x, y];
          if (tile == null || tile.wall == 0)
          {
-@@ -59758,6 +59778,7 @@
+@@ -59758,6 +59782,7 @@
  
      public static bool PlaceTile(int i, int j, int Type, bool mute = false, bool forced = false, int plr = -1, int style = 0)
      {
@@ -82,7 +93,7 @@
          int num = Type;
          if (isGeneratingOrLoadingWorld && Main.tile[i, j].active() && Main.tile[i, j].type == 488)
          {
-@@ -60784,6 +60805,7 @@
+@@ -60784,6 +60809,7 @@
  
      public static void KillWall(int i, int j, bool fail = false)
      {
@@ -90,7 +101,7 @@
          if (i < 0 || j < 0 || i >= Main.maxTilesX || j >= Main.maxTilesY)
          {
              return;
-@@ -63965,6 +63987,7 @@
+@@ -63965,6 +63991,7 @@
  
      public static void KillTile(int i, int j, bool fail = false, bool effectOnly = false, bool noItem = false)
      {
@@ -98,7 +109,7 @@
          if (i < 0 || j < 0 || i >= Main.maxTilesX || j >= Main.maxTilesY)
          {
              return;
-@@ -75764,6 +75787,7 @@
+@@ -75764,6 +75791,7 @@
  
      public static void PlaceWall(int i, int j, int type, bool mute = false)
      {
@@ -106,7 +117,7 @@
          if (i <= 1 || j <= 1 || i >= Main.maxTilesX - 2 || j >= Main.maxTilesY - 2)
          {
              return;
-@@ -81985,6 +82009,7 @@
+@@ -81985,6 +82013,7 @@
  
      public static void TileFrame(int i, int j, bool resetFrame = false, bool noBreak = false)
      {

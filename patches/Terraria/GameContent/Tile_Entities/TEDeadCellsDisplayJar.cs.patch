@@ -1,13 +1,21 @@
 --- a/Terraria/GameContent/Tile_Entities/TEDeadCellsDisplayJar.cs
 +++ b/Terraria/GameContent/Tile_Entities/TEDeadCellsDisplayJar.cs
-@@ -1,4 +1,5 @@
+@@ -1,4 +1,6 @@
++using System.Collections.Generic;
  using System.IO;
 +using Aether.Modding;
  using Terraria.DataStructures;
  
  namespace Terraria.GameContent.Tile_Entities;
-@@ -39,7 +40,7 @@
+@@ -37,9 +39,14 @@
+         return true;
+     }
  
++    internal override IEnumerable<Item> DisplayItems()
++    {
++        yield return item;
++    }
++
      public override void WriteExtraData(BinaryWriter writer, bool networkSend)
      {
 -        writer.Write((short)item.type);
@@ -15,7 +23,7 @@
          writer.Write(item.prefix);
          writer.Write((short)item.stack);
      }
-@@ -47,7 +48,7 @@
+@@ -47,7 +54,7 @@
      public override void ReadExtraData(BinaryReader reader, int gameVersion, bool networkSend)
      {
          item = new Item();
@@ -24,3 +32,43 @@
          item.Prefix(reader.ReadByte());
          item.stack = reader.ReadInt16();
      }
+@@ -61,7 +68,7 @@
+     {
+         if (Main.netMode != 1)
+         {
+-            Item.NewItem(new EntitySource_TileBreak(Position.X, Position.Y), Position.X * 16, Position.Y * 16, 32, 32, item.type, 1, noBroadcast: false, item.prefix);
++            Item.NewItem(new EntitySource_TileBreak(Position.X, Position.Y), Position.X * 16, Position.Y * 16, 32, 32, item.type, 1, noBroadcast: false, item.prefix, modifier: spawned => spawned.inner.AetherState = item.AetherState);
+         }
+         item = new Item();
+     }
+@@ -103,7 +110,7 @@
+         {
+             num2--;
+         }
+-        if (TileEntity.TryGetAt<TEDeadCellsDisplayJar>(num, num2, out var result) && result.item.stack > 0)
++        if (TileEntity.TryGetAt<TEDeadCellsDisplayJar>(num, num2, out var result) && result.item.stack > 0 && !ItemWire.IsReadOnly(result.item))
+         {
+             player.GamepadEnableGrappleCooldown();
+             WorldGen.KillTile(clickX, clickY, fail: true);
+@@ -116,6 +123,10 @@
+ 
+     public static bool FitsJar(Item i)
+     {
++        if (ItemWire.IsReadOnly(i))
++        {
++            return false;
++        }
+         return i.stack > 0;
+     }
+ 
+@@ -137,6 +148,10 @@
+         {
+             return;
+         }
++        if (ItemWire.IsReadOnly(result.item) || ItemWire.IsReadOnly(player.inventory[player.selectedItem]))
++        {
++            return;
++        }
+         if (result.item.stack > 0)
+         {
+             WorldGen.KillTile(x, y, fail: true);

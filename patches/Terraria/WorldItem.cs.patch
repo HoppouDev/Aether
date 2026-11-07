@@ -1,0 +1,18 @@
+--- a/Terraria/WorldItem.cs
++++ b/Terraria/WorldItem.cs
+@@ -1,6 +1,7 @@
+ using System;
+ using System.Collections.Generic;
+ using System.Linq;
++using Aether.Modding;
+ using Microsoft.Xna.Framework;
+ using Terraria.Audio;
+ using Terraria.DataStructures;
+@@ -188,6 +189,7 @@
+     public void FindOwner(bool forceAssignToServer = false)
+     {
+         Invariant.Assert(Main.netMode != 0, "FindOwner in singleplayer");
++        forceAssignToServer |= ItemWire.IsCustom(type);
+         if (forceAssignToServer)
+         {
+             timeToKeepReservation = 0;

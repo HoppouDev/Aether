@@ -1,0 +1,11 @@
+--- a/Terraria/DataStructures/TileEntity.cs
++++ b/Terraria/DataStructures/TileEntity.cs
+@@ -210,6 +210,8 @@
+     {
+     }
+ 
++    internal virtual IEnumerable<Item> DisplayItems() => Array.Empty<Item>();
++
+     public virtual void ReadExtraData(BinaryReader reader, int gameVersion, bool networkSend)
+     {
+     }

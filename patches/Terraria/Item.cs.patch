@@ -7,17 +7,21 @@
  using Microsoft.Xna.Framework;
  using Terraria.Audio;
  using Terraria.DataStructures;
-@@ -140,6 +141,9 @@
+@@ -140,6 +141,13 @@
  
      public int type;
  
 +    [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
 +    public string AetherState { get; set; }
 +
++    internal Item AetherLocalItem;
++
++    internal Item LocalSaveItem => AetherLocalItem ?? this;
++
      public bool favorited;
  
      public int holdStyle;
-@@ -48678,6 +48682,12 @@
+@@ -48678,6 +48686,12 @@
              return;
          }
          ResetStats(Type);
@@ -30,15 +34,16 @@
          if (type >= ItemID.Count)
          {
              type = 0;
-@@ -48953,6 +48963,7 @@
+@@ -48953,6 +48967,8 @@
  
      public void ResetStats(int Type)
      {
 +        AetherState = null;
++        AetherLocalItem = null;
          useSoundPitch = 0f;
          tooltipContext = -1;
          tooltipSlot = -1;
-@@ -49860,7 +49871,7 @@
+@@ -49860,7 +49876,7 @@
      {
          if (type == compareItem.type && stack == compareItem.stack)
          {
@@ -47,7 +52,7 @@
          }
          return true;
      }
-@@ -49878,7 +49889,7 @@
+@@ -49878,7 +49894,7 @@
      {
          if (item1.type == item2.type)
          {
@@ -56,16 +61,21 @@
          }
          return false;
      }
-@@ -49921,7 +49932,7 @@
+@@ -49921,7 +49937,12 @@
  
      public void Serialize(BinaryWriter writer, bool writeFavorite = false)
      {
 -        writer.Write(type);
++        if (AetherLocalItem != null && writer is Aether.Modding.ItemSave.Writer)
++        {
++            AetherLocalItem.Serialize(writer, writeFavorite);
++            return;
++        }
 +        ItemSave.WriteType(writer, this);
          writer.Write(stack);
          writer.Write(prefix);
          if (writeFavorite)
-@@ -49932,7 +49943,7 @@
+@@ -49932,7 +49953,7 @@
  
      public void DeserializeFrom(BinaryReader reader, bool readFavorite = false)
      {
@@ -74,13 +84,15 @@
          stack = reader.ReadInt32();
          Prefix(reader.ReadByte());
          if (readFavorite)
-@@ -49962,7 +49973,9 @@
+@@ -49962,7 +49983,11 @@
              int num = stack;
              int num2 = type;
              int prefixWeWant = prefix;
 +            string aetherState = AetherState;
++            Item localItem = AetherLocalItem;
              SetDefaults(num2);
 +            AetherState = aetherState;
++            AetherLocalItem = localItem;
              Prefix(prefixWeWant);
              stack = num;
              favorited = flag;

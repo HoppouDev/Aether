@@ -1,0 +1,50 @@
+--- a/Terraria/GameContent/QuickStacking.cs
++++ b/Terraria/GameContent/QuickStacking.cs
+@@ -2,6 +2,7 @@
+ using System.Collections.Generic;
+ using System.IO;
+ using System.Linq;
++using Aether.Modding;
+ using Microsoft.Xna.Framework;
+ using Terraria.ID;
+ using Terraria.Testing;
+@@ -311,13 +312,26 @@
+     {
+         SourceInventory scratchInventory = GetScratchInventory(player);
+         Array.Clear(scratchInventory.transferBlocked, 0, scratchInventory.transferBlocked.Length);
+-        scratchInventory.numItems = reader.ReadInt32();
+-        for (int i = 0; i < scratchInventory.numItems; i++)
++        int count = reader.ReadInt32();
++        if ((uint)count > (uint)scratchInventory.slots.Length)
++        {
++            throw new InvalidDataException("Invalid quick-stack slot count.");
++        }
++        scratchInventory.numItems = 0;
++        for (int i = 0; i < count; i++)
+         {
+             PlayerItemSlotID.SlotReference slotReference = new PlayerItemSlotID.SlotReference(player, reader.ReadInt16());
+-            scratchInventory.slots[i] = slotReference;
++            if (!slotReference.IsValid)
++            {
++                continue;
++            }
+             Item item = slotReference.Item;
+-            scratchInventory.items[i] = item;
++            if (!ItemWire.IsCustom(item.type))
++            {
++                int index = scratchInventory.numItems++;
++                scratchInventory.slots[index] = slotReference;
++                scratchInventory.items[index] = item;
++            }
+         }
+         return scratchInventory;
+     }
+@@ -394,7 +408,7 @@
+         {
+             PlayerItemSlotID.SlotReference slotReference = new PlayerItemSlotID.SlotReference(player, startSlot + i);
+             Item item = slotReference.Item;
+-            if (!item.IsAir && !item.favorited && !item.IsACoin)
++            if (!item.IsAir && !item.favorited && !item.IsACoin && !ItemWire.IsReadOnly(item))
+             {
+                 int num = inventory.numItems++;
+                 inventory.slots[num] = slotReference;

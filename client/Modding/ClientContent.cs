@@ -24,6 +24,7 @@ public static class ClientContent
     public static bool IsDedicatedServer { get; internal set; }
     public static string? ConnectionVersion { get; internal set; }
     public static Action? ServerReady { get; internal set; }
+    public static Action<int>? ServerPlayerJoined { get; internal set; }
     public static string? SaveIdentity => profile;
     public static IReadOnlyList<ContentModRequirement> SaveRequirements { get; internal set; } = Array.Empty<ContentModRequirement>();
     internal static Action? FinalizeRegistration { get; set; }
@@ -64,6 +65,7 @@ public static class ClientContent
             IsDedicatedServer = false;
             ConnectionVersion = null;
             ServerReady = null;
+            ServerPlayerJoined = null;
             FinalizeRegistration = null;
             SaveRequirements = Array.Empty<ContentModRequirement>();
             profile = null;

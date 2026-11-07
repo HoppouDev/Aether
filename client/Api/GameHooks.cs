@@ -16,6 +16,7 @@ public sealed class ApiStartup : IModInitializer
         ClientStartup.BlockCraft = recipe => RecipeRegistry.IsBlocked((Recipe)recipe);
         ClientContent.FinalizeRegistration = ItemRegistry.Freeze;
         ClientContent.ServerReady = GameBridge.ReadyServer;
+        ClientContent.ServerPlayerJoined = index => ServerEvents.PlayerJoined.Raise(Main.player[index]);
     }
 }
 

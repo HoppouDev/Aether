@@ -1,4 +1,5 @@
 using Aether.Modding;
+using Terraria;
 
 namespace Aether.Api;
 
@@ -32,6 +33,7 @@ public static class ServerEvents
 {
     public static bool IsDedicatedServer => ClientContent.IsDedicatedServer;
     public static ApiEvent<EventArgs> Ready { get; } = new();
+    public static ApiEvent<Player> PlayerJoined { get; } = new();
 }
 
 public static class WorldEvents

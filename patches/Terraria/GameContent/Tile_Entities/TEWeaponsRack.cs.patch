@@ -1,13 +1,21 @@
 --- a/Terraria/GameContent/Tile_Entities/TEWeaponsRack.cs
 +++ b/Terraria/GameContent/Tile_Entities/TEWeaponsRack.cs
-@@ -1,4 +1,5 @@
+@@ -1,4 +1,6 @@
++using System.Collections.Generic;
  using System.IO;
 +using Aether.Modding;
  using Terraria.DataStructures;
  using Terraria.ID;
  
-@@ -53,7 +54,7 @@
+@@ -51,9 +53,14 @@
+         return TileEntityType<TEWeaponsRack>.Place(x, y);
+     }
  
++    internal override IEnumerable<Item> DisplayItems()
++    {
++        yield return item;
++    }
++
      public override void WriteExtraData(BinaryWriter writer, bool networkSend)
      {
 -        writer.Write((short)item.type);
@@ -15,7 +23,7 @@
          writer.Write(item.prefix);
          writer.Write((short)item.stack);
      }
-@@ -61,7 +62,7 @@
+@@ -61,7 +68,7 @@
      public override void ReadExtraData(BinaryReader reader, int gameVersion, bool networkSend)
      {
          item = new Item();
@@ -24,3 +32,43 @@
          item.Prefix(reader.ReadByte());
          item.stack = reader.ReadInt16();
      }
+@@ -128,7 +135,7 @@
+     {
+         if (Main.netMode != 1)
+         {
+-            Item.NewItem(new EntitySource_TileBreak(Position.X, Position.Y), Position.X * 16, Position.Y * 16, 32, 32, item.type, 1, noBroadcast: false, item.prefix);
++            Item.NewItem(new EntitySource_TileBreak(Position.X, Position.Y), Position.X * 16, Position.Y * 16, 32, 32, item.type, 1, noBroadcast: false, item.prefix, modifier: spawned => spawned.inner.AetherState = item.AetherState);
+         }
+         item = new Item();
+     }
+@@ -164,7 +171,7 @@
+         int num2 = clickY;
+         num -= Main.tile[num, num2].frameX % 54 / 18;
+         num2 -= Main.tile[num, num2].frameY % 54 / 18;
+-        if (TileEntity.TryGetAt<TEWeaponsRack>(num, num2, out var result) && result.item.stack > 0)
++        if (TileEntity.TryGetAt<TEWeaponsRack>(num, num2, out var result) && result.item.stack > 0 && !ItemWire.IsReadOnly(result.item))
+         {
+             player.GamepadEnableGrappleCooldown();
+             WorldGen.KillTile(num, num2, fail: true);
+@@ -177,6 +184,10 @@
+ 
+     public static bool FitsWeaponFrame(Item i)
+     {
++        if (ItemWire.IsReadOnly(i))
++        {
++            return false;
++        }
+         if (!i.IsAir && (i.fishingPole > 0 || ItemID.Sets.CanBePlacedOnWeaponRacks[i.type]))
+         {
+             return true;
+@@ -200,6 +211,10 @@
+         {
+             return;
+         }
++        if (ItemWire.IsReadOnly(result.item) || ItemWire.IsReadOnly(player.inventory[player.selectedItem]))
++        {
++            return;
++        }
+         if (result.item.stack > 0)
+         {
+             WorldGen.KillTile(x, y, fail: true);

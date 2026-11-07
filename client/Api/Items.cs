@@ -65,7 +65,7 @@ public static class ItemRegistry
     public static Item Create(string id, int stack = 1)
     {
         if (!GameBridge.IsReady)
-            throw new InvalidOperationException("Create items after ClientEvents.Ready.");
+            throw new InvalidOperationException("Create items after ClientEvents.Ready or ServerEvents.Ready.");
         if (!TryGetType(id, out int type))
             throw new KeyNotFoundException($"No item is registered as '{id}'.");
         int maxStack = ordered[type - ItemID.VanillaCount].Value.MaxStack;
@@ -77,6 +77,8 @@ public static class ItemRegistry
     public static void SetState(Item item, JsonElement? state)
     {
         ArgumentNullException.ThrowIfNull(item);
+        if (Main.netMode == 1)
+            throw new InvalidOperationException("Custom item state is owned by the server in multiplayer.");
         if (GetId(item.type) == null || item.IsAir)
             throw new ArgumentException("State belongs to a custom item instance.", nameof(item));
         string? json = state?.GetRawText();

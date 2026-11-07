@@ -8,7 +8,30 @@
  using Microsoft.Xna.Framework;
  using Microsoft.Xna.Framework.Graphics;
  using Terraria.Audio;
-@@ -187,7 +188,7 @@
+@@ -154,6 +155,22 @@
+         return flag;
+     }
+ 
++    internal override IEnumerable<Item> DisplayItems()
++    {
++        foreach (Item item in _equip)
++        {
++            yield return item;
++        }
++        foreach (Item item in _dyes)
++        {
++            yield return item;
++        }
++        foreach (Item item in _misc)
++        {
++            yield return item;
++        }
++    }
++
+     public override void WriteExtraData(BinaryWriter writer, bool networkSend)
+     {
+         BitsByte bitsByte = (byte)0;
+@@ -187,7 +204,7 @@
          {
              if (!item.IsAir)
              {
@@ -17,7 +40,7 @@
                  writer.Write(item.prefix);
                  writer.Write((short)item.stack);
              }
-@@ -197,7 +198,7 @@
+@@ -197,7 +214,7 @@
          {
              if (!item2.IsAir)
              {
@@ -26,7 +49,7 @@
                  writer.Write(item2.prefix);
                  writer.Write((short)item2.stack);
              }
-@@ -207,7 +208,7 @@
+@@ -207,7 +224,7 @@
          {
              if (!item3.IsAir)
              {
@@ -35,7 +58,7 @@
                  writer.Write(item3.prefix);
                  writer.Write((short)item3.stack);
              }
-@@ -240,7 +241,7 @@
+@@ -240,7 +257,7 @@
              Item item = _equip[i];
              if ((num & (1 << i)) != 0)
              {
@@ -44,7 +67,7 @@
                  item.Prefix(reader.ReadByte());
                  item.stack = reader.ReadInt16();
              }
-@@ -252,7 +253,7 @@
+@@ -252,7 +269,7 @@
              Item item2 = _dyes[j];
              if ((num2 & (1 << j)) != 0L)
              {
@@ -53,7 +76,7 @@
                  item2.Prefix(reader.ReadByte());
                  item2.stack = reader.ReadInt16();
              }
-@@ -263,7 +264,7 @@
+@@ -263,7 +280,7 @@
              Item item3 = _misc[k];
              if (bitsByte3[k])
              {
@@ -62,7 +85,7 @@
                  item3.Prefix(reader.ReadByte());
                  item3.stack = reader.ReadInt16();
              }
-@@ -271,7 +272,7 @@
+@@ -271,7 +288,7 @@
          if (flag)
          {
              Item obj = _equip[8];
@@ -71,3 +94,49 @@
              obj.Prefix(reader.ReadByte());
              obj.stack = reader.ReadInt16();
          }
+@@ -727,7 +744,7 @@
+         {
+             return false;
+         }
+-        if (item.stack > 1 && !array[num].IsAir)
++        if (ItemWire.IsReadOnly(array[num]) || (item.stack > 1 && !array[num].IsAir))
+         {
+             return true;
+         }
+@@ -811,26 +828,22 @@
+         WriteItem(itemIndex, writer, collection);
+     }
+ 
++    internal Item GetNetworkItem(int index, int command)
++    {
++        Item[] collection = ItemCollection(command);
++        return (uint)index < (uint)collection.Length ? collection[index] : null;
++    }
++
++    private Item[] ItemCollection(int command) => command == 1 ? _dyes : command == 3 ? _misc : _equip;
++
+     public void ReadData(int itemIndex, int command, BinaryReader reader)
+     {
+-        bool flag = command == 1;
+-        bool flag2 = command == 2;
+-        bool flag3 = command == 3;
+-        if (flag2)
++        if (command == 2)
+         {
+             ReadPose(reader);
+             return;
+         }
+-        Item[] collection = _equip;
+-        if (flag)
+-        {
+-            collection = _dyes;
+-        }
+-        if (flag3)
+-        {
+-            collection = _misc;
+-        }
+-        ReadItem(itemIndex, reader, collection);
++        ReadItem(itemIndex, reader, ItemCollection(command));
+     }
+ 
+     public static void WriteDummySync(int itemIndex, int command, BinaryWriter writer)
