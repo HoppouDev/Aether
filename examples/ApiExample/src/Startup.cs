@@ -35,6 +35,14 @@ public sealed class Startup : IModInitializer
             else
                 training.Set(player, new PlayerStatModifier { DefenseBonus = 5, MeleeDamageMultiplier = 1.25f });
         });
+        LocalCommands.Register("api-example:inventory", _ =>
+        {
+            if (Players.TryGetLocal(out var player))
+            {
+                int occupied = Players.GetInventory(player).Slots.Count(slot => slot.CanRead && slot.GetItem() != null);
+                Console.WriteLine($"[api-example] {occupied} occupied player slots");
+            }
+        });
         HudOverlays.Register("api-example:label", canvas => canvas.DrawText("API example", 16, 80, HudColor.White));
         RecipeRegistry.Register("api-example:torch", new RecipeDefinition(new ItemAmount(8, 1), [new ItemAmount(9, 1)]));
     }

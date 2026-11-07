@@ -29,6 +29,7 @@ public static class GameBridge
     private static WorldInfo world;
 
     internal static bool IsReady => ready;
+    internal static long WorldRevision { get; private set; }
 
     internal static bool WorldReady => ready && !Main.gameMenu && !WorldGen.isGeneratingOrLoadingWorld &&
         (Main.dedServ || Main.CanUpdateGameplay) && (Main.netMode != 1 || !Netplay.Disconnect);
@@ -87,6 +88,7 @@ public static class GameBridge
         if (activeWorld == null)
             return;
         activeWorld = null;
+        WorldRevision++;
         PlayerModifiers.ClearWorld();
         WorldEvents.Left.Raise(world);
         HudOverlays.ClearTextures();

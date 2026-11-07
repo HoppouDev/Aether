@@ -7,7 +7,7 @@
  using Microsoft.Xna.Framework;
  using Terraria.Audio;
  using Terraria.DataStructures;
-@@ -140,6 +141,13 @@
+@@ -140,6 +141,21 @@
  
      public int type;
  
@@ -18,10 +18,18 @@
 +
 +    internal Item LocalSaveItem => AetherLocalItem ?? this;
 +
++    [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
++    public Item AetherDetachedCopy()
++    {
++        Item copy = Clone();
++        copy.AetherLocalItem = null;
++        return copy;
++    }
++
      public bool favorited;
  
      public int holdStyle;
-@@ -48678,6 +48686,12 @@
+@@ -48678,6 +48694,12 @@
              return;
          }
          ResetStats(Type);
@@ -34,7 +42,7 @@
          if (type >= ItemID.Count)
          {
              type = 0;
-@@ -48953,6 +48967,8 @@
+@@ -48953,6 +48975,8 @@
  
      public void ResetStats(int Type)
      {
@@ -43,7 +51,7 @@
          useSoundPitch = 0f;
          tooltipContext = -1;
          tooltipSlot = -1;
-@@ -49860,7 +49876,7 @@
+@@ -49860,7 +49884,7 @@
      {
          if (type == compareItem.type && stack == compareItem.stack)
          {
@@ -52,7 +60,7 @@
          }
          return true;
      }
-@@ -49878,7 +49894,7 @@
+@@ -49878,7 +49902,7 @@
      {
          if (item1.type == item2.type)
          {
@@ -61,7 +69,7 @@
          }
          return false;
      }
-@@ -49921,7 +49937,12 @@
+@@ -49921,7 +49945,12 @@
  
      public void Serialize(BinaryWriter writer, bool writeFavorite = false)
      {
@@ -75,7 +83,7 @@
          writer.Write(stack);
          writer.Write(prefix);
          if (writeFavorite)
-@@ -49932,7 +49953,7 @@
+@@ -49932,7 +49961,7 @@
  
      public void DeserializeFrom(BinaryReader reader, bool readFavorite = false)
      {
@@ -84,7 +92,7 @@
          stack = reader.ReadInt32();
          Prefix(reader.ReadByte());
          if (readFavorite)
-@@ -49962,7 +49983,11 @@
+@@ -49962,7 +49991,11 @@
              int num = stack;
              int num2 = type;
              int prefixWeWant = prefix;

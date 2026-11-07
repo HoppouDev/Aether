@@ -46,7 +46,56 @@
          {
              return;
          }
-@@ -1613,7 +1622,7 @@
+@@ -1396,7 +1405,11 @@
+         }
+     }
+ 
+-    public static bool CanEquipInArmorSlot(Player player, Item checkItem, int slot)
++    public static bool CanEquipInArmorSlot(Player player, Item checkItem, int slot) =>
++        CanEquipInArmorSlot(player.armor, checkItem, slot);
++
++    [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
++    public static bool CanEquipInArmorSlot(Item[] armor, Item checkItem, int slot)
+     {
+         bool flag = slot % 10 < 3;
+         bool flag2 = slot < 10;
+@@ -1427,13 +1440,13 @@
+             {
+                 if (!ItemID.Sets.DualEquipArmor[checkItem.type])
+                 {
+-                    return !HasSameItemInSlot(checkItem, VanityArmorSlots(Main.LocalPlayer));
++                    return !HasSameItemInSlot(checkItem, new ArraySegment<Item>(armor, 10, 3));
+                 }
+                 return true;
+             }
+             if (!ItemID.Sets.DualEquipArmor[checkItem.type])
+             {
+-                return !HasSameItemInSlot(checkItem, ArmorSlots(Main.LocalPlayer));
++                return !HasSameItemInSlot(checkItem, new ArraySegment<Item>(armor, 0, 3));
+             }
+             return true;
+         }
+@@ -1443,15 +1456,15 @@
+         }
+         if (flag2)
+         {
+-            if (CanEquipAccessoryInSlot(checkItem, vanity: false, AccSlots(player), slot))
++            if (CanEquipAccessoryInSlot(checkItem, vanity: false, new ArraySegment<Item>(armor, 3, 7), slot))
+             {
+-                return !HasSameItemInSlot(checkItem, VanityAccSlots(player));
++                return !HasSameItemInSlot(checkItem, new ArraySegment<Item>(armor, 13, 7));
+             }
+             return false;
+         }
+-        if (CanEquipAccessoryInSlot(checkItem, vanity: true, VanityAccSlots(player), slot))
++        if (CanEquipAccessoryInSlot(checkItem, vanity: true, new ArraySegment<Item>(armor, 13, 7), slot))
+         {
+-            return !HasSameItemInSlot(checkItem, AccSlots(player));
++            return !HasSameItemInSlot(checkItem, new ArraySegment<Item>(armor, 3, 7));
+         }
+         return false;
+     }
+@@ -1613,7 +1626,7 @@
  
      public static void RightClick(Item[] inv, int context = 0, int slot = 0)
      {
@@ -55,7 +104,7 @@
          {
              return;
          }
-@@ -2684,7 +2693,7 @@
+@@ -2684,7 +2697,7 @@
              }
              if (num22 != -1)
              {
@@ -64,7 +113,7 @@
              }
              if (context != 37 && (item.stack > 1 || drawState.stackTextDrawFadeOverload > 0f) && num22 == -1)
              {
-@@ -2696,11 +2705,11 @@
+@@ -2696,11 +2709,11 @@
                      num23 *= 1.2f;
                  }
                  float num24 = ((drawState.stackTextDrawFadeOverload > 0f) ? drawState.stackTextDrawFadeOverload : 1f);
@@ -78,7 +127,7 @@
                  if (text == "10")
                  {
                      text = "0";
-@@ -2759,7 +2768,7 @@
+@@ -2759,7 +2772,7 @@
          if (context == 0 && slot < 10)
          {
              float num29 = inventoryScale;
@@ -87,7 +136,7 @@
              if (text2 == "10")
              {
                  text2 = "0";
-@@ -3702,9 +3711,9 @@
+@@ -3702,9 +3715,9 @@
                  {
                      CoinSlot.UpdateSavings(i, num, out drawState);
                  }
@@ -99,7 +148,7 @@
              }
              return;
          }
-@@ -3722,7 +3731,7 @@
+@@ -3722,7 +3735,7 @@
                  CoinSlot.UpdateSavings(j, num3, out drawState);
              }
              CoinSlot.DrawItemCoin(sb, new Vector2(shopx + 11f + (float)(24 * j), shopy + 75f - drawState.coinYOffset), 74 - j, drawState.coinAnimFrame, 1f, 1024f, Color.White);
@@ -108,7 +157,7 @@
          }
      }
  
-@@ -3734,11 +3743,11 @@
+@@ -3734,11 +3747,11 @@
              CustomCurrencyManager.DrawSavings(sb, _customCurrencyForSavings, shopx, shopy, horizontal);
              return;
          }
@@ -125,7 +174,7 @@
          if (num5 > 0)
          {
              Main.GetItemDrawFrame(4076, out var itemTexture, out var itemFrame);
-@@ -3761,7 +3770,7 @@
+@@ -3761,7 +3774,7 @@
              {
                  sb.Draw(itemTexture4, Utils.CenteredRectangle(new Vector2(shopx + 70f, shopy + 60f), itemTexture4.Size() * 0.65f), null, Color.White);
              }

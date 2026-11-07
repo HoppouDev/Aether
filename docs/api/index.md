@@ -41,4 +41,5 @@ Install `examples/ApiExample/bin/Debug/net10.0/ApiExample.aethermod` alongside t
 - [Recipes](recipes.md)
 - [Custom items](items.md)
 - [Player state and vitals](players.md)
+- [Containers and player inventory](inventory.md)
 - [Dedicated servers and multiplayer compatibility](server.md)
