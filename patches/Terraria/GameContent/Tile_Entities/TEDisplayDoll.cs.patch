@@ -8,7 +8,17 @@
  using Microsoft.Xna.Framework;
  using Microsoft.Xna.Framework.Graphics;
  using Terraria.Audio;
-@@ -154,6 +155,22 @@
+@@ -47,6 +48,9 @@
+ 
+     public ArraySegment<Item> AccSlots => new ArraySegment<Item>(_equip, 3, 5);
+ 
++    [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
++    public (Item[] Equipment, Item[] Dyes, Item[] Held) AetherDisplaySlots() => (_equip, _dyes, _misc);
++
+     static TEDisplayDoll()
+     {
+         SupportedUseStylePoses = new Dictionary<int, List<DisplayDollPose>>();
+@@ -154,6 +158,22 @@
          return flag;
      }
  
@@ -31,7 +41,7 @@
      public override void WriteExtraData(BinaryWriter writer, bool networkSend)
      {
          BitsByte bitsByte = (byte)0;
-@@ -187,7 +204,7 @@
+@@ -187,7 +207,7 @@
          {
              if (!item.IsAir)
              {
@@ -40,7 +50,7 @@
                  writer.Write(item.prefix);
                  writer.Write((short)item.stack);
              }
-@@ -197,7 +214,7 @@
+@@ -197,7 +217,7 @@
          {
              if (!item2.IsAir)
              {
@@ -49,7 +59,7 @@
                  writer.Write(item2.prefix);
                  writer.Write((short)item2.stack);
              }
-@@ -207,7 +224,7 @@
+@@ -207,7 +227,7 @@
          {
              if (!item3.IsAir)
              {
@@ -58,7 +68,7 @@
                  writer.Write(item3.prefix);
                  writer.Write((short)item3.stack);
              }
-@@ -240,7 +257,7 @@
+@@ -240,7 +260,7 @@
              Item item = _equip[i];
              if ((num & (1 << i)) != 0)
              {
@@ -67,7 +77,7 @@
                  item.Prefix(reader.ReadByte());
                  item.stack = reader.ReadInt16();
              }
-@@ -252,7 +269,7 @@
+@@ -252,7 +272,7 @@
              Item item2 = _dyes[j];
              if ((num2 & (1 << j)) != 0L)
              {
@@ -76,7 +86,7 @@
                  item2.Prefix(reader.ReadByte());
                  item2.stack = reader.ReadInt16();
              }
-@@ -263,7 +280,7 @@
+@@ -263,7 +283,7 @@
              Item item3 = _misc[k];
              if (bitsByte3[k])
              {
@@ -85,7 +95,7 @@
                  item3.Prefix(reader.ReadByte());
                  item3.stack = reader.ReadInt16();
              }
-@@ -271,7 +288,7 @@
+@@ -271,7 +291,7 @@
          if (flag)
          {
              Item obj = _equip[8];
@@ -94,7 +104,7 @@
              obj.Prefix(reader.ReadByte());
              obj.stack = reader.ReadInt16();
          }
-@@ -727,7 +744,7 @@
+@@ -727,7 +747,7 @@
          {
              return false;
          }
@@ -103,7 +113,7 @@
          {
              return true;
          }
-@@ -811,26 +828,22 @@
+@@ -811,26 +831,22 @@
          WriteItem(itemIndex, writer, collection);
      }
  

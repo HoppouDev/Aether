@@ -17,7 +17,7 @@ internal readonly record struct SlotAddress(object Storage, int Index);
 internal sealed record SlotLocation(SlotAddress Address, Func<Item> Read, Action<Item> Write)
 {
     internal static SlotLocation At(Item[] items, int index) =>
-        new(new SlotAddress(items, index), () => items[index], item => items[index] = item);
+        new(new SlotAddress(items, index), () => items[index] ?? new Item(), item => items[index] = item);
 }
 
 public abstract class ItemContainer
@@ -73,7 +73,7 @@ public abstract class ItemContainer
             if (!slots.TryGetValue(id, out ContainerSlot? slot))
                 throw new ArgumentException($"Unknown container slot '{id}'.", nameof(targets));
             SlotLocation location = slot.Location();
-            if (seen.Add(location.Address))
+            if (slot.CanInsert && seen.Add(location.Address))
                 selected.Add((slot, location));
         }
 
@@ -174,9 +174,9 @@ public sealed class ContainerSlot
         Item current = location.Read();
         var changes = new SlotChanges();
         Item replacement = Prepare(item);
-        changes.Set(location, replacement);
         if (!Allows(location, replacement, changes))
             return false;
+        changes.Set(location, Normalize(replacement));
         previous = CopyOrNull(current);
         changes.Commit();
         return true;
@@ -243,9 +243,11 @@ public sealed class ContainerSlot
 
         var changes = new SlotChanges();
         changes.Set(source, Prepare(destination.Read()));
-        changes.Set(destination, target.Prepare(source.Read()));
+        changes.Set(destination, Prepare(source.Read()));
         if (!Allows(source, changes.Read(source), changes) || !target.Allows(destination, changes.Read(destination), changes))
             return false;
+        changes.Set(source, Normalize(changes.Read(source)));
+        changes.Set(destination, target.Normalize(changes.Read(destination)));
         changes.Commit();
         return true;
     }
@@ -263,10 +265,10 @@ public sealed class ContainerSlot
         if (moved <= 0)
             return 0;
         result.stack = existing + moved;
-        result.favorited = keepFavorite && (result.favorited || item.favorited);
+        result.favorited |= item.favorited;
         if (!Allows(location, result, changes))
             return 0;
-        changes.Set(location, result);
+        changes.Set(location, Normalize(result));
         return moved;
     }
 
@@ -281,13 +283,13 @@ public sealed class ContainerSlot
             throw new InvalidOperationException("The slot contents are unavailable.");
     }
 
-    private Item Prepare(Item? item)
+    private Item Normalize(Item item)
     {
-        Item copy = CopyOrNull(item) ?? new Item();
-        copy.favorited &= keepFavorite;
-        return copy;
+        item.favorited &= keepFavorite;
+        return item;
     }
 
+    private static Item Prepare(Item? item) => CopyOrNull(item) ?? new Item();
     private static Item? CopyOrNull(Item? item) => item == null || item.IsAir ? null : item.AetherDetachedCopy();
     private static Item CopyStack(Item item, int count) =>
         count == 0 ? new Item() : CopyWithCount(item, count);

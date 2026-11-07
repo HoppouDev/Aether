@@ -17,6 +17,17 @@ public sealed class PlayerInventory : ItemContainer
             keepFavorite: true);
         AddSlot(new(ContainerSlotGroup.Trash), () => new(new SlotAddress(Owner, PlayerItemSlotID.TrashItem),
             () => Owner.trashItem, item => Owner.trashItem = item), () => CanReadSlot(PlayerItemSlotID.TrashItem));
+        AddSlot(new(ContainerSlotGroup.Guide), () => new(new SlotAddress(typeof(Main), 0),
+            () => Main.guideItem, item => Main.guideItem = item),
+            () => Players.IsLocal(Owner) && Main.playerInventory && Main.InGuideCraftMenu,
+            accepts: (item, _, _) => item.material);
+        AddSlot(new(ContainerSlotGroup.Reforge), () => new(new SlotAddress(typeof(Main), 1),
+            () => Main.reforgeItem, item => Main.reforgeItem = item),
+            () => Players.IsLocal(Owner) && Main.playerInventory && Main.InReforgeMenu,
+            accepts: (item, _, _) => item.CanHavePrefixes(), keepFavorite: true);
+        AddSlot(new(ContainerSlotGroup.Research), () => new(new SlotAddress(Main.CreativeMenu, 0),
+            () => Main.CreativeMenu.GetItemByIndex(0), item => Main.CreativeMenu.SetItembyIndex(item, 0)),
+            () => Players.IsLocal(Owner) && Main.playerInventory && Main.CreativeMenu.IsShowingResearchMenu());
 
         for (int loadout = 0; loadout < player.Loadouts.Length; loadout++)
         {
@@ -81,6 +92,12 @@ public sealed class PlayerInventory : ItemContainer
     }
 
     internal bool CanReadSlot(int netSlot) => Players.IsLocal(Owner) || Owner.AetherHasObservedSlot(netSlot);
+
+    public ItemContainer GetBank(PlayerBank bank)
+    {
+        RequireCurrent();
+        return Containers.CreateBank(Owner, bank);
+    }
 
     private SlotLocation CursorLocation() => Players.IsLocal(Owner)
         ? new(new SlotAddress(Owner.inventory, 58), () => Main.mouseItem, item =>

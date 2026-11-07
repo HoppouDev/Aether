@@ -1,0 +1,19 @@
+--- a/Terraria/Chest.cs
++++ b/Terraria/Chest.cs
+@@ -65,6 +65,16 @@
+ 
+     public Item[] item;
+ 
++    private System.Collections.BitArray _aetherObservedSlots;
++
++    [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
++    public bool AetherHasObservedSlot(int slot) => _aetherObservedSlots != null && _aetherObservedSlots[slot];
++
++    internal void AetherObserveSlot(int slot)
++    {
++        (_aetherObservedSlots ??= new System.Collections.BitArray(item.Length))[slot] = true;
++    }
++
+     public readonly int x;
+ 
+     public readonly int y;

@@ -33,3 +33,21 @@ Item copies preserve prefixes and custom state.
 Transfers retain favorites in slots that support them.
 Bulk insertion treats repeated physical targets as one slot.
 Use `/api-example:inventory` in the example mod to print the number of occupied readable player slots.
+
+## Banks and open storage
+
+`PlayerInventory.GetBank(PlayerBank bank)` accesses the Piggy Bank, Safe, Defender's Forge, or Void Vault.
+Each uses the `Storage` group and exposes its actual slot count.
+`Containers.TryGetOpen(player, out container)` resolves the player's open chest, bank, or display.
+An open handle expires when that panel closes, even if the same container opens again.
+A direct bank handle and an open bank handle refer to the same physical slots.
+
+`Containers.TryGetDisplay(player, position, out container)` takes the display entity's top-left tile coordinate as a `Point16`.
+It supports item frames, weapon racks, display jars, food platters, display dolls, and hat racks.
+Display slots use the `Display` group.
+A doll enumerates equipment, then dyes, then its held item.
+A hat rack enumerates hats, then dyes.
+
+The local player's Guide, reforge, and Journey research inputs appear as slots with the `Guide`, `Reforge`, and `Research` groups.
+Their contents are available while the relevant panel is open.
+`Containers.TryGetOpenShop` exposes the local shop's offers and buyback entries as read-only `Shop` slots.

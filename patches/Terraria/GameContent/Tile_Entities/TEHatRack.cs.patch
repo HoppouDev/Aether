@@ -7,7 +7,7 @@
  using Microsoft.Xna.Framework;
  using Microsoft.Xna.Framework.Graphics;
  using Terraria.Audio;
-@@ -53,6 +55,18 @@
+@@ -53,6 +55,21 @@
          return TileEntityType<TEHatRack>.Place(x + -1, y + -3);
      }
  
@@ -23,10 +23,13 @@
 +        }
 +    }
 +
++    [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
++    public (Item[] Hats, Item[] Dyes) AetherDisplaySlots() => (_items, _dyes);
++
      public override void WriteExtraData(BinaryWriter writer, bool networkSend)
      {
          BitsByte bitsByte = (byte)0;
-@@ -66,7 +80,7 @@
+@@ -66,7 +83,7 @@
              Item item = _items[i];
              if (!item.IsAir)
              {
@@ -35,7 +38,7 @@
                  writer.Write(item.prefix);
                  writer.Write((short)item.stack);
              }
-@@ -76,7 +90,7 @@
+@@ -76,7 +93,7 @@
              Item item2 = _dyes[j];
              if (!item2.IsAir)
              {
@@ -44,7 +47,7 @@
                  writer.Write(item2.prefix);
                  writer.Write((short)item2.stack);
              }
-@@ -92,7 +106,7 @@
+@@ -92,7 +109,7 @@
              Item item = _items[i];
              if (bitsByte[i])
              {
@@ -53,7 +56,7 @@
                  item.Prefix(reader.ReadByte());
                  item.stack = reader.ReadInt16();
              }
-@@ -103,7 +117,7 @@
+@@ -103,7 +120,7 @@
              Item item2 = _dyes[j];
              if (bitsByte[j + 2])
              {
@@ -62,7 +65,7 @@
                  item2.Prefix(reader.ReadByte());
                  item2.stack = reader.ReadInt16();
              }
-@@ -350,7 +364,7 @@
+@@ -350,7 +367,7 @@
          {
              num = hatTargetSlot;
          }
@@ -71,7 +74,7 @@
          {
              return true;
          }
-@@ -389,6 +403,8 @@
+@@ -389,6 +406,8 @@
          writer.Write(item.prefix);
      }
  

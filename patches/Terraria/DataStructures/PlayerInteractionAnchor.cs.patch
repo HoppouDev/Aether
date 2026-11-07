@@ -1,0 +1,29 @@
+--- a/Terraria/DataStructures/PlayerInteractionAnchor.cs
++++ b/Terraria/DataStructures/PlayerInteractionAnchor.cs
+@@ -10,8 +10,15 @@
+ 
+     public bool InUse => interactEntityID != -1;
+ 
++    [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
++    public long AetherRevision { get; private set; }
++
+     public void Clear()
+     {
++        if (InUse)
++        {
++            AetherRevision++;
++        }
+         interactEntityID = -1;
+         X = -1;
+         Y = -1;
+@@ -19,6 +26,10 @@
+ 
+     public void Set(int entityID, int x, int y)
+     {
++        if (interactEntityID != entityID || X != x || Y != y)
++        {
++            AetherRevision++;
++        }
+         interactEntityID = entityID;
+         X = x;
+         Y = y;
