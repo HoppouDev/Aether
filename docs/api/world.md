@@ -46,3 +46,16 @@ A later attempt can remove the empty display.
 Drops are enabled by default.
 `new BlockBreakOptions(SuppressBlockDrop: true)` suppresses the target block's drop for dirt, stone, wood, and clay.
 Native framing can also break attachments, which still use their normal drop rules.
+
+## Mining with a held pickaxe
+
+`Tiles.MineBlock(player, position)` applies one hit using the living local player's held pickaxe in single-player.
+It uses the game's tool reach, pickaxe power requirements, hit cache, cooldown, and mining credit.
+The call supplies the action directly, so it can run from a tick callback without input or an item-use animation.
+It supports ordinary terrain and ores as well as the multi-tile objects listed above that a pickaxe can break.
+
+`PartialHit` includes accumulated damage in `MiningDamage`.
+Terraria attempts a break at 100.
+A hit can instead transform the tile, such as when grass becomes dirt.
+The result reports `Changed` and contains both snapshots.
+A rejected call supplies a reason and leaves mining progress and cooldown unchanged when the target or tool fails validation.

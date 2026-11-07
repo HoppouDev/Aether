@@ -38,48 +38,105 @@ public enum BlockBreakReason
     UnsupportedBlock,
     UnsupportedDropBehavior,
     IncompleteObject,
-    Unchanged
+    Unchanged,
+    PlayerUnavailable,
+    BuildingDisabled,
+    UnsuitableTool,
+    OutOfReach,
+    Cooldown,
+    InsufficientPickaxePower
 }
 
 public readonly record struct BlockBreakability(BlockBreakabilityStatus Status, BlockBreakReason Reason, Rectangle? Footprint);
 
 public readonly record struct BlockBreakResult(BlockBreakOutcome Outcome, BlockBreakReason Reason,
-    TileSnapshot? Before, TileSnapshot? After, Rectangle? Footprint, bool TileEntityRemoved);
+    TileSnapshot? Before, TileSnapshot? After, Rectangle? Footprint, bool TileEntityRemoved, int MiningDamage = 0);
 
 public static partial class Tiles
 {
     public static BlockBreakability GetBlockBreakability(TilePosition position, BlockBreakOptions options = default)
     {
         Registration.RequireGameThread();
-        return CheckDirectBreak(position, options);
+        return CheckBlockHit(position, options);
     }
 
     public static BlockBreakResult BreakBlock(TilePosition position, BlockBreakOptions options = default)
     {
         Registration.RequireGameThread();
-        var check = CheckDirectBreak(position, options);
+        var check = CheckBlockHit(position, options);
         var before = Query(position).Tile;
         if (check.Status != BlockBreakabilityStatus.Eligible)
-            return new(BlockBreakOutcome.Rejected, check.Reason, before, before, check.Footprint, false);
+            return Rejected(check.Reason, before, check.Footprint);
+        return ApplyBlockHit(position, check.Footprint!.Value, before, options);
+    }
 
+    public static BlockBreakResult MineBlock(Player player, TilePosition position)
+    {
+        Registration.RequireGameThread();
+        ArgumentNullException.ThrowIfNull(player);
+        var before = Query(position).Tile;
+        if (Main.netMode != 0)
+            return Rejected(BlockBreakReason.UnsupportedContext, before);
+        if (!GameBridge.WorldReady)
+            return Rejected(BlockBreakReason.WorldUnavailable, before);
+        if (!Players.TryGetLocal(out var local) || !ReferenceEquals(player, local) || player.dead || player.ghost)
+            return Rejected(BlockBreakReason.PlayerUnavailable, before);
+        if (player.noBuilding)
+            return Rejected(BlockBreakReason.BuildingDisabled, before);
+
+        Item tool = player.HeldItem;
+        if (tool.IsAir || tool.pick <= 0 || !player.IsAllowedToHoldItems)
+            return Rejected(BlockBreakReason.UnsuitableTool, before);
+        if (!player.ItemTimeIsZero || player.toolTime > 0 || player.reuseDelay > 0)
+            return Rejected(BlockBreakReason.Cooldown, before);
+
+        var check = CheckBlockHit(position, default, mining: true);
+        if (check.Status != BlockBreakabilityStatus.Eligible)
+            return Rejected(check.Reason, before, check.Footprint);
         var bounds = check.Footprint!.Value;
+        if (!player.IsInTileInteractionRange(position.X, position.Y, TileReachCheckSettings.Simple, tool.tileBoost))
+            return Rejected(BlockBreakReason.OutOfReach, before, bounds);
+        int type = before!.Value.BlockType!.Value;
+        if (Main.tileAxe[type] || Main.tileHammer[type] || player.AetherGetPickaxeDamage(position.X, position.Y, tool.pick) <= 0)
+            return Rejected(BlockBreakReason.InsufficientPickaxePower, before, bounds);
+
+        return ApplyBlockHit(position, bounds, before, default, player);
+    }
+
+    private static BlockBreakResult ApplyBlockHit(TilePosition position, Rectangle bounds, TileSnapshot? before,
+        BlockBreakOptions options, Player? miner = null)
+    {
         var anchor = new Point16(bounds.X, bounds.Y);
         TileEntity.ByPosition.TryGetValue(anchor, out var entity);
         int stack = DisplayedStack(entity);
-
-        WorldGen.KillTile(bounds.X, bounds.Y, noItem: options.SuppressBlockDrop);
+        int damage = 0;
+        if (miner == null)
+        {
+            WorldGen.KillTile(bounds.X, bounds.Y, noItem: options.SuppressBlockDrop);
+        }
+        else
+        {
+            Item tool = miner.HeldItem;
+            miner.IntentionGuesser.Track(miner, position.X, position.Y, GuessedPlayerIntention.HarvestTreasure);
+            miner.PickTile(position.X, position.Y, tool.pick);
+            miner.itemTime = Math.Max(1, (int)(tool.useTime * miner.pickSpeed));
+            int slot = miner.hitTile.TryFinding(position.X, position.Y, 1);
+            damage = miner.hitTile.AddDamage(slot, 0, updateAmount: false);
+        }
 
         var after = Query(position).Tile;
         TileEntity.ByPosition.TryGetValue(anchor, out var remaining);
         bool entityRemoved = entity != null && !ReferenceEquals(entity, remaining);
         var outcome = after?.BlockType == null ? BlockBreakOutcome.Removed
-            : before != after || entityRemoved || stack != DisplayedStack(remaining) ? BlockBreakOutcome.Changed
+            : before?.BlockType != after?.BlockType || entityRemoved || stack != DisplayedStack(remaining) ? BlockBreakOutcome.Changed
+            : damage > 0 ? BlockBreakOutcome.PartialHit
+            : before != after ? BlockBreakOutcome.Changed
             : BlockBreakOutcome.Rejected;
         var reason = outcome == BlockBreakOutcome.Rejected ? BlockBreakReason.Unchanged : BlockBreakReason.None;
-        return new(outcome, reason, before, after, bounds, entityRemoved);
+        return new(outcome, reason, before, after, bounds, entityRemoved, damage);
     }
 
-    private static BlockBreakability CheckDirectBreak(TilePosition position, BlockBreakOptions options)
+    private static BlockBreakability CheckBlockHit(TilePosition position, BlockBreakOptions options, bool mining = false)
     {
         var query = Query(position);
         if (query.Status == TileQueryStatus.WorldUnavailable)
@@ -96,6 +153,7 @@ public static partial class Tiles
         bool simple = type is TileID.Dirt or TileID.Stone or TileID.WoodBlock or TileID.ClayBlock;
         bool terrain = simple || type is TileID.Grass or TileID.CorruptGrass or TileID.HallowedGrass or TileID.CrimsonGrass
             or TileID.JungleGrass or TileID.MushroomGrass or TileID.Mud or TileID.SnowBlock or TileID.IceBlock or TileID.Sand;
+        terrain |= mining && !Main.tileFrameImportant[type] && type != TileID.MysticSnakeRope;
         bool chest = type is TileID.Containers or TileID.Containers2 or TileID.Dressers;
         bool display = type is TileID.ItemFrame or TileID.WeaponsRack2 or TileID.FoodPlatter or TileID.DisplayDoll or TileID.HatRack;
         if (!terrain && !chest && !display)
@@ -152,4 +210,7 @@ public static partial class Tiles
 
     private static BlockBreakability Unsupported(BlockBreakReason reason, Rectangle? footprint = null) =>
         new(BlockBreakabilityStatus.Unsupported, reason, footprint);
+
+    private static BlockBreakResult Rejected(BlockBreakReason reason, TileSnapshot? tile, Rectangle? footprint = null) =>
+        new(BlockBreakOutcome.Rejected, reason, tile, tile, footprint, false);
 }
