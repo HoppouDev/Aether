@@ -1,0 +1,26 @@
+--- a/Terraria/GameContent/Tile_Entities/TEDeadCellsDisplayJar.cs
++++ b/Terraria/GameContent/Tile_Entities/TEDeadCellsDisplayJar.cs
+@@ -1,4 +1,5 @@
+ using System.IO;
++using Aether.Modding;
+ using Terraria.DataStructures;
+ 
+ namespace Terraria.GameContent.Tile_Entities;
+@@ -39,7 +40,7 @@
+ 
+     public override void WriteExtraData(BinaryWriter writer, bool networkSend)
+     {
+-        writer.Write((short)item.type);
++        ItemSave.WriteType(writer, item, shortId: true);
+         writer.Write(item.prefix);
+         writer.Write((short)item.stack);
+     }
+@@ -47,7 +48,7 @@
+     public override void ReadExtraData(BinaryReader reader, int gameVersion, bool networkSend)
+     {
+         item = new Item();
+-        item.netDefaults(reader.ReadInt16());
++        ItemSave.ReadType(reader, item, shortId: true);
+         item.Prefix(reader.ReadByte());
+         item.stack = reader.ReadInt16();
+     }

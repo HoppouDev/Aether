@@ -1,0 +1,73 @@
+--- a/Terraria/GameContent/Tile_Entities/TEDisplayDoll.cs
++++ b/Terraria/GameContent/Tile_Entities/TEDisplayDoll.cs
+@@ -1,6 +1,7 @@
+ using System;
+ using System.Collections.Generic;
+ using System.IO;
++using Aether.Modding;
+ using Microsoft.Xna.Framework;
+ using Microsoft.Xna.Framework.Graphics;
+ using Terraria.Audio;
+@@ -187,7 +188,7 @@
+         {
+             if (!item.IsAir)
+             {
+-                writer.Write((short)item.type);
++                ItemSave.WriteType(writer, item, shortId: true);
+                 writer.Write(item.prefix);
+                 writer.Write((short)item.stack);
+             }
+@@ -197,7 +198,7 @@
+         {
+             if (!item2.IsAir)
+             {
+-                writer.Write((short)item2.type);
++                ItemSave.WriteType(writer, item2, shortId: true);
+                 writer.Write(item2.prefix);
+                 writer.Write((short)item2.stack);
+             }
+@@ -207,7 +208,7 @@
+         {
+             if (!item3.IsAir)
+             {
+-                writer.Write((short)item3.type);
++                ItemSave.WriteType(writer, item3, shortId: true);
+                 writer.Write(item3.prefix);
+                 writer.Write((short)item3.stack);
+             }
+@@ -240,7 +241,7 @@
+             Item item = _equip[i];
+             if ((num & (1 << i)) != 0)
+             {
+-                item.netDefaults(reader.ReadInt16());
++                ItemSave.ReadType(reader, item, shortId: true);
+                 item.Prefix(reader.ReadByte());
+                 item.stack = reader.ReadInt16();
+             }
+@@ -252,7 +253,7 @@
+             Item item2 = _dyes[j];
+             if ((num2 & (1 << j)) != 0L)
+             {
+-                item2.netDefaults(reader.ReadInt16());
++                ItemSave.ReadType(reader, item2, shortId: true);
+                 item2.Prefix(reader.ReadByte());
+                 item2.stack = reader.ReadInt16();
+             }
+@@ -263,7 +264,7 @@
+             Item item3 = _misc[k];
+             if (bitsByte3[k])
+             {
+-                item3.netDefaults(reader.ReadInt16());
++                ItemSave.ReadType(reader, item3, shortId: true);
+                 item3.Prefix(reader.ReadByte());
+                 item3.stack = reader.ReadInt16();
+             }
+@@ -271,7 +272,7 @@
+         if (flag)
+         {
+             Item obj = _equip[8];
+-            obj.netDefaults(reader.ReadInt16());
++            ItemSave.ReadType(reader, obj, shortId: true);
+             obj.Prefix(reader.ReadByte());
+             obj.stack = reader.ReadInt16();
+         }

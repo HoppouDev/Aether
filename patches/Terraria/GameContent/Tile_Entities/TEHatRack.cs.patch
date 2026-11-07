@@ -1,0 +1,44 @@
+--- a/Terraria/GameContent/Tile_Entities/TEHatRack.cs
++++ b/Terraria/GameContent/Tile_Entities/TEHatRack.cs
+@@ -1,4 +1,5 @@
+ using System.IO;
++using Aether.Modding;
+ using Microsoft.Xna.Framework;
+ using Microsoft.Xna.Framework.Graphics;
+ using Terraria.Audio;
+@@ -66,7 +67,7 @@
+             Item item = _items[i];
+             if (!item.IsAir)
+             {
+-                writer.Write((short)item.type);
++                ItemSave.WriteType(writer, item, shortId: true);
+                 writer.Write(item.prefix);
+                 writer.Write((short)item.stack);
+             }
+@@ -76,7 +77,7 @@
+             Item item2 = _dyes[j];
+             if (!item2.IsAir)
+             {
+-                writer.Write((short)item2.type);
++                ItemSave.WriteType(writer, item2, shortId: true);
+                 writer.Write(item2.prefix);
+                 writer.Write((short)item2.stack);
+             }
+@@ -92,7 +93,7 @@
+             Item item = _items[i];
+             if (bitsByte[i])
+             {
+-                item.netDefaults(reader.ReadInt16());
++                ItemSave.ReadType(reader, item, shortId: true);
+                 item.Prefix(reader.ReadByte());
+                 item.stack = reader.ReadInt16();
+             }
+@@ -103,7 +104,7 @@
+             Item item2 = _dyes[j];
+             if (bitsByte[j + 2])
+             {
+-                item2.netDefaults(reader.ReadInt16());
++                ItemSave.ReadType(reader, item2, shortId: true);
+                 item2.Prefix(reader.ReadByte());
+                 item2.stack = reader.ReadInt16();
+             }

@@ -1,6 +1,14 @@
 --- a/Terraria/Player.cs
 +++ b/Terraria/Player.cs
-@@ -13021,6 +13021,10 @@
+@@ -1,6 +1,7 @@
+ using System;
+ using System.Collections.Generic;
+ using System.IO;
++using Aether.Modding;
+ using System.Linq;
+ using System.Security.Cryptography;
+ using System.Text;
+@@ -13021,6 +13022,10 @@
                      GrantPrefixBenefits(effectiveArmor);
                  }
                  GrantArmorBenefits(effectiveArmor);
@@ -11,7 +19,7 @@
              }
          }
          if (flag)
-@@ -37767,6 +37771,7 @@
+@@ -37767,6 +37772,7 @@
  
      public void Teleport(Vector2 newPos, int Style = 0, int extraInfo = 0)
      {
@@ -19,7 +27,7 @@
          try
          {
              _funkytownAchievementCheckCooldown = 100;
-@@ -44849,6 +44854,10 @@
+@@ -44849,6 +44855,10 @@
              NPCDamageTracker.SetSourceForNextHit(nPC, PlayerNPCHitSource.FromItem(sItem.type));
              int num4 = nPC.StrikeNPC(num3, knockBack, direction, crit, fromNet: false, whoAmI);
              ApplyNPCOnHitEffects(sItem, itemRectangle, damage, knockBack, nPC, num3, num4);
@@ -30,7 +38,7 @@
              int num5 = BannerSystem.NPCtoBanner(nPC.BannerID());
              if (num5 >= 0)
              {
-@@ -52412,6 +52421,10 @@
+@@ -52412,6 +52422,10 @@
                  SoundEngine.PlaySound(sItem.UseSound, Center, sItem.useSoundPitch);
              }
          }
@@ -41,3 +49,236 @@
      }
  
      private void FreeUpPetsAndMinions(Item sItem)
+@@ -55511,21 +55525,26 @@
+         {
+             return;
+         }
+-        if (FileUtilities.Exists(path, isCloudSave))
++        bool modded = ClientContent.HasItems && !isCloudSave;
++        if (!modded && FileUtilities.Exists(path, isCloudSave))
+         {
+             FileUtilities.Copy(path, path + ".bak", isCloudSave);
+         }
+         RijndaelManaged rijndaelManaged = new RijndaelManaged();
+-        using Stream stream = (isCloudSave ? ((Stream)new MemoryStream(2000)) : ((Stream)new FileStream(path, FileMode.Create)));
++        using Stream stream = (isCloudSave || modded ? ((Stream)new MemoryStream(2000)) : ((Stream)new FileStream(path, FileMode.Create)));
+         using CryptoStream cryptoStream = new CryptoStream(stream, rijndaelManaged.CreateEncryptor(ENCRYPTION_KEY, ENCRYPTION_KEY), CryptoStreamMode.Write);
+-        using BinaryWriter binaryWriter = new BinaryWriter(cryptoStream);
++        using BinaryWriter binaryWriter = modded ? new ItemSave.Writer(cryptoStream) : new BinaryWriter(cryptoStream);
+         binaryWriter.Write(326);
+         playerFile.Metadata.Write(binaryWriter);
+         Serialize(playerFile, player, binaryWriter);
+         binaryWriter.Flush();
+         cryptoStream.FlushFinalBlock();
+         stream.Flush();
+-        if (isCloudSave && SocialAPI.Cloud != null)
++        if (modded)
++        {
++            ItemSave.Write(path, ItemSave.Kind.Player, (ItemSave.Writer)binaryWriter, ((MemoryStream)stream).ToArray());
++        }
++        else if (isCloudSave && SocialAPI.Cloud != null)
+         {
+             SocialAPI.Cloud.Write(playerFile.Path, ((MemoryStream)stream).ToArray());
+         }
+@@ -55595,51 +55614,51 @@
+         fileIO.Write(newPlayer.shoeColor.B);
+         for (int k = 0; k < newPlayer.armor.Length; k++)
+         {
+-            fileIO.Write(newPlayer.armor[k].type);
++            ItemSave.WriteType(fileIO, newPlayer.armor[k]);
+             fileIO.Write(newPlayer.armor[k].prefix);
+             fileIO.Write(newPlayer.armor[k].favorited);
+         }
+         for (int l = 0; l < newPlayer.dye.Length; l++)
+         {
+-            fileIO.Write(newPlayer.dye[l].type);
++            ItemSave.WriteType(fileIO, newPlayer.dye[l]);
+             fileIO.Write(newPlayer.dye[l].prefix);
+             fileIO.Write(newPlayer.dye[l].favorited);
+         }
+         for (int m = 0; m < 58; m++)
+         {
+-            fileIO.Write(newPlayer.inventory[m].type);
++            ItemSave.WriteType(fileIO, newPlayer.inventory[m]);
+             fileIO.Write(newPlayer.inventory[m].stack);
+             fileIO.Write(newPlayer.inventory[m].prefix);
+             fileIO.Write(newPlayer.inventory[m].favorited);
+         }
+         for (int n = 0; n < newPlayer.miscEquips.Length; n++)
+         {
+-            fileIO.Write(newPlayer.miscEquips[n].type);
++            ItemSave.WriteType(fileIO, newPlayer.miscEquips[n]);
+             fileIO.Write(newPlayer.miscEquips[n].prefix);
+-            fileIO.Write(newPlayer.miscDyes[n].type);
++            ItemSave.WriteType(fileIO, newPlayer.miscDyes[n]);
+             fileIO.Write(newPlayer.miscDyes[n].prefix);
+         }
+         for (int num = 0; num < newPlayer.bank.maxItems; num++)
+         {
+-            fileIO.Write(newPlayer.bank.item[num].type);
++            ItemSave.WriteType(fileIO, newPlayer.bank.item[num]);
+             fileIO.Write(newPlayer.bank.item[num].stack);
+             fileIO.Write(newPlayer.bank.item[num].prefix);
+         }
+         for (int num2 = 0; num2 < newPlayer.bank2.maxItems; num2++)
+         {
+-            fileIO.Write(newPlayer.bank2.item[num2].type);
++            ItemSave.WriteType(fileIO, newPlayer.bank2.item[num2]);
+             fileIO.Write(newPlayer.bank2.item[num2].stack);
+             fileIO.Write(newPlayer.bank2.item[num2].prefix);
+         }
+         for (int num3 = 0; num3 < newPlayer.bank3.maxItems; num3++)
+         {
+-            fileIO.Write(newPlayer.bank3.item[num3].type);
++            ItemSave.WriteType(fileIO, newPlayer.bank3.item[num3]);
+             fileIO.Write(newPlayer.bank3.item[num3].stack);
+             fileIO.Write(newPlayer.bank3.item[num3].prefix);
+         }
+         for (int num4 = 0; num4 < newPlayer.bank4.maxItems; num4++)
+         {
+-            fileIO.Write(newPlayer.bank4.item[num4].type);
++            ItemSave.WriteType(fileIO, newPlayer.bank4.item[num4]);
+             fileIO.Write(newPlayer.bank4.item[num4].stack);
+             fileIO.Write(newPlayer.bank4.item[num4].prefix);
+             fileIO.Write(newPlayer.bank4.item[num4].favorited);
+@@ -55857,10 +55876,10 @@
+         {
+             RijndaelManaged rijndaelManaged = new RijndaelManaged();
+             rijndaelManaged.Padding = PaddingMode.None;
+-            using (MemoryStream stream = new MemoryStream(FileUtilities.ReadAllBytes(playerPath, cloudSave)))
++            using (ItemSave.Payload payload = ItemSave.Open(new MemoryStream(FileUtilities.ReadAllBytes(playerPath, cloudSave)), ItemSave.Kind.Player))
+             {
+-                using CryptoStream input = new CryptoStream(stream, rijndaelManaged.CreateDecryptor(ENCRYPTION_KEY, ENCRYPTION_KEY), CryptoStreamMode.Read);
+-                using BinaryReader binaryReader = new BinaryReader(input);
++                using CryptoStream input = new CryptoStream(payload.Stream, rijndaelManaged.CreateDecryptor(ENCRYPTION_KEY, ENCRYPTION_KEY), CryptoStreamMode.Read);
++                using BinaryReader binaryReader = payload.Read(input);
+                 int num = binaryReader.ReadInt32();
+                 if (num >= 135)
+                 {
+@@ -55878,6 +55897,7 @@
+                     return playerFileData;
+                 }
+                 Deserialize(playerFileData, player, binaryReader, num, out gotToReadName);
++                (binaryReader as ItemSave.Reader)?.Finish();
+                 if (player.lastTimePlayerWasSaved == 0L && !cloudSave)
+                 {
+                     player.lastTimePlayerWasSaved = File.GetLastWriteTimeUtc(playerPath).ToBinary();
+@@ -55888,6 +55908,14 @@
+             playerFileData.Player = player;
+             return playerFileData;
+         }
++        catch (ContentSaveException exception)
++        {
++            Console.Error.WriteLine($"{playerPath}: {exception.Message}");
++            player.loadStatus = StatusID.LaterVersion;
++            player.name = Path.GetFileNameWithoutExtension(playerPath);
++            playerFileData.Player = player;
++            return playerFileData;
++        }
+         catch
+         {
+         }
+@@ -56084,7 +56112,7 @@
+                     {
+                         num2 += 2;
+                     }
+-                    newPlayer.armor[num2].netDefaults(fileIO.ReadInt32());
++                    ItemSave.ReadType(fileIO, newPlayer.armor[num2]);
+                     newPlayer.armor[num2].Prefix(fileIO.ReadByte());
+                 }
+             }
+@@ -56093,7 +56121,7 @@
+                 int num3 = 20;
+                 for (int m = 0; m < num3; m++)
+                 {
+-                    newPlayer.armor[m].netDefaults(fileIO.ReadInt32());
++                    ItemSave.ReadType(fileIO, newPlayer.armor[m]);
+                     newPlayer.armor[m].Prefix(fileIO.ReadByte());
+                     if (release >= 322)
+                     {
+@@ -56115,7 +56143,7 @@
+                 for (int n = 0; n < num4; n++)
+                 {
+                     int num5 = n;
+-                    newPlayer.dye[num5].netDefaults(fileIO.ReadInt32());
++                    ItemSave.ReadType(fileIO, newPlayer.dye[num5]);
+                     newPlayer.dye[num5].Prefix(fileIO.ReadByte());
+                     if (release >= 322)
+                     {
+@@ -56140,7 +56168,7 @@
+                     }
+                     else
+                     {
+-                        newPlayer.inventory[num6].netDefaults(num7);
++                        ItemSave.ReadType(fileIO, newPlayer.inventory[num6], num7);
+                         newPlayer.inventory[num6].stack = fileIO.ReadInt32();
+                         newPlayer.inventory[num6].Prefix(fileIO.ReadByte());
+                         if (release >= 114)
+@@ -56214,7 +56242,7 @@
+                         }
+                         else
+                         {
+-                            newPlayer.miscEquips[num12].netDefaults(num13);
++                            ItemSave.ReadType(fileIO, newPlayer.miscEquips[num12], num13);
+                             newPlayer.miscEquips[num12].Prefix(fileIO.ReadByte());
+                         }
+                         num13 = fileIO.ReadInt32();
+@@ -56225,7 +56253,7 @@
+                         }
+                         else
+                         {
+-                            newPlayer.miscDyes[num12].netDefaults(num13);
++                            ItemSave.ReadType(fileIO, newPlayer.miscDyes[num12], num13);
+                             newPlayer.miscDyes[num12].Prefix(fileIO.ReadByte());
+                         }
+                     }
+@@ -56235,13 +56263,13 @@
+             {
+                 for (int num14 = 0; num14 < 40; num14++)
+                 {
+-                    newPlayer.bank.item[num14].netDefaults(fileIO.ReadInt32());
++                    ItemSave.ReadType(fileIO, newPlayer.bank.item[num14]);
+                     newPlayer.bank.item[num14].stack = fileIO.ReadInt32();
+                     newPlayer.bank.item[num14].Prefix(fileIO.ReadByte());
+                 }
+                 for (int num15 = 0; num15 < 40; num15++)
+                 {
+-                    newPlayer.bank2.item[num15].netDefaults(fileIO.ReadInt32());
++                    ItemSave.ReadType(fileIO, newPlayer.bank2.item[num15]);
+                     newPlayer.bank2.item[num15].stack = fileIO.ReadInt32();
+                     newPlayer.bank2.item[num15].Prefix(fileIO.ReadByte());
+                 }
+@@ -56250,13 +56278,13 @@
+             {
+                 for (int num16 = 0; num16 < 20; num16++)
+                 {
+-                    newPlayer.bank.item[num16].netDefaults(fileIO.ReadInt32());
++                    ItemSave.ReadType(fileIO, newPlayer.bank.item[num16]);
+                     newPlayer.bank.item[num16].stack = fileIO.ReadInt32();
+                     newPlayer.bank.item[num16].Prefix(fileIO.ReadByte());
+                 }
+                 for (int num17 = 0; num17 < 20; num17++)
+                 {
+-                    newPlayer.bank2.item[num17].netDefaults(fileIO.ReadInt32());
++                    ItemSave.ReadType(fileIO, newPlayer.bank2.item[num17]);
+                     newPlayer.bank2.item[num17].stack = fileIO.ReadInt32();
+                     newPlayer.bank2.item[num17].Prefix(fileIO.ReadByte());
+                 }
+@@ -56265,7 +56293,7 @@
+             {
+                 for (int num18 = 0; num18 < 40; num18++)
+                 {
+-                    newPlayer.bank3.item[num18].netDefaults(fileIO.ReadInt32());
++                    ItemSave.ReadType(fileIO, newPlayer.bank3.item[num18]);
+                     newPlayer.bank3.item[num18].stack = fileIO.ReadInt32();
+                     newPlayer.bank3.item[num18].Prefix(fileIO.ReadByte());
+                 }
+@@ -56274,7 +56302,7 @@
+             {
+                 for (int num19 = 0; num19 < 40; num19++)
+                 {
+-                    newPlayer.bank4.item[num19].netDefaults(fileIO.ReadInt32());
++                    ItemSave.ReadType(fileIO, newPlayer.bank4.item[num19]);
+                     newPlayer.bank4.item[num19].stack = fileIO.ReadInt32();
+                     newPlayer.bank4.item[num19].Prefix(fileIO.ReadByte());
+                     if (release >= 255)

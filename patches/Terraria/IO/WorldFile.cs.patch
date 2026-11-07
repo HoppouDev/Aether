@@ -1,0 +1,115 @@
+--- a/Terraria/IO/WorldFile.cs
++++ b/Terraria/IO/WorldFile.cs
+@@ -2,6 +2,7 @@
+ using System.Collections.Generic;
+ using System.Diagnostics;
+ using System.IO;
++using Aether.Modding;
+ using System.Threading;
+ using Microsoft.Xna.Framework;
+ using Terraria.DataStructures;
+@@ -191,8 +192,11 @@
+             {
+                 throw new FileNotFoundException(file);
+             }
+-            using Stream stream = (cloudSave ? ((Stream)new BufferedStream(SocialAPI.Cloud.OpenRead(file))) : ((Stream)new FileStream(file, FileMode.Open)));
+-            using BinaryReader binaryReader = new BinaryReader(stream);
++            using ItemSave.Payload payload = cloudSave
++                ? new ItemSave.Payload(new BufferedStream(SocialAPI.Cloud.OpenRead(file)))
++                : ItemSave.Open(File.OpenRead(file), ItemSave.Kind.World);
++            Stream stream = payload.Stream;
++            using BinaryReader binaryReader = payload.Read();
+             int num = binaryReader.ReadInt32();
+             if (num > 326)
+             {
+@@ -706,8 +710,9 @@
+         }
+         try
+         {
+-            using MemoryStream memoryStream = new MemoryStream(FileUtilities.ReadAllBytes(Main.worldPathName, _isWorldOnCloud));
+-            using BinaryReader binaryReader = new BinaryReader(memoryStream);
++            using ItemSave.Payload payload = ItemSave.Open(new MemoryStream(FileUtilities.ReadAllBytes(Main.worldPathName, _isWorldOnCloud)), ItemSave.Kind.World);
++            Stream memoryStream = payload.Stream;
++            using BinaryReader binaryReader = payload.Read();
+             try
+             {
+                 WorldGen.loadFailed = false;
+@@ -736,6 +741,7 @@
+                         Main.ActiveWorldFileData.CreationTime = DateTime.Now;
+                     }
+                 }
++                (binaryReader as ItemSave.Reader)?.Finish();
+                 binaryReader.Close();
+                 memoryStream.Close();
+                 if (num3 != StatusID.Ok)
+@@ -938,15 +944,31 @@
+         new Stopwatch().Start();
+         int num;
+         byte[] array;
++        ItemSave.Writer custom = null;
+         using (MemoryStream memoryStream = new MemoryStream(7000000))
+         {
+-            using (BinaryWriter writer = new BinaryWriter(memoryStream))
++            using (BinaryWriter writer = ClientContent.HasItems && !useCloudSaving
++                ? custom = new ItemSave.Writer(memoryStream) : new BinaryWriter(memoryStream))
+             {
+                 SaveWorld_Version2(writer);
+             }
+             array = memoryStream.ToArray();
+             num = array.Length;
+         }
++        if (custom != null)
++        {
++            using BinaryReader validation = new BinaryReader(new MemoryStream(array, writable: false));
++            if (Main.validateSaves && !ValidateWorld(validation))
++            {
++                throw new IOException("World validation failed before writing the Aether save.");
++            }
++            if (File.Exists(Main.worldPathName))
++            {
++                DoRollingBackups(Main.worldPathName + ".bak");
++            }
++            ItemSave.Write(Main.worldPathName, ItemSave.Kind.World, custom, array);
++            return;
++        }
+         byte[] array2 = null;
+         if (FileUtilities.Exists(Main.worldPathName, useCloudSaving))
+         {
+@@ -1691,7 +1713,7 @@
+                 writer.Write((short)item.stack);
+                 if (item.stack > 0)
+                 {
+-                    writer.Write(item.type);
++                    ItemSave.WriteType(writer, item);
+                     writer.Write(item.prefix);
+                 }
+             }
+@@ -2786,13 +2808,13 @@
+                 Item item = new Item();
+                 if (num6 > 0)
+                 {
+-                    item.netDefaults(reader.ReadInt32());
++                    ItemSave.ReadType(reader, item);
+                     item.stack = num6;
+                     item.Prefix(reader.ReadByte());
+                 }
+                 else if (num6 < 0)
+                 {
+-                    item.netDefaults(reader.ReadInt32());
++                    ItemSave.ReadType(reader, item);
+                     item.Prefix(reader.ReadByte());
+                     item.stack = 1;
+                 }
+@@ -3284,8 +3306,10 @@
+             {
+                 num = 0;
+             }
+-            using Stream input = ((num != 0) ? ((Stream)new MemoryStream(buffer)) : ((Stream)new FileStream(file, FileMode.Open)));
+-            using BinaryReader binaryReader = new BinaryReader(input);
++            using ItemSave.Payload payload = num != 0
++                ? new ItemSave.Payload(new MemoryStream(buffer))
++                : ItemSave.Open(File.OpenRead(file), ItemSave.Kind.World);
++            using BinaryReader binaryReader = payload.Read();
+             if (binaryReader.ReadInt32() >= 135)
+             {
+                 return FileMetadata.Read(binaryReader, FileType.World);

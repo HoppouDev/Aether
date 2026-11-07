@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using Aether.Modding;
 using Terraria;
@@ -71,6 +72,26 @@ public static class ItemRegistry
         if (stack < 1 || stack > maxStack)
             throw new ArgumentOutOfRangeException(nameof(stack));
         return new Item(type) { stack = stack };
+    }
+
+    public static void SetState(Item item, JsonElement? state)
+    {
+        ArgumentNullException.ThrowIfNull(item);
+        if (GetId(item.type) == null || item.IsAir)
+            throw new ArgumentException("State belongs to a custom item instance.", nameof(item));
+        string? json = state?.GetRawText();
+        if (json != null && Encoding.UTF8.GetByteCount(json) > 16 * 1024)
+            throw new ArgumentException("Item state cannot exceed 16 KiB of JSON.", nameof(state));
+        item.AetherState = json;
+    }
+
+    public static JsonElement? GetState(Item item)
+    {
+        ArgumentNullException.ThrowIfNull(item);
+        if (item.AetherState is not { } json)
+            return null;
+        using JsonDocument document = JsonDocument.Parse(json);
+        return document.RootElement.Clone();
     }
 
     internal static void Freeze()

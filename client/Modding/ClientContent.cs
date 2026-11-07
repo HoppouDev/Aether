@@ -18,6 +18,7 @@ public static class ClientContent
     public static Action<object, object, object, int>? ItemHitNpc { get; internal set; }
     public static Action<object, object, int>? ItemEquipped { get; internal set; }
     public static bool HasItems => Items.Count != 0;
+    public static string? SaveIdentity => profile;
     internal static Action? FinalizeRegistration { get; set; }
 
     public static int SizeItemTables()

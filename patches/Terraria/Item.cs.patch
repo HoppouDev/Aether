@@ -1,6 +1,23 @@
 --- a/Terraria/Item.cs
 +++ b/Terraria/Item.cs
-@@ -48678,6 +48678,12 @@
+@@ -1,5 +1,6 @@
+ using System;
+ using System.IO;
++using Aether.Modding;
+ using Microsoft.Xna.Framework;
+ using Terraria.Audio;
+ using Terraria.DataStructures;
+@@ -140,6 +141,9 @@
+ 
+     public int type;
+ 
++    [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
++    public string AetherState { get; set; }
++
+     public bool favorited;
+ 
+     public int holdStyle;
+@@ -48678,6 +48682,12 @@
              return;
          }
          ResetStats(Type);
@@ -13,3 +30,57 @@
          if (type >= ItemID.Count)
          {
              type = 0;
+@@ -48953,6 +48963,7 @@
+ 
+     public void ResetStats(int Type)
+     {
++        AetherState = null;
+         useSoundPitch = 0f;
+         tooltipContext = -1;
+         tooltipSlot = -1;
+@@ -49860,7 +49871,7 @@
+     {
+         if (type == compareItem.type && stack == compareItem.stack)
+         {
+-            return prefix != compareItem.prefix;
++            return prefix != compareItem.prefix || AetherState != compareItem.AetherState;
+         }
+         return true;
+     }
+@@ -49878,7 +49889,7 @@
+     {
+         if (item1.type == item2.type)
+         {
+-            return item1.prefix == item2.prefix;
++            return item1.prefix == item2.prefix && item1.AetherState == item2.AetherState;
+         }
+         return false;
+     }
+@@ -49921,7 +49932,7 @@
+ 
+     public void Serialize(BinaryWriter writer, bool writeFavorite = false)
+     {
+-        writer.Write(type);
++        ItemSave.WriteType(writer, this);
+         writer.Write(stack);
+         writer.Write(prefix);
+         if (writeFavorite)
+@@ -49932,7 +49943,7 @@
+ 
+     public void DeserializeFrom(BinaryReader reader, bool readFavorite = false)
+     {
+-        netDefaults(reader.ReadInt32());
++        ItemSave.ReadType(reader, this);
+         stack = reader.ReadInt32();
+         Prefix(reader.ReadByte());
+         if (readFavorite)
+@@ -49962,7 +49973,9 @@
+             int num = stack;
+             int num2 = type;
+             int prefixWeWant = prefix;
++            string aetherState = AetherState;
+             SetDefaults(num2);
++            AetherState = aetherState;
+             Prefix(prefixWeWant);
+             stack = num;
+             favorited = flag;
