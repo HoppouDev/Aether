@@ -35,3 +35,39 @@ Optional AI values are passed to Terraria and may be overridden by a vanilla typ
 The methods return false if the world or type is unavailable or the engine has no eligible unused slot.
 Existing entities keep their slots.
 The engine's per-owner golf ball limit also applies.
+
+## Registering custom NPCs
+
+Call `NpcRegistry.Register("mod-id:name", definition)` from your initializer.
+The definition declares a display name, sprite, hitbox, maximum health, contact damage, defense, knockback resistance, gravity, tile collision, and optional behavior callbacks.
+Spawn it with `Entities.TrySpawnNpc(NpcTypeKey.Custom("mod-id:name"), spawn, out handle)` after entering a single-player world.
+Numeric types are allocated by ordinal ID at startup.
+Keep the namespaced key when referring to a definition across launches.
+`NpcRegistry.TryResolve` and `NpcRegistry.TryGetKey` translate between keys and the current runtime IDs.
+
+Use `EntitySprite.Vanilla(NPCID.BlueSlime)` to share a vanilla texture and frame count.
+Use `EntitySprite.Resource("textures/scout.png", frames: 4, ticksPerFrame: 6)` for a PNG under your archive's `resources/` directory.
+The image must contain equal vertically stacked frames and fit within 4096×4096 pixels.
+The loader checks that the path exists when it freezes registration.
+The client decodes the image and checks its dimensions before drawing.
+
+| Callback | When it runs |
+| --- | --- |
+| `OnSpawn` | Once after the native spawn is live, with the `IEntitySource`. |
+| `OnTick` | During the NPC's AI phase, before its native movement and collision. |
+| `OnHit` | After a strike applies damage and before the native death check. Includes the attacker slot when known. |
+| `OnHitPlayer` | After NPC contact damages a player. |
+| `OnRemoved` | Once after the handle is invalidated, with the final snapshot and removal reason. |
+
+Each callback receives a snapshot and the same `EntityBehaviorState` for that spawn.
+Set its `Value` to hold data for the behavior.
+Use `Entities.TrySetNpcVelocity` to steer a custom NPC and `Entities.TryDespawnNpc` to remove it.
+Check for `Defeated` in the removal callback when granting defeat rewards.
+A failing callback is logged with the mod and NPC ID and is disabled.
+A failed spawn or tick callback also retires the NPC with `BehaviorFailed`.
+A successful spawn call means the engine created the entity.
+A spawn callback can immediately remove it.
+
+Custom NPCs are currently transient and single-player.
+They are omitted from vanilla NPC save tables, bestiary kill progress, and banner tracking.
+The example mod registers a Scout and spawns one with `/api-example:spawn-npc`.

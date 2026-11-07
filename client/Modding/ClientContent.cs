@@ -6,6 +6,21 @@ namespace Aether.Modding;
 public sealed record ClientItemDefinition(string Id, string Name, string? Tooltip, int TextureItemId);
 
 [EditorBrowsable(EditorBrowsableState.Never)]
+public sealed record ClientEntitySprite(int VanillaType, string? ResourcePath, int Frames, int TicksPerFrame);
+
+[EditorBrowsable(EditorBrowsableState.Never)]
+public sealed record ClientNpcDefinition(string Id, string Name, ClientEntitySprite Sprite);
+
+public enum EntityRemovalReason
+{
+    Despawned,
+    Defeated,
+    Replaced,
+    WorldUnloaded,
+    BehaviorFailed
+}
+
+[EditorBrowsable(EditorBrowsableState.Never)]
 public sealed record ContentModRequirement(string Id, string Version);
 
 [EditorBrowsable(EditorBrowsableState.Never)]
@@ -13,6 +28,7 @@ public static class ClientContent
 {
     private static readonly object itemTableLock = new();
     private static bool itemTablesSized;
+    private static bool npcTablesSized;
     private static string? profile;
 
     public static IReadOnlyList<ClientItemDefinition> Items { get; private set; } = Array.Empty<ClientItemDefinition>();
@@ -21,6 +37,13 @@ public static class ClientContent
     public static Action<object, object, object, int>? ItemHitNpc { get; internal set; }
     public static Action<object, object, int>? ItemEquipped { get; internal set; }
     public static Action<object>? ApplyPlayerModifiers { get; internal set; }
+    public static IReadOnlyList<ClientNpcDefinition> Npcs { get; private set; } = Array.Empty<ClientNpcDefinition>();
+    public static Action<int, object>? ApplyNpcDefaults { get; private set; }
+    public static Action<object, object>? NpcSpawned { get; internal set; }
+    public static Action<object>? NpcUpdated { get; internal set; }
+    public static Action<object, int, int, bool>? NpcHit { get; internal set; }
+    public static Action<object, object, int>? NpcHitPlayer { get; internal set; }
+    public static Action<object, EntityRemovalReason>? NpcRemoved { get; internal set; }
     public static bool HasItems => Items.Count != 0;
     public static bool IsDedicatedServer { get; internal set; }
     public static string? ConnectionVersion { get; internal set; }
@@ -51,6 +74,26 @@ public static class ClientContent
         }
     }
 
+    public static int SizeNpcTables()
+    {
+        lock (itemTableLock)
+        {
+            npcTablesSized = true;
+            return Npcs.Count;
+        }
+    }
+
+    internal static void ConfigureNpcs(ClientNpcDefinition[] npcs, Action<int, object> applyDefaults)
+    {
+        lock (itemTableLock)
+        {
+            if (npcTablesSized)
+                throw new InvalidOperationException("Terraria's NPC tables were initialized before custom NPC registration finished. Read game content from ClientEvents.Ready.");
+            Npcs = Array.AsReadOnly(npcs);
+            ApplyNpcDefaults = applyDefaults;
+        }
+    }
+
     public static string SaveRoot(string vanillaRoot) => profile == null
         ? vanillaRoot : Path.Combine(vanillaRoot, "AetherContent", profile);
 
@@ -64,6 +107,13 @@ public static class ClientContent
             ItemHitNpc = null;
             ItemEquipped = null;
             ApplyPlayerModifiers = null;
+            Npcs = Array.Empty<ClientNpcDefinition>();
+            ApplyNpcDefaults = null;
+            NpcSpawned = null;
+            NpcUpdated = null;
+            NpcHit = null;
+            NpcHitPlayer = null;
+            NpcRemoved = null;
             IsDedicatedServer = false;
             ConnectionVersion = null;
             ServerReady = null;
@@ -72,6 +122,7 @@ public static class ClientContent
             SaveRequirements = Array.Empty<ContentModRequirement>();
             profile = null;
             itemTablesSized = false;
+            npcTablesSized = false;
         }
     }
 }

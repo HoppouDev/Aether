@@ -1,6 +1,46 @@
 --- a/Terraria/NPC.cs
 +++ b/Terraria/NPC.cs
-@@ -8460,6 +8460,7 @@
+@@ -6016,7 +6016,38 @@
+         }
+     }
+ 
+-    public bool active;
++    private bool aetherActive;
++
++    public bool active
++    {
++        get => aetherActive;
++        set
++        {
++            if (value)
++            {
++                if (!aetherActive)
++                    ResetAetherSpawnIdentity();
++                aetherActive = true;
++            }
++            else
++            {
++                AetherRetire(Aether.Modding.EntityRemovalReason.Despawned);
++            }
++        }
++    }
++
++    internal bool AetherIsCustom => type >= NPCID.VanillaCount && type < NPCID.Count;
++
++    [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
++    public void AetherRetire(Aether.Modding.EntityRemovalReason reason)
++    {
++        if (!aetherActive)
++            return;
++
++        aetherActive = false;
++        if (AetherIsCustom)
++            Aether.Modding.ClientContent.NpcRemoved?.Invoke(this, reason);
++    }
+ 
+     private const int NPC_TARGETS_START = 300;
+ 
+@@ -8460,6 +8491,7 @@
  
      public void SetDefaults(int Type, NPCSpawnParams spawnparams = default(NPCSpawnParams))
      {
@@ -8,25 +48,102 @@
          if (Main.getGoodWorld && !IsABestiaryIconDummy && spawnparams.sizeScaleOverride.HasValue)
          {
              spawnparams.sizeScaleOverride = (spawnparams.sizeScaleOverride + spawnparams.sizeScaleOverride * spawnparams.sizeScaleOverride) / 2f;
-@@ -81613,6 +81614,17 @@
+@@ -17816,6 +17848,10 @@
+             knockBackResist = 0.5f;
+             rarity = 1;
+         }
++        if (AetherIsCustom)
++        {
++            Aether.Modding.ClientContent.ApplyNpcDefaults?.Invoke(type, this);
++        }
+         if (Main.dedServ)
+         {
+             frame = default;
+@@ -19864,6 +19900,11 @@
+ 
+     public void AI()
+     {
++        if (AetherIsCustom)
++        {
++            Aether.Modding.ClientContent.NpcUpdated?.Invoke(this);
++            return;
++        }
+         if (aiStyle == 0)
+         {
+             if (type >= 0 && NPCID.Sets.BoundTownNPCs[type])
+@@ -67421,6 +67462,11 @@
+ 
+     public void FindFrame()
+     {
++        if (AetherIsCustom)
++        {
++            Aether.Modding.EntitySprites.AnimateNpc(this);
++            return;
++        }
+         position += netOffset;
+         int num = 1;
+         if (!Main.dedServ)
+@@ -78873,6 +78919,11 @@
+         {
+             return;
+         }
++        if (AetherIsCustom)
++        {
++            AetherRetire(Aether.Modding.EntityRemovalReason.Defeated);
++            return;
++        }
+         if (type == 371)
+         {
+             ai[0] = 1f;
+@@ -79668,7 +79719,7 @@
+ 
+     public void NPCLoot()
+     {
+-        if (Main.netMode == 1 || type >= NPCID.Count || ((Main.getGoodWorld || !Main.isThereAWorldSurface) && !downedBoss3 && !Main.onlyShimmerOceanWorlds && (type == 31 || type == 294 || type == 296 || type == 295 || type == 32 || type == 34 || type == 71 || type == 693 || type == 694)) || (type == 32 && localAI[3] == 1f))
++        if (Main.netMode == 1 || type >= NPCID.VanillaCount || ((Main.getGoodWorld || !Main.isThereAWorldSurface) && !downedBoss3 && !Main.onlyShimmerOceanWorlds && (type == 31 || type == 294 || type == 296 || type == 295 || type == 32 || type == 34 || type == 71 || type == 693 || type == 694)) || (type == 32 && localAI[3] == 1f))
+         {
+             return;
+         }
+@@ -79741,6 +79792,8 @@
+ 
+     public bool IsNPCValidForBestiaryKillCredit()
+     {
++        if (AetherIsCustom)
++            return false;
+         switch (type)
+         {
+         case 121:
+@@ -81603,6 +81656,8 @@
+                 generation++;
+             }
+         }
++        if (Main.npc[slot].AetherIsCustom)
++            Main.npc[slot].AetherRetire(Aether.Modding.EntityRemovalReason.Replaced);
+         NPC nPC = new NPC();
+         Main.npc[slot] = nPC;
+         nPC.whoAmI = slot;
+@@ -81613,6 +81668,20 @@
  
      public static int NewNPC(IEntitySource source, int X, int Y, int Type, int Start = 0, float ai0 = 0f, float ai1 = 0f, float ai2 = 0f, float ai3 = 0f, int Target = 255)
      {
-+        return NewNPCCore(source, X, Y, Type, Start, ai0, ai1, ai2, ai3, Target, allowEviction: true);
++        return NewNPCCore(source, X, Y, Type, Start, ai0, ai1, ai2, ai3, Target, allowEviction: true, out _);
 +    }
 +
 +    [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
-+    public static int AetherNewNPC(IEntitySource source, int X, int Y, int Type, float ai0, float ai1, float ai2, float ai3, int Target)
++    public static int AetherNewNPC(IEntitySource source, int X, int Y, int Type, float ai0, float ai1, float ai2, float ai3, int Target, out long spawnIdentity)
 +    {
-+        return NewNPCCore(source, X, Y, Type, 0, ai0, ai1, ai2, ai3, Target, allowEviction: false);
++        return NewNPCCore(source, X, Y, Type, 0, ai0, ai1, ai2, ai3, Target, allowEviction: false, out spawnIdentity);
 +    }
 +
-+    private static int NewNPCCore(IEntitySource source, int X, int Y, int Type, int Start, float ai0, float ai1, float ai2, float ai3, int Target, bool allowEviction)
++    private static int NewNPCCore(IEntitySource source, int X, int Y, int Type, int Start, float ai0, float ai1, float ai2, float ai3, int Target, bool allowEviction, out long spawnIdentity)
 +    {
++        spawnIdentity = 0;
++        if (Type >= NPCID.VanillaCount && Main.netMode != 0)
++            return Main.maxNPCs;
          if (Main.getGoodWorld && Main.rand.Next(3) != 0)
          {
              if (Type == 46)
-@@ -81624,7 +81636,7 @@
+@@ -81624,7 +81693,7 @@
                  Type = 66;
              }
          }
@@ -35,7 +152,17 @@
          if (availableNPCSlot >= 0)
          {
              spawnSlotProtected[availableNPCSlot] = 2;
-@@ -81658,7 +81670,7 @@
+@@ -81652,13 +81721,17 @@
+             {
+                 ChatHelper.BroadcastChatMessage(NetworkText.FromKey("Announcement.HasAwoken", nPC.GetTypeNetName()), ChatColors.BossOrEvent);
+             }
++            if (!allowEviction || nPC.AetherIsCustom)
++                spawnIdentity = nPC.AetherSpawnIdentity;
+             nPC.OnSpawn(source);
++            if (nPC.AetherIsCustom)
++                Aether.Modding.ClientContent.NpcSpawned?.Invoke(nPC, source);
+             return availableNPCSlot;
+         }
          return Main.maxNPCs;
      }
  
@@ -44,7 +171,7 @@
      {
          Type = NPCID.FromNetId(Type);
          bool b = NPCID.Sets.SearchSpawnSlotsInReverse[Type];
-@@ -81681,6 +81693,10 @@
+@@ -81681,6 +81754,10 @@
                  return i;
              }
          }
@@ -55,3 +182,21 @@
          for (int j = startIndex; j != t; j += num)
          {
              if (Main.npc[j].CanBeReplacedByOtherNPCs)
+@@ -82429,6 +82506,8 @@
+         {
+             SoundEngine.PlaySound(HitSound, position);
+         }
++        if (AetherIsCustom)
++            Aether.Modding.ClientContent.NpcHit?.Invoke(this, owner, num, crit);
+         if (realLife >= 0)
+         {
+             Main.npc[realLife].checkDead();
+@@ -91568,6 +91647,8 @@
+         TryPortalJumping();
+         IdleSounds();
+         AI();
++        if (!active && AetherIsCustom)
++            return;
+         SubAI_HandleTemporaryCatchableNPCPlayerInvulnerability();
+         if (Main.netMode != 2 && extraValue > 0)
+         {

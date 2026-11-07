@@ -1,3 +1,4 @@
+using Aether.Modding;
 using Microsoft.Xna.Framework;
 using Terraria;
 using Terraria.DataStructures;
@@ -43,7 +44,7 @@ public static partial class Entities
     {
         Registration.RequireGameThread();
         handle = default;
-        if (!CanSpawn || type.VanillaId is not int id)
+        if (!CanSpawn || !NpcRegistry.TryResolve(type, out int id))
             return false;
 
         ArgumentNullException.ThrowIfNull(spawn.Source);
@@ -55,11 +56,12 @@ public static partial class Entities
         RequireFinite(spawn.Ai2, nameof(spawn.Ai2));
         RequireFinite(spawn.Ai3, nameof(spawn.Ai3));
 
+        long revision = GameBridge.WorldRevision;
         int slot = NPC.AetherNewNPC(spawn.Source, (int)spawn.Bottom.X, (int)spawn.Bottom.Y, id,
-            spawn.Ai0, spawn.Ai1, spawn.Ai2, spawn.Ai3, spawn.Target);
+            spawn.Ai0, spawn.Ai1, spawn.Ai2, spawn.Ai3, spawn.Target, out long identity);
         if (slot == Main.maxNPCs)
             return false;
-        handle = new(slot, GameBridge.WorldRevision, Main.npc[slot].AetherSpawnIdentity);
+        handle = new(slot, revision, identity);
         return true;
     }
 
@@ -116,11 +118,33 @@ public static partial class Entities
         Registration.RequireGameThread();
         snapshot = default;
         if (!GameBridge.WorldReady || (uint)slot >= Main.maxNPCs || Main.npc[slot] is not { active: true } npc ||
-            npc.netID == 0 || !IsObserved(npc.Center))
+            !NpcRegistry.TryGetKey(npc.netID, out var type) || !IsObserved(npc.Center))
             return false;
 
-        snapshot = new(new(slot, GameBridge.WorldRevision, npc.AetherSpawnIdentity), NpcTypeKey.Vanilla(npc.netID),
-            npc.Center, npc.velocity, npc.Hitbox, npc.life, npc.lifeMax, npc.damage, npc.friendly, npc.boss);
+        snapshot = SnapshotNpc(npc, new(slot, GameBridge.WorldRevision, npc.AetherSpawnIdentity), type);
+        return true;
+    }
+
+    internal static NpcSnapshot SnapshotNpc(NPC npc, NpcHandle handle, NpcTypeKey type) =>
+        new(handle, type, npc.Center, npc.velocity, npc.Hitbox, npc.life, npc.lifeMax, npc.damage, npc.friendly, npc.boss);
+
+    public static bool TrySetNpcVelocity(NpcHandle handle, Vector2 velocity)
+    {
+        Registration.RequireGameThread();
+        RequireFinite(velocity.X, nameof(velocity));
+        RequireFinite(velocity.Y, nameof(velocity));
+        if (!CanSpawn || !TryGetNpc(handle, out _) || !NpcRegistry.IsManaged(Main.npc[handle.Slot]))
+            return false;
+        Main.npc[handle.Slot].velocity = velocity;
+        return true;
+    }
+
+    public static bool TryDespawnNpc(NpcHandle handle)
+    {
+        Registration.RequireGameThread();
+        if (!CanSpawn || !TryGetNpc(handle, out _) || !NpcRegistry.IsManaged(Main.npc[handle.Slot]))
+            return false;
+        Main.npc[handle.Slot].AetherRetire(EntityRemovalReason.Despawned);
         return true;
     }
 

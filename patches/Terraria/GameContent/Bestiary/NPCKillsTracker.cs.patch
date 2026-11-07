@@ -1,0 +1,11 @@
+--- a/Terraria/GameContent/Bestiary/NPCKillsTracker.cs
++++ b/Terraria/GameContent/Bestiary/NPCKillsTracker.cs
+@@ -22,6 +22,8 @@
+ 
+     public void RegisterKill(NPC npc)
+     {
++        if (npc.AetherIsCustom)
++            return;
+         string bestiaryCreditId = npc.GetBestiaryCreditId();
+         _killCountsByNpcId.TryGetValue(bestiaryCreditId, out var value);
+         value++;

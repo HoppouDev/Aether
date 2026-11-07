@@ -130,6 +130,33 @@
                      writer.Write(item.prefix);
                  }
              }
+@@ -1726,7 +1777,7 @@
+ 
+     public static int SaveNPCs(BinaryWriter writer)
+     {
+-        bool[] array = (bool[])NPC.ShimmeredTownNPCs.Clone();
++        bool[] array = NPC.ShimmeredTownNPCs[..NPCID.VanillaCount];
+         writer.Write(array.Count(value: true));
+         for (int i = 0; i < array.Length; i++)
+         {
+@@ -1738,7 +1789,7 @@
+         for (int j = 0; j < Main.npc.Length; j++)
+         {
+             NPC nPC = Main.npc[j];
+-            if (nPC.active && nPC.townNPC && nPC.type != 368)
++            if (nPC.active && nPC.townNPC && nPC.type < NPCID.VanillaCount && nPC.type != 368)
+             {
+                 writer.Write(nPC.active);
+                 writer.Write(nPC.netID);
+@@ -1762,7 +1813,7 @@
+         for (int k = 0; k < Main.npc.Length; k++)
+         {
+             NPC nPC2 = Main.npc[k];
+-            if (nPC2.active && NPCID.Sets.SavesAndLoads[nPC2.type])
++            if (nPC2.active && nPC2.type < NPCID.VanillaCount && NPCID.Sets.SavesAndLoads[nPC2.type])
+             {
+                 writer.Write(nPC2.active);
+                 writer.Write(nPC2.netID);
 @@ -2786,13 +2837,13 @@
                  Item item = new Item();
                  if (num6 > 0)

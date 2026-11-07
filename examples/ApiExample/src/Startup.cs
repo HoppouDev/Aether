@@ -1,5 +1,7 @@
 using Aether.Api;
 using Aether.Modding;
+using Microsoft.Xna.Framework;
+using Terraria.DataStructures;
 using Terraria.ID;
 
 namespace ApiExample;
@@ -47,6 +49,29 @@ public sealed class Startup : IModInitializer
         {
             if (Worlds.TryGetCurrent(out var world))
                 Console.WriteLine($"[api-example] {world.Name} spawn {world.Spawn}, tile {Tiles.Query(world.Spawn).Status}");
+        });
+        var scout = NpcTypeKey.Custom("api-example:scout");
+        NpcRegistry.Register("api-example:scout", new NpcDefinition("Scout", EntitySprite.Vanilla(NPCID.BlueSlime))
+        {
+            HasGravity = false,
+            Damage = 6,
+            MaxHealth = 40,
+            OnTick = context =>
+            {
+                if (Players.TryGetLocal(out var player))
+                {
+                    Vector2 offset = player.Center - context.Npc.Center;
+                    if (offset.LengthSquared() > 1)
+                        Entities.TrySetNpcVelocity(context.Npc.Handle, Vector2.Normalize(offset) * 2f);
+                }
+            },
+            OnRemoved = context => Console.WriteLine($"[api-example] Scout removed ({context.Reason})")
+        });
+        LocalCommands.Register("api-example:spawn-npc", arguments =>
+        {
+            if (Players.TryGetLocal(out var player))
+                Entities.TrySpawnNpc(scout, new NpcSpawn(player.Bottom + new Vector2(64, -48),
+                    new EntitySource_Parent(player)), out _);
         });
         HudOverlays.Register("api-example:label", canvas => canvas.DrawText("API example", 16, 80, HudColor.White));
         RecipeRegistry.Register("api-example:torch", new RecipeDefinition(new ItemAmount(8, 1), [new ItemAmount(9, 1)]));

@@ -14,7 +14,11 @@ public sealed class ApiStartup : IModInitializer
         Registration.SetGameThread();
         ClientStartup.HandleLocalCommand = LocalCommands.TryExecute;
         ClientStartup.BlockCraft = recipe => RecipeRegistry.IsBlocked((Recipe)recipe);
-        ClientContent.FinalizeRegistration = ItemRegistry.Freeze;
+        ClientContent.FinalizeRegistration = () =>
+        {
+            ItemRegistry.Freeze();
+            NpcRegistry.Freeze();
+        };
         ClientContent.ApplyPlayerModifiers = player => PlayerModifiers.Apply((Player)player);
         ClientContent.ServerReady = GameBridge.ReadyServer;
         ClientContent.ServerPlayerJoined = index => ServerEvents.PlayerJoined.Raise(Main.player[index]);
@@ -25,13 +29,14 @@ public sealed class ApiStartup : IModInitializer
 public static class GameBridge
 {
     private static bool ready;
+    private static bool endingWorld;
     private static WorldFileData? activeWorld;
     private static WorldInfo world;
 
     internal static bool IsReady => ready;
     internal static long WorldRevision { get; private set; }
 
-    internal static bool WorldReady => ready && !Main.gameMenu && !WorldGen.isGeneratingOrLoadingWorld &&
+    internal static bool WorldReady => ready && !endingWorld && !Main.gameMenu && !WorldGen.isGeneratingOrLoadingWorld &&
         (Main.dedServ || Main.CanUpdateGameplay) && (Main.netMode != 1 || !Netplay.Disconnect);
 
     internal static void ReadyServer()
@@ -89,9 +94,18 @@ public static class GameBridge
             return;
         activeWorld = null;
         WorldRevision++;
-        PlayerModifiers.ClearWorld();
-        WorldEvents.Left.Raise(world);
-        HudOverlays.ClearTextures();
+        endingWorld = true;
+        try
+        {
+            NpcRegistry.EndWorld();
+            PlayerModifiers.ClearWorld();
+            WorldEvents.Left.Raise(world);
+            HudOverlays.ClearTextures();
+        }
+        finally
+        {
+            endingWorld = false;
+        }
     }
 
     public static void DrawHud()

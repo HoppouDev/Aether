@@ -1,0 +1,11 @@
+--- a/Terraria/GameContent/Bestiary/NPCWasChatWithTracker.cs
++++ b/Terraria/GameContent/Bestiary/NPCWasChatWithTracker.cs
+@@ -20,6 +20,8 @@
+ 
+     public void RegisterChatStartWith(NPC npc)
+     {
++        if (npc.AetherIsCustom)
++            return;
+         string bestiaryCreditId = npc.GetBestiaryCreditId();
+         bool flag = !_chattedWithPlayer.Contains(bestiaryCreditId);
+         SetWasChatWithDirectly(bestiaryCreditId);

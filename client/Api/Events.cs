@@ -49,9 +49,11 @@ internal static class Registration
 
     internal static void SetGameThread() => gameThread = Environment.CurrentManagedThreadId;
 
+    internal static bool IsGameThread => Environment.CurrentManagedThreadId == gameThread;
+
     internal static void RequireGameThread()
     {
-        if (Environment.CurrentManagedThreadId != gameThread)
+        if (!IsGameThread)
             throw new InvalidOperationException("Call the gameplay API on the game thread.");
     }
 
@@ -92,15 +94,23 @@ internal sealed class Listener<T>(string owner, Action<T> callback)
     internal string Owner { get; } = owner;
     private bool enabled = true;
 
-    internal void Invoke(T value)
+    internal void Invoke(T value) => TryInvoke(value);
+
+    internal bool TryInvoke(T value, string? subject = null)
     {
         if (!enabled)
-            return;
-        try { callback(value); }
+            return false;
+        try
+        {
+            callback(value);
+            return true;
+        }
         catch (Exception exception)
         {
             enabled = false;
-            Console.Error.WriteLine($"Aether API disabled a callback from '{Owner}': {exception}");
+            string detail = subject == null ? "" : $" for {subject}";
+            Console.Error.WriteLine($"Aether API disabled a callback from '{Owner}'{detail}: {exception}");
+            return false;
         }
     }
 }

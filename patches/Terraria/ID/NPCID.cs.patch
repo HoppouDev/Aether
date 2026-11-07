@@ -1,0 +1,25 @@
+--- a/Terraria/ID/NPCID.cs
++++ b/Terraria/ID/NPCID.cs
+@@ -12462,9 +12462,20 @@
+ 
+     public const short PalworldFoxsparksDistressed = 696;
+ 
+-    public static readonly short Count = 697;
++    public const int VanillaCount = 697;
+ 
+-    public static readonly IdDictionary Search = IdDictionary.Create<NPCID, short>();
++    public static readonly short Count = (short)(VanillaCount + Aether.Modding.ClientContent.SizeNpcTables());
++
++    public static readonly IdDictionary Search = CreateSearch();
++
++    private static IdDictionary CreateSearch()
++    {
++        IdDictionary search = IdDictionary.Create<NPCID, short>();
++        var npcs = Aether.Modding.ClientContent.Npcs;
++        for (int i = 0; i < npcs.Count; i++)
++            search.Add(npcs[i].Id, VanillaCount + i);
++        return search;
++    }
+ 
+     public static int FromLegacyName(string name)
+     {

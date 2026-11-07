@@ -12,7 +12,7 @@ public readonly record struct NpcTypeKey
 
     public static NpcTypeKey Vanilla(int id)
     {
-        if (id == 0 || id <= NPCID.NegativeIDCount || id >= NPCID.Count)
+        if (id == 0 || id <= NPCID.NegativeIDCount || id >= NPCID.VanillaCount)
             throw new ArgumentOutOfRangeException(nameof(id));
         return new(id, null);
     }

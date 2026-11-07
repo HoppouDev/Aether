@@ -1,0 +1,16 @@
+--- a/ReLogic/Content/Asset.cs
++++ b/ReLogic/Content/Asset.cs
+@@ -25,6 +25,13 @@
+         Name = name;
+     }
+ 
++    [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
++    public static Asset<T> AetherFromValue(string name, T value)
++    {
++        ArgumentNullException.ThrowIfNull(value);
++        return new Asset<T>(name) { Value = value, State = AssetState.Loaded };
++    }
++
+     public static explicit operator T(Asset<T> asset)
+     {
+         return asset.Value;

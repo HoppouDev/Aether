@@ -1,0 +1,11 @@
+--- a/Terraria/GameContent/Bestiary/NPCWasNearPlayerTracker.cs
++++ b/Terraria/GameContent/Bestiary/NPCWasNearPlayerTracker.cs
+@@ -31,6 +31,8 @@
+ 
+     public void RegisterWasNearby(NPC npc)
+     {
++        if (npc.AetherIsCustom)
++            return;
+         string bestiaryCreditId = npc.GetBestiaryCreditId();
+         bool flag = !_wasNearPlayer.Contains(bestiaryCreditId);
+         SetWasSeenDirectly(bestiaryCreditId);

@@ -1,0 +1,11 @@
+--- a/Terraria/GameContent/Bestiary/BestiaryDatabase.cs
++++ b/Terraria/GameContent/Bestiary/BestiaryDatabase.cs
+@@ -61,7 +61,7 @@
+ 
+     public void Merge(ItemDropDatabase dropsDatabase)
+     {
+-        for (int i = -65; i < NPCID.Count; i++)
++        for (int i = -65; i < NPCID.VanillaCount; i++)
+         {
+             ExtractDropsForNPC(dropsDatabase, i);
+         }

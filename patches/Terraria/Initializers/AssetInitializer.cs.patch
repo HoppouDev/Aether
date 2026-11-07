@@ -10,3 +10,20 @@
              if (num != -1)
              {
                  TextureAssets.Item[i] = TextureAssets.Item[num];
+@@ -122,10 +123,15 @@
+                 TextureAssets.Item[i] = LoadAsset<Texture2D>("Images/Item_" + i, AssetRequestMode.DoNotLoad);
+             }
+         }
+-        for (int j = 0; j < TextureAssets.Npc.Length; j++)
++        for (int j = 0; j < NPCID.VanillaCount; j++)
+         {
+             TextureAssets.Npc[j] = LoadAsset<Texture2D>("Images/NPC_" + j, AssetRequestMode.DoNotLoad);
+         }
++        for (int j = NPCID.VanillaCount; j < TextureAssets.Npc.Length; j++)
++        {
++            var definition = Aether.Modding.ClientContent.Npcs[j - NPCID.VanillaCount];
++            TextureAssets.Npc[j] = Aether.Modding.EntitySprites.Load(definition.Id, definition.Sprite, TextureAssets.Npc);
++        }
+         for (int k = 0; k < TextureAssets.Projectile.Length; k++)
+         {
+             TextureAssets.Projectile[k] = LoadAsset<Texture2D>("Images/Projectile_" + k, AssetRequestMode.DoNotLoad);
