@@ -1698,7 +1698,15 @@
      {
          CycleClothingStyle_Inner(plr);
          while (!IsValidPlayerStyle(plr))
-@@ -53643,7 +53814,7 @@
+@@ -53638,12 +53809,15 @@
+             flag3 = true;
+             flag2 = false;
+         }
++#if DEBUG
++        flag3 = true;
++#endif
+         if (((Assets.PendingAssets == 0) & flag) && (Program.LoadedEverything || !flag2))
+         {
              _isAsyncLoadComplete = true;
          }
          spriteBatch.Begin();
@@ -1707,7 +1715,17 @@
          Microsoft.Xna.Framework.Color white = Microsoft.Xna.Framework.Color.White;
          byte b = 0;
          int num3 = 90;
-@@ -53734,11 +53905,7 @@
+@@ -53664,6 +53838,9 @@
+             num3 = -1;
+             num4 = -1;
+             num5 = -1;
++#if DEBUG
++            num7 = 0;
++#endif
+         }
+         if (splashCounter >= num3)
+         {
+@@ -53734,11 +53911,7 @@
          {
              DrawSplash_LoadingFlower(white);
          }
@@ -1720,7 +1738,7 @@
          spriteBatch.End();
      }
  
-@@ -58565,13 +58732,13 @@
+@@ -58565,13 +58738,13 @@
          {
              waterTarget.UpdateContent(RenderWater);
          }
@@ -1736,7 +1754,7 @@
          {
              wallTarget.UpdateContent(RenderWallsAndBlacks);
              tileTarget.UpdateContent(RenderTiles);
-@@ -60670,7 +60837,7 @@
+@@ -60670,7 +60843,7 @@
              {
                  if (cloudBGActive > 0f)
                  {
@@ -1745,7 +1763,7 @@
                      if (cloudBGAlpha > 1f)
                      {
                          cloudBGAlpha = 1f;
-@@ -60678,7 +60845,7 @@
+@@ -60678,7 +60851,7 @@
                  }
                  else
                  {
@@ -1754,7 +1772,7 @@
                      if (cloudBGAlpha < 0f)
                      {
                          cloudBGAlpha = 0f;
-@@ -62977,7 +63144,9 @@
+@@ -62977,7 +63150,9 @@
              _isDrawingOrUpdating = true;
              DetailedFPS.Begin(DetailedFPS.OperationCategory.Draw);
              EnsureRenderTargetContent();
@@ -1765,7 +1783,7 @@
              if (OnPostDraw != null)
              {
                  OnPostDraw(gameTime);
-@@ -62998,18 +63167,19 @@
+@@ -62998,18 +63173,19 @@
          {
              NewRuntimeMethods.GC_Collect(0, GCCollectionMode.Forced, blocking: false);
          }
@@ -1792,7 +1810,7 @@
                  if (UpdateTimeAccumulator >= TARGET_FRAME_TIME * 599.0 / 600.0)
                  {
                      break;
-@@ -63023,7 +63193,7 @@
+@@ -63023,7 +63199,7 @@
              }
          }
          DetailedFPS.Begin(DetailedFPS.OperationCategory.Present);
@@ -1801,7 +1819,7 @@
          {
              flag = true;
              NewRuntimeMethods.GC_Collect(2, GCCollectionMode.Optimized, blocking: false);
-@@ -63035,6 +63205,11 @@
+@@ -63035,6 +63211,11 @@
  
      private void DoDraw(GameTime gameTime)
      {
@@ -1813,7 +1831,7 @@
          if (showSplash)
          {
              TimeLogger.StartTimestamp fromTimestamp = TimeLogger.Start();
-@@ -63045,11 +63220,14 @@
+@@ -63045,11 +63226,14 @@
          TimeLogger.StartTimestamp fromTimestamp2 = TimeLogger.Start();
          int num = renderCount;
          DebugVisualizer.PreDraw();
@@ -1831,7 +1849,7 @@
          MenuUI.IsVisible = gameMenu && menuMode == 888;
          InGameUI.IsVisible = !gameMenu && InGameUI.CurrentState != null;
          PlayerInput.UpdateMainMouse();
-@@ -63177,16 +63355,30 @@
+@@ -63177,16 +63361,30 @@
              _rainbowBoulderMusicFramesCounter--;
          }
          ClearHoverItem();
@@ -1864,7 +1882,7 @@
              if (renderNow)
              {
                  renderCount = 99;
-@@ -63201,7 +63393,7 @@
+@@ -63201,7 +63399,7 @@
              }
              renderNow = false;
          }
@@ -1873,7 +1891,7 @@
          {
              waterTarget.UpdateContent(() =>
              {
-@@ -63251,7 +63443,7 @@
+@@ -63251,7 +63449,7 @@
          {
              num4 = 1;
          }
@@ -1882,7 +1900,7 @@
          if (gameMenu)
          {
              num5 *= 20f;
-@@ -63367,6 +63559,20 @@
+@@ -63367,6 +63565,20 @@
                  Terraria.Graphics.Effects.Filters.Scene.Deactivate("Sepia");
              }
          }
@@ -1903,7 +1921,7 @@
          bool flag2 = Terraria.Graphics.Effects.Filters.Scene.CanCapture() || ForegroundSunlightEffects;
          bool flag3 = (!drawToScreen && !mapFullscreen && !onlyDrawFancyUI && Lighting.NotRetro) & flag2;
          if (flag3)
-@@ -63491,7 +63697,10 @@
+@@ -63491,7 +63703,10 @@
              return;
          }
          onlyDrawFancyUI = false;
@@ -1915,7 +1933,7 @@
          spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, DefaultSamplerState, DepthStencilState.None, Rasterizer, null, Transform);
          if (mapFullscreen)
          {
-@@ -63564,16 +63773,9 @@
+@@ -63564,16 +63779,9 @@
          }
          Overlays.Scene.Draw(spriteBatch, RenderLayers.Background);
          ScreenDarkness.DrawBack(spriteBatch);
@@ -1935,7 +1953,7 @@
          PlayerInput.SetZoom_World();
          DoDraw_WallsTilesNPCs();
          Overlays.Scene.Draw(spriteBatch, RenderLayers.TilesAndNPCs);
-@@ -63612,7 +63814,7 @@
+@@ -63612,7 +63820,7 @@
          DrawCachedNPCs(DrawCacheNPCsOverPlayers, behindTiles: false);
          if (!gamePaused)
          {
@@ -1944,7 +1962,7 @@
              if (essScale > 1f)
              {
                  essDir = -1;
-@@ -63625,6 +63827,17 @@
+@@ -63625,6 +63833,17 @@
              }
          }
          DrawItems();
@@ -1962,7 +1980,7 @@
          DrawRain();
          try
          {
-@@ -63861,6 +64074,30 @@
+@@ -63861,6 +64080,30 @@
          }
      }
  
@@ -1993,7 +2011,7 @@
      private static void DrawLensFlare()
      {
          PlayerInput.SetZoom_Background();
-@@ -63998,9 +64235,7 @@
+@@ -63998,9 +64241,7 @@
              }
          }
          instance.CameraModifiers.ApplyTo(ref screenPosition);
@@ -2004,7 +2022,7 @@
      }
  
      public static void DebugCameraPan(bool left, bool right, bool up, bool down)
-@@ -65345,73 +65580,91 @@
+@@ -65345,73 +65586,91 @@
          {
              scAdj = 0f;
          }
@@ -2131,7 +2149,7 @@
          try
          {
              DrawSurfaceBG(parentSpriteBatchBeginner);
-@@ -65426,6 +65679,7 @@
+@@ -65426,6 +65685,7 @@
              {
                  throw;
              }
@@ -2139,7 +2157,7 @@
              TimeLogger.DrawException(e);
          }
      }
-@@ -65681,7 +65935,7 @@
+@@ -65681,7 +65941,7 @@
  
      public void DrawInfernoRings()
      {
@@ -2148,7 +2166,7 @@
          for (int i = 0; i < 255; i++)
          {
              if (!player[i].active || player[i].outOfRange || !player[i].inferno || player[i].dead)
-@@ -67754,7 +68008,7 @@
+@@ -67754,7 +68014,7 @@
      {
          bool flag = false;
          Form form = null;
@@ -2157,7 +2175,7 @@
          {
              form = Control.FromHandle(instance.Window.Handle);
              screenMaximized = form.WindowState == FormWindowState.Maximized;
-@@ -67785,7 +68039,7 @@
+@@ -67785,7 +68045,7 @@
                      TryPickingDefaultUIScale(800f);
                  }
              }
@@ -2166,7 +2184,7 @@
              {
                  form.MinimumSize = new Size(0, 0);
                  if (!fullscreen && !flag3)
-@@ -67824,7 +68078,7 @@
+@@ -67824,7 +68084,7 @@
          else
          {
              PlayerInput.RawMouseScale = Vector2.One;
@@ -2175,7 +2193,7 @@
              {
                  form.MinimumSize = new Size(minScreenW, minScreenH);
                  if (flag)
-@@ -67839,7 +68093,7 @@
+@@ -67839,7 +68099,7 @@
              num4 = graphics.GraphicsDevice.Viewport.Height;
              flag2 = graphics.PreferredBackBufferWidth != graphics.GraphicsDevice.Viewport.Width || graphics.PreferredBackBufferHeight != graphics.GraphicsDevice.Viewport.Height;
          }
@@ -2184,7 +2202,7 @@
          {
              if (form.ClientSize.Width < graphics.PreferredBackBufferWidth)
              {
-@@ -67884,7 +68138,7 @@
+@@ -67884,7 +68144,7 @@
              PendingResolutionWidth = screenWidth;
              PendingResolutionHeight = screenHeight;
              PlayerInput.CacheOriginalScreenDimensions();
@@ -2193,7 +2211,7 @@
              {
                  if (screenBorderless)
                  {
-@@ -67909,9 +68163,10 @@
+@@ -67909,9 +68169,10 @@
              instance._needsMenuUIRecalculation = true;
              Console.WriteLine(Language.GetTextValue("Misc.ResolutionChanged", width, height));
          }
