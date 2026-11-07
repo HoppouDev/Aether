@@ -1,11 +1,56 @@
 --- a/Terraria/MessageBuffer.cs
 +++ b/Terraria/MessageBuffer.cs
-@@ -200,7 +200,7 @@
+@@ -162,13 +162,19 @@
+         }
+         if (Main.netMode == 2)
+         {
++            if (Netplay.Clients[whoAmI].PendingTermination)
++            {
++                return;
++            }
+             if (Netplay.Clients[whoAmI].State < 10 && b > 12 && b != 93 && b != 16 && b != 42 && b != 50 && b != 38 && b != 68 && b != 147 && b != 161)
+             {
+                 NetMessage.BootPlayer(whoAmI, Lang.mp[2].ToNetworkText());
++                return;
+             }
+             if (Netplay.Clients[whoAmI].State == 0 && b != 1)
+             {
+                 NetMessage.BootPlayer(whoAmI, Lang.mp[2].ToNetworkText());
++                return;
+             }
+         }
+         if (reader == null)
+@@ -200,7 +206,10 @@
                  {
                      break;
                  }
 -                if (reader.ReadString() == "Terraria" + 326)
-+                if (!Aether.Modding.ClientContent.HasItems && reader.ReadString() == "Terraria" + 326)
++                string connectionVersion = Aether.Modding.ClientContent.ConnectionVersion;
++                string remoteVersion = length >= 2 && length <= 128 && readBuffer[num] == length - 2
++                    ? reader.ReadString() : "";
++                if (remoteVersion == (connectionVersion ?? "Terraria" + 326))
                  {
                      if (string.IsNullOrEmpty(Netplay.ServerPassword))
                      {
+@@ -215,7 +224,11 @@
+                 }
+                 else
+                 {
+-                    NetMessage.TrySendData(2, whoAmI, -1, Lang.mp[4].ToNetworkText());
++                    NetworkText reason = connectionVersion == null ? Lang.mp[4].ToNetworkText()
++                        : NetworkText.FromLiteral(remoteVersion.StartsWith("Aether/", StringComparison.Ordinal)
++                            ? "Aether profile mismatch. Use the server's Aether build and exact mod archives."
++                            : "This server requires Aether. Start the client with -aetherjoin and the server's mods.");
++                    NetMessage.TrySendData(2, whoAmI, -1, reason);
+                 }
+             }
+             break;
+@@ -2216,7 +2229,7 @@
+             }
+             break;
+         case 38:
+-            if (Main.netMode == 2)
++            if (Main.netMode == 2 && Netplay.Clients[whoAmI].State == -1)
+             {
+                 if (reader.ReadString() == Netplay.ServerPassword)
+                 {

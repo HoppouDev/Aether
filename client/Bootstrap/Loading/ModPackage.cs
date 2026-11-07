@@ -1,6 +1,7 @@
 using System.IO.Compression;
 using System.Reflection;
 using System.Runtime.Loader;
+using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Aether.Modding;
@@ -12,7 +13,7 @@ internal sealed record ModManifest(int SchemaVersion, string Id, string Version,
     string? Name, string? Description, JsonElement Authors, JsonElement Contributors,
     JsonElement Source, JsonElement Homepage, JsonElement License);
 
-internal sealed record ModPackage(string Archive, string Root, ModManifest Manifest, ModInfo Info, ModDependency[] Dependencies)
+internal sealed record ModPackage(string Archive, string Root, ModManifest Manifest, ModInfo Info, ModDependency[] Dependencies, string Digest)
 {
     internal string EntryPath => Path.Combine(Root, Manifest.Assembly);
 
@@ -30,7 +31,8 @@ internal sealed record ModPackage(string Archive, string Root, ModManifest Manif
 
     internal static ModPackage Read(string archive, string root)
     {
-        using var zip = ZipFile.OpenRead(archive);
+        using FileStream file = File.OpenRead(archive);
+        using var zip = new ZipArchive(file, ZipArchiveMode.Read, leaveOpen: true);
         var paths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var directories = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         long total = 0;
@@ -98,7 +100,9 @@ internal sealed record ModPackage(string Archive, string Root, ModManifest Manif
             using var destination = new FileStream(path, FileMode.CreateNew);
             CopyEntry(entry, destination, buffer);
         }
-        return new ModPackage(archive, root, manifest, info, dependencies);
+        file.Position = 0;
+        string digest = Convert.ToHexStringLower(SHA256.HashData(file));
+        return new ModPackage(archive, root, manifest, info, dependencies, digest);
     }
 
     private static void CopyEntry(ZipArchiveEntry entry, Stream destination, byte[] buffer)

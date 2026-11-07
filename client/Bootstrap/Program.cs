@@ -5,6 +5,7 @@ using System.Runtime.ExceptionServices;
 using System.Runtime.InteropServices;
 using System.Runtime.Loader;
 using System.Security.Cryptography;
+using System.Text.Json;
 using Aether.Modding;
 
 namespace Aether.Bootstrap;
@@ -26,18 +27,23 @@ internal static class Program
             if (dedicated && !OperatingSystem.IsLinux())
                 throw new PlatformNotSupportedException("Aether's dedicated server currently runs on Linux.");
             ClientContent.IsDedicatedServer = dedicated;
+            bool requestModdedConnection = dedicated || parameters.ContainsKey("-aetherjoin");
             string clientPath = Path.Combine(AppContext.BaseDirectory, "Terraria.dll");
             string modsPath = Path.Combine(savePath, "Mods");
             string[] archives = parameters.ContainsKey("-nomods") || !Directory.Exists(modsPath)
                 ? [] : Directory.GetFiles(modsPath, "*.aethermod").Order(StringComparer.Ordinal).ToArray();
 
+            string terrariaVersion = AssemblyName.GetAssemblyName(clientPath).Version!.ToString();
+            string aetherVersion = typeof(Program).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()!.InformationalVersion;
             if (archives.Length == 0)
+            {
+                if (requestModdedConnection)
+                    ConfigureConnection(terrariaVersion, aetherVersion, []);
                 return Launch(AssemblyLoadContext.Default.LoadFromAssemblyPath(clientPath), args);
+            }
 
             temporary = Directory.CreateTempSubdirectory("aether-mods-").FullName;
             var packages = new List<ModPackage>();
-            string terrariaVersion = AssemblyName.GetAssemblyName(clientPath).Version!.ToString();
-            string aetherVersion = typeof(Program).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()!.InformationalVersion;
             foreach (string archive in archives)
             {
                 phase = archive;
@@ -138,6 +144,8 @@ internal static class Program
                     ClientContent.SaveRequirements = Array.AsReadOnly(required.Select(id =>
                         new ContentModRequirement(id, packagesById[id].Manifest.Version)).ToArray());
                 }
+                if (requestModdedConnection || ClientContent.HasItems)
+                    ConfigureConnection(terrariaVersion, aetherVersion, packages);
                 phase = "game startup";
             };
 
@@ -177,6 +185,19 @@ internal static class Program
                 catch (UnauthorizedAccessException) { }
             }
         }
+    }
+
+    private static void ConfigureConnection(string terrariaVersion, string aetherVersion, IEnumerable<ModPackage> packages)
+    {
+        byte[] profile = JsonSerializer.SerializeToUtf8Bytes(new
+        {
+            terrariaVersion,
+            aetherVersion,
+            itemMapping = ClientContent.SaveIdentity,
+            mods = packages.OrderBy(package => package.Manifest.Id, StringComparer.Ordinal)
+                .Select(package => new { package.Manifest.Id, package.Manifest.Version, package.Digest })
+        });
+        ClientContent.ConnectionVersion = "Aether/1/" + Convert.ToHexStringLower(SHA256.HashData(profile));
     }
 
     internal static readonly HashSet<string> SharedNames = new(StringComparer.OrdinalIgnoreCase)

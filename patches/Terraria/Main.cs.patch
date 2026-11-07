@@ -1514,9 +1514,9 @@
  
      internal static void HostAndPlay()
      {
-+        if (Aether.Modding.ClientContent.HasItems)
++        if (Aether.Modding.ClientContent.ConnectionVersion != null)
 +        {
-+            statusText = "Custom item profiles currently support single-player only.";
++            statusText = "Start a dedicated Aether server to host this profile.";
 +            menuMode = 15;
 +            return;
 +        }

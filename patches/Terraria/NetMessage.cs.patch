@@ -5,7 +5,7 @@
              {
              case 1:
 -                writer.Write("Terraria" + 326);
-+                writer.Write(Aether.Modding.ClientContent.HasItems ? "AetherCustomItems" : "Terraria" + 326);
++                writer.Write(Aether.Modding.ClientContent.ConnectionVersion ?? "Terraria" + 326);
                  break;
              case 2:
                  text.Serialize(writer);
