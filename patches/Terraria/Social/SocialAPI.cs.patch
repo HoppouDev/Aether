@@ -1,0 +1,26 @@
+--- a/Terraria/Social/SocialAPI.cs
++++ b/Terraria/Social/SocialAPI.cs
+@@ -104,7 +104,10 @@
+         LoadModule<Terraria.Social.Steam.CoreSocialModule>();
+         Friends = LoadModule<Terraria.Social.Steam.FriendsSocialModule>();
+         Achievements = LoadModule<Terraria.Social.Steam.AchievementsSocialModule>();
+-        Cloud = LoadModule<Terraria.Social.Steam.CloudSocialModule>();
++        if (!Aether.Modding.ClientContent.HasItems)
++        {
++            Cloud = LoadModule<Terraria.Social.Steam.CloudSocialModule>();
++        }
+         Overlay = LoadModule<Terraria.Social.Steam.OverlaySocialModule>();
+         Workshop = LoadModule<Terraria.Social.Steam.WorkshopSocialModule>();
+         Platform = LoadModule<Terraria.Social.Steam.PlatformSocialModule>();
+@@ -123,7 +126,10 @@
+     private static void LoadWeGame()
+     {
+         LoadModule<Terraria.Social.WeGame.CoreSocialModule>();
+-        Cloud = LoadModule<Terraria.Social.WeGame.CloudSocialModule>();
++        if (!Aether.Modding.ClientContent.HasItems)
++        {
++            Cloud = LoadModule<Terraria.Social.WeGame.CloudSocialModule>();
++        }
+         Friends = LoadModule<Terraria.Social.WeGame.FriendsSocialModule>();
+         Overlay = LoadModule<Terraria.Social.WeGame.OverlaySocialModule>();
+         if (Main.dedServ)

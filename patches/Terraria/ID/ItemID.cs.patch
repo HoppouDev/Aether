@@ -1,0 +1,27 @@
+--- a/Terraria/ID/ItemID.cs
++++ b/Terraria/ID/ItemID.cs
+@@ -13935,9 +13935,22 @@
+ 
+     public const short OldStyleParkourBookInactive = 6195;
+ 
+-    public static readonly short Count = 6196;
++    public const int VanillaCount = 6196;
+ 
+-    public static readonly IdDictionary Search = IdDictionary.Create<ItemID, short>();
++    public static readonly short Count = (short)(VanillaCount + Aether.Modding.ClientContent.SizeItemTables());
++
++    public static readonly IdDictionary Search = CreateSearch();
++
++    private static IdDictionary CreateSearch()
++    {
++        IdDictionary search = IdDictionary.Create<ItemID, short>();
++        var items = Aether.Modding.ClientContent.Items;
++        for (int index = 0; index < items.Count; index++)
++        {
++            search.Add(items[index].Id, VanillaCount + index);
++        }
++        return search;
++    }
+ 
+     private static Dictionary<string, short> GenerateLegacyItemDictionary()
+     {

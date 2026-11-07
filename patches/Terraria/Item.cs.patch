@@ -1,0 +1,15 @@
+--- a/Terraria/Item.cs
++++ b/Terraria/Item.cs
+@@ -48678,6 +48678,12 @@
+             return;
+         }
+         ResetStats(Type);
++        if (Type >= ItemID.VanillaCount && Type < ItemID.Count)
++        {
++            Aether.Modding.ClientContent.ApplyItemDefaults?.Invoke(Type - ItemID.VanillaCount, this);
++            RebuildTooltip();
++            return;
++        }
+         if (type >= ItemID.Count)
+         {
+             type = 0;

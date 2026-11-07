@@ -14,6 +14,7 @@ public sealed class ApiStartup : IModInitializer
         Registration.SetGameThread();
         ClientStartup.HandleLocalCommand = LocalCommands.TryExecute;
         ClientStartup.BlockCraft = recipe => RecipeRegistry.IsBlocked((Recipe)recipe);
+        ClientContent.FinalizeRegistration = ItemRegistry.Freeze;
     }
 }
 
@@ -23,6 +24,8 @@ public static class GameBridge
     private static bool ready;
     private static WorldFileData? activeWorld;
     private static WorldInfo world;
+
+    internal static bool IsReady => ready;
 
     public static void Ready()
     {

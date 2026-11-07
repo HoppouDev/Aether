@@ -1,0 +1,20 @@
+--- a/Terraria/Lang.cs
++++ b/Terraria/Lang.cs
+@@ -579,6 +579,17 @@
+                 _itemTooltipCache[num7] = ItemTooltip.FromLanguageKey("ItemTooltip." + field.Name);
+             }
+         });
++        var customItems = Aether.Modding.ClientContent.Items;
++        for (int index = 0; index < customItems.Count; index++)
++        {
++            var definition = customItems[index];
++            int id = ItemID.VanillaCount + index;
++            _itemNameCache[id] = new LocalizedText("ItemName." + definition.Id, definition.Name);
++            if (definition.Tooltip != null)
++            {
++                _itemTooltipCache[id] = ItemTooltip.FromHardcodedText(definition.Tooltip.Split('\n'));
++            }
++        }
+         InitGlobalSubstitutions();
+     }
+ 

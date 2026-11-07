@@ -116,6 +116,8 @@ internal static class Program
                         ModCatalog.InitializingModId = null;
                     }
                 }
+                phase = "mod content registration";
+                ClientContent.FinalizeRegistration?.Invoke();
                 phase = "game startup";
             };
 
@@ -143,6 +145,7 @@ internal static class Program
             ClientStartup.InitializeMods = null;
             ClientStartup.HandleLocalCommand = null;
             ClientStartup.BlockCraft = null;
+            ClientContent.Reset();
             ModResources.OpenResource = null;
             ModResources.OpenPackageIcon = null;
             ModCatalog.LoadedMods = Array.Empty<ModInfo>();

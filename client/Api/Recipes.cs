@@ -29,7 +29,7 @@ public static class RecipeRegistry
 
     private static void ValidateAmount(ItemAmount amount)
     {
-        if (amount.ItemId <= 0 || amount.ItemId >= ItemID.Count || amount.Quantity <= 0)
+        if (amount.ItemId <= 0 || amount.ItemId >= ItemID.VanillaCount || amount.Quantity <= 0)
             throw new ArgumentException("Recipe items must use vanilla IDs and positive quantities.");
     }
 

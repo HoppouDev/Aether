@@ -1,0 +1,11 @@
+--- a/Terraria/NetMessage.cs
++++ b/Terraria/NetMessage.cs
+@@ -130,7 +130,7 @@
+             switch (msgType)
+             {
+             case 1:
+-                writer.Write("Terraria" + 326);
++                writer.Write(Aether.Modding.ClientContent.HasItems ? "AetherCustomItems" : "Terraria" + 326);
+                 break;
+             case 2:
+                 text.Serialize(writer);

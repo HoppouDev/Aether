@@ -1,0 +1,12 @@
+--- a/Terraria/Initializers/AssetInitializer.cs
++++ b/Terraria/Initializers/AssetInitializer.cs
+@@ -112,7 +112,8 @@
+     {
+         for (int i = 0; i < TextureAssets.Item.Length; i++)
+         {
+-            int num = ItemID.Sets.TextureCopyLoad[i];
++            int num = i < ItemID.VanillaCount ? ItemID.Sets.TextureCopyLoad[i]
++                : Aether.Modding.ClientContent.Items[i - ItemID.VanillaCount].TextureItemId;
+             if (num != -1)
+             {
+                 TextureAssets.Item[i] = TextureAssets.Item[num];
