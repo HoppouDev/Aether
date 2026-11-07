@@ -14,6 +14,9 @@ public static class ClientContent
 
     public static IReadOnlyList<ClientItemDefinition> Items { get; private set; } = Array.Empty<ClientItemDefinition>();
     public static Action<int, object>? ApplyItemDefaults { get; private set; }
+    public static Action<object, object>? ItemUsed { get; internal set; }
+    public static Action<object, object, object, int>? ItemHitNpc { get; internal set; }
+    public static Action<object, object, int>? ItemEquipped { get; internal set; }
     public static bool HasItems => Items.Count != 0;
     internal static Action? FinalizeRegistration { get; set; }
 
@@ -47,6 +50,9 @@ public static class ClientContent
         {
             Items = Array.Empty<ClientItemDefinition>();
             ApplyItemDefaults = null;
+            ItemUsed = null;
+            ItemHitNpc = null;
+            ItemEquipped = null;
             FinalizeRegistration = null;
             profile = null;
             itemTablesSized = false;

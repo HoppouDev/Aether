@@ -22,6 +22,21 @@ After `ClientEvents.Ready`, call `ItemRegistry.Create(id, stack)` to construct a
 `TryGetType` resolves an ID to the session's numeric type, and `GetId` returns the stable ID for a custom type.
 Read game item tables and instantiate items after `ClientEvents.Ready` so the client can size its tables once all mods have registered.
 
+## Item callbacks
+
+Set callbacks on the item definition.
+The callbacks run for the local player in single-player on the game thread and receive the live item and player instances.
+
+| Callback | Timing |
+| --- | --- |
+| `OnUse` | Once after a successful use begins. Setting it on an item without damage makes that item usable. |
+| `OnHitNpc` | After the item's melee strike deals damage to an NPC. The context includes the target and damage dealt. |
+| `OnEquippedTick` | On each gameplay tick when the item's functional equipment slot grants its benefits. The context includes the slot index. |
+
+If a callback throws, Aether logs it and disables that callback for the session.
+
+## Save profiles
+
 Custom-item sessions currently use single-player local saves under `AetherContent/` in the active save directory.
 The subfolder is derived from the game version, registered IDs, and owning mod versions.
 Treat these as development profiles while the versioned save format is being implemented.

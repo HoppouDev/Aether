@@ -6,6 +6,10 @@ using Terraria.ID;
 
 namespace Aether.Api;
 
+public readonly record struct ItemUseContext(Player Player, Item Item);
+public readonly record struct ItemHitNpcContext(Player Player, Item Item, NPC Target, int Damage);
+public readonly record struct ItemEquipContext(Player Player, Item Item, int Slot);
+
 public sealed record ItemDefinition(string Name, int TextureItemId)
 {
     public string? Tooltip { get; init; }
@@ -18,13 +22,20 @@ public sealed record ItemDefinition(string Name, int TextureItemId)
     public int UseTime { get; init; } = 20;
     public float Knockback { get; init; }
     public bool Accessory { get; init; }
+    public Action<ItemUseContext>? OnUse { get; init; }
+    public Action<ItemHitNpcContext>? OnHitNpc { get; init; }
+    public Action<ItemEquipContext>? OnEquippedTick { get; init; }
 }
 
 public static class ItemRegistry
 {
+    private readonly record struct Callbacks(Listener<ItemUseContext>? Use, Listener<ItemHitNpcContext>? HitNpc,
+        Listener<ItemEquipContext>? EquippedTick);
+
     private static readonly Dictionary<string, ItemDefinition> entries = new(StringComparer.Ordinal);
     private static readonly Dictionary<string, int> types = new(StringComparer.Ordinal);
     private static KeyValuePair<string, ItemDefinition>[] ordered = [];
+    private static Callbacks[] callbacks = [];
 
     public static void Register(string id, ItemDefinition definition)
     {
@@ -68,11 +79,17 @@ public static class ItemRegistry
             return;
         ordered = entries.OrderBy(entry => entry.Key, StringComparer.Ordinal).ToArray();
         var metadata = new ClientItemDefinition[ordered.Length];
+        callbacks = new Callbacks[ordered.Length];
         for (int index = 0; index < ordered.Length; index++)
         {
             var (id, definition) = ordered[index];
             types.Add(id, ItemID.VanillaCount + index);
             metadata[index] = new ClientItemDefinition(id, definition.Name, definition.Tooltip, definition.TextureItemId);
+            string owner = id[..id.IndexOf(':')];
+            callbacks[index] = new Callbacks(
+                definition.OnUse == null ? null : new Listener<ItemUseContext>(owner, definition.OnUse),
+                definition.OnHitNpc == null ? null : new Listener<ItemHitNpcContext>(owner, definition.OnHitNpc),
+                definition.OnEquippedTick == null ? null : new Listener<ItemEquipContext>(owner, definition.OnEquippedTick));
         }
         var versions = ModCatalog.LoadedMods.ToDictionary(mod => mod.Id, mod => mod.Version, StringComparer.Ordinal);
         byte[] mapping = JsonSerializer.SerializeToUtf8Bytes(new
@@ -87,6 +104,9 @@ public static class ItemRegistry
         });
         string profile = Convert.ToHexStringLower(SHA256.HashData(mapping));
         ClientContent.ConfigureItems(metadata, ApplyDefaults, profile);
+        ClientContent.ItemUsed = (player, item) => NotifyUse((Player)player, (Item)item);
+        ClientContent.ItemHitNpc = (player, item, npc, damage) => NotifyHitNpc((Player)player, (Item)item, (NPC)npc, damage);
+        ClientContent.ItemEquipped = (player, item, slot) => NotifyEquipped((Player)player, (Item)item, slot);
     }
 
     private static void ApplyDefaults(int index, object target)
@@ -104,9 +124,31 @@ public static class ItemRegistry
             item.melee = true;
             item.damage = definition.Damage;
             item.knockBack = definition.Knockback;
-            item.useTime = item.useAnimation = definition.UseTime;
-            item.useStyle = ItemUseStyleID.Swing;
             item.UseSound = SoundID.Item1;
         }
+        if (definition.Damage > 0 || definition.OnUse != null)
+        {
+            item.useTime = item.useAnimation = definition.UseTime;
+            item.useStyle = ItemUseStyleID.Swing;
+        }
     }
+
+    private static Callbacks GetCallbacks(Player player, Item item)
+    {
+        int index = item.type - ItemID.VanillaCount;
+        return (uint)index < (uint)callbacks.Length && !Main.gameMenu && Main.netMode == 0 && player == Main.LocalPlayer
+            ? callbacks[index] : default;
+    }
+
+    private static void NotifyUse(Player player, Item item) =>
+        GetCallbacks(player, item).Use?.Invoke(new ItemUseContext(player, item));
+
+    private static void NotifyHitNpc(Player player, Item item, NPC npc, int damage)
+    {
+        if (damage > 0)
+            GetCallbacks(player, item).HitNpc?.Invoke(new ItemHitNpcContext(player, item, npc, damage));
+    }
+
+    private static void NotifyEquipped(Player player, Item item, int slot) =>
+        GetCallbacks(player, item).EquippedTick?.Invoke(new ItemEquipContext(player, item, slot));
 }

@@ -1,6 +1,17 @@
 --- a/Terraria/Player.cs
 +++ b/Terraria/Player.cs
-@@ -37767,6 +37767,7 @@
+@@ -13021,6 +13021,10 @@
+                     GrantPrefixBenefits(effectiveArmor);
+                 }
+                 GrantArmorBenefits(effectiveArmor);
++                if (effectiveArmor.type >= ItemID.VanillaCount)
++                {
++                    Aether.Modding.ClientContent.ItemEquipped?.Invoke(this, effectiveArmor, k);
++                }
+             }
+         }
+         if (flag)
+@@ -37767,6 +37771,7 @@
  
      public void Teleport(Vector2 newPos, int Style = 0, int extraInfo = 0)
      {
@@ -8,3 +19,25 @@
          try
          {
              _funkytownAchievementCheckCooldown = 100;
+@@ -44849,6 +44854,10 @@
+             NPCDamageTracker.SetSourceForNextHit(nPC, PlayerNPCHitSource.FromItem(sItem.type));
+             int num4 = nPC.StrikeNPC(num3, knockBack, direction, crit, fromNet: false, whoAmI);
+             ApplyNPCOnHitEffects(sItem, itemRectangle, damage, knockBack, nPC, num3, num4);
++            if (sItem.type >= ItemID.VanillaCount)
++            {
++                Aether.Modding.ClientContent.ItemHitNpc?.Invoke(this, sItem, nPC, num4);
++            }
+             int num5 = BannerSystem.NPCtoBanner(nPC.BannerID());
+             if (num5 >= 0)
+             {
+@@ -52412,6 +52421,10 @@
+                 SoundEngine.PlaySound(sItem.UseSound, Center, sItem.useSoundPitch);
+             }
+         }
++        if (sItem.type >= ItemID.VanillaCount)
++        {
++            Aether.Modding.ClientContent.ItemUsed?.Invoke(this, sItem);
++        }
+     }
+ 
+     private void FreeUpPetsAndMinions(Item sItem)
