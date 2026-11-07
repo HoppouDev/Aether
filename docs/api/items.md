@@ -23,6 +23,14 @@ On a dedicated server, create items from `ServerEvents.Ready` onward.
 `TryGetType` resolves an ID to the session's numeric type, and `GetId` returns the stable ID for a custom type.
 Read game item tables and instantiate items after `ClientEvents.Ready` so the client can size its tables once all mods have registered.
 
+## Item keys
+
+Use `ItemKey.Vanilla(ItemID.Torch)` for a vanilla type or `ItemKey.Custom("example:blade")` for a registered type.
+Use `ItemRegistry.TryGetKey(type, out key)` to identify an existing item by its Terraria type.
+`TryResolve(key, out type)` returns the current numeric type, or false for an unavailable key.
+`ItemRegistry.Create(key, stack)` creates either kind after content is ready.
+Store the namespaced ID for custom items in persistent data.
+
 ## Item callbacks
 
 Set callbacks on the item definition.

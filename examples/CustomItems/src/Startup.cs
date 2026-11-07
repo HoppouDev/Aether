@@ -31,8 +31,8 @@ public sealed class Startup : IModInitializer
         LocalCommands.Register("custom-items:give", _ =>
         {
             var source = new EntitySource_DebugCommand();
-            Main.LocalPlayer.QuickSpawnItem(source, ItemRegistry.Create(Blade));
-            Main.LocalPlayer.QuickSpawnItem(source, ItemRegistry.Create(Charm));
+            Main.LocalPlayer.QuickSpawnItem(source, ItemRegistry.Create(ItemKey.Custom(Blade)));
+            Main.LocalPlayer.QuickSpawnItem(source, ItemRegistry.Create(ItemKey.Custom(Charm)));
         });
         LocalCommands.Register("custom-items:inspect", _ =>
         {

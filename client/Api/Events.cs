@@ -65,11 +65,13 @@ internal static class Registration
     internal static void Add<T>(Dictionary<string, T> entries, string id, T entry, string owner)
     {
         if (!id.StartsWith(owner + ":", StringComparison.Ordinal) || id.Length == owner.Length + 1 ||
-            id[(owner.Length + 1)..].Any(c => !(char.IsAsciiLetterLower(c) || char.IsAsciiDigit(c) || c is '_' or '-' or '.')))
+            id[(owner.Length + 1)..].Any(c => !IsIdCharacter(c)))
             throw new ArgumentException($"Registration ID must use '{owner}:name' with a lowercase name.", nameof(id));
         if (!entries.TryAdd(id, entry))
             throw new InvalidOperationException($"Registration '{id}' already exists.");
     }
+
+    internal static bool IsIdCharacter(char c) => char.IsAsciiLetterLower(c) || char.IsAsciiDigit(c) || c is '_' or '-' or '.';
 }
 
 internal sealed class Listener<T>(string owner, Action<T> callback)

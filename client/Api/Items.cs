@@ -62,6 +62,33 @@ public static class ItemRegistry
         return (uint)index < (uint)ordered.Length ? ordered[index].Key : null;
     }
 
+    public static bool TryGetKey(int type, out ItemKey key)
+    {
+        if (type is > 0 and < ItemID.VanillaCount)
+        {
+            key = ItemKey.Vanilla(type);
+            return true;
+        }
+        if (GetId(type) is string id)
+        {
+            key = ItemKey.Custom(id);
+            return true;
+        }
+        key = default;
+        return false;
+    }
+
+    public static bool TryResolve(ItemKey key, out int type)
+    {
+        if (key.VanillaId is int id)
+        {
+            type = id;
+            return true;
+        }
+        type = 0;
+        return key.CustomId is string customId && TryGetType(customId, out type);
+    }
+
     public static Item Create(string id, int stack = 1)
     {
         if (!GameBridge.IsReady)
@@ -72,6 +99,23 @@ public static class ItemRegistry
         if (stack < 1 || stack > maxStack)
             throw new ArgumentOutOfRangeException(nameof(stack));
         return new Item(type) { stack = stack };
+    }
+
+    public static Item Create(ItemKey key, int stack = 1)
+    {
+        if (key.CustomId is string customId)
+            return Create(customId, stack);
+        if (!GameBridge.IsReady)
+            throw new InvalidOperationException("Create items after ClientEvents.Ready or ServerEvents.Ready.");
+        if (!TryResolve(key, out int type))
+            throw new KeyNotFoundException($"No item is registered as '{key}'.");
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(stack);
+        var item = new Item(type);
+        if (item.IsAir)
+            throw new KeyNotFoundException($"No item is available as '{key}'.");
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(stack, item.maxStack);
+        item.stack = stack;
+        return item;
     }
 
     public static void SetState(Item item, JsonElement? state)
