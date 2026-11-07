@@ -88,6 +88,7 @@ class Control:
     def send(self, line: str) -> str:
         """Runs one command and returns its result (the text after `ok`)."""
         line = command_line(line)
+        retry = line.lower().split(maxsplit=2)[:2] != ["ui", "act"]
         with self._lock:
             for attempt in range(2):
                 file = self._file or self._connect()
@@ -105,7 +106,7 @@ class Control:
                     break
                 # The connection dropped (e.g. the game restarted): retry once on a new one.
                 self.close()
-                if attempt:
+                if attempt or not retry:
                     raise ControlError(
                         f"the game closed the connection during {line!r}"
                     )

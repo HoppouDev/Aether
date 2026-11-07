@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/Aether/UI/Menu/UIMenuItem.cs
-@@ -0,0 +1,153 @@
+@@ -0,0 +1,157 @@
 +using System;
 +using Microsoft.Xna.Framework;
 +using Microsoft.Xna.Framework.Graphics;
@@ -35,6 +35,10 @@
 +    public float DrawScale = 1f;
 +
 +    public bool IsLabel;
++
++    internal bool HideAutomationLabel;
++
++    internal override string AutomationLabel => HideAutomationLabel ? null : _shownText;
 +
 +    public Func<bool> IsDisabled;
 +

@@ -1,0 +1,13 @@
+--- a/Terraria/GameContent/UI/Elements/UISearchBar.cs
++++ b/Terraria/GameContent/UI/Elements/UISearchBar.cs
+@@ -22,6 +22,10 @@
+ 
+     public bool HasContents => !string.IsNullOrWhiteSpace(actualContents);
+ 
++    internal override string AutomationLabel => _textToShowWhenEmpty.Value;
++
++    internal string AutomationText => actualContents ?? "";
++
+     public bool IsWritingText { get; private set; }
+ 
+     public int MaxInputLength

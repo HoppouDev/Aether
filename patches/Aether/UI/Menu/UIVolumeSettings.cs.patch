@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/Aether/UI/Menu/UIVolumeSettings.cs
-@@ -0,0 +1,59 @@
+@@ -0,0 +1,60 @@
 +using System;
 +using Terraria;
 +using Terraria.Audio;
@@ -39,6 +39,7 @@
 +    {
 +        float top = 320f + 30f * row;
 +        UIMenuSlider slider = new UIMenuSlider(getValue, setValue, gamepadFeature);
++        slider.AutomationCaption = () => Lang.menu[name].Value;
 +        slider.Left.Set(-3f - slider.Width.Pixels, 0.5f);
 +        slider.Top.Set(top + 12f - slider.Height.Pixels / 2f, 0f);
 +        Append(slider);

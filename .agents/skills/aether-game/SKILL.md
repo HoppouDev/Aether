@@ -1,6 +1,6 @@
 ---
 name: aether-game
-description: Launch, play and test the Aether Terraria client through the aether-game MCP server, which sends synthetic mouse, keyboard and gamepad input straight into the game (no window focus, no real cursor or system input). Use to check UI changes in game, reproduce bugs, take screenshots, or drive menus and gameplay.
+description: Launch, play and test the Aether Terraria client through the aether-game MCP server, which inspects and acts on UI components and sends synthetic input straight into the game without moving the real cursor. Use to check UI changes in game, reproduce bugs, take screenshots, or drive menus and gameplay.
 ---
 
 # Driving the game with the aether-game MCP server
@@ -16,6 +16,8 @@ The window doesn't need focus and can sit behind other windows, and the user's r
 | `game_profile` | With `game_launch` `profile: true` (Linux), record every allocation's class, size and call stack over `frames` updates and return the report per frame: methods by bytes allocated under them, then the top `top` allocation sites. Use it to find what allocates every frame. |
 | `game_quit` | Close the client, including one this server didn't start. Progress since the last save is lost. |
 | `game_state` | Screen size, `loading`, `gameMenu`, `menuMode`, the synthetic mouse, keys and pad, `usingGamepad`. In game it also gives the player (tile, life, mana, held item, inventory open, chest, `talkNPC`, item on the cursor), `ingameOptions` and `mapFullscreen`. |
+| `game_ui_layout` | Read the next drawn frame’s retained UI, with component IDs, labels, bounds, and actions. Use `interactive_only: true` to return actionable controls only. |
+| `game_ui_action` | Act on a component ID from the latest layout. Use `activate`, `secondary`, `set_value` (a number from 0 to 1), or `set_text` (a string) as advertised by the component. |
 | `game_screenshot` | The next drawn frame. `scale` defaults to 0.5. `crop: [x, y, w, h]` with `scale: 1` reads small text or checks pixels. |
 | `mouse_move` | Move the cursor to (x, y), gliding over `duration_ms`. |
 | `mouse_click` | Click at (x, y), or where the cursor is. Options: `button`, `hold_frames` (default 2), `count`. |
@@ -40,10 +42,10 @@ Then `game_screenshot` can't help: call `game_quit` and `game_launch` again, and
 ## Workflow
 
 1. Run `game_launch`.
-2. Take a `game_screenshot` before acting, so you click what is really there.
-3. Act with the mouse, key, text or gamepad tools.
-4. Let the game react with `game_wait` (~200–700 ms for a menu to open or close).
-5. Check the result with `game_screenshot` or `game_state`.
+2. Use `game_ui_layout` to find controls on the current screen and `game_ui_action` to act on them by ID.
+3. Request a fresh layout after changing screens or if a component ID becomes stale.
+4. For gameplay or controls without an action, use a screenshot and the mouse, key, text or gamepad tools.
+5. Check the result with the next layout, `game_state`, or a screenshot.
 6. Call `game_quit` when done.
 
 ## Coordinates, keys and buttons
@@ -71,6 +73,7 @@ key down|up KEY[+KEY] | key press KEY[+KEY] [FRAMES] | type TEXT
 pad connect|disconnect | pad button B[+B] down|up|press [FRAMES]
 pad stick left|right X Y [MS] | pad trigger left|right VALUE [MS]
 wait MS | wait frames N | release | state | ping
+ui layout [interactive] | ui act ID ACTION [JSON]
 menu MODE (title menu: show Main.menuMode MODE) | alloc [FRAMES] (allocations, JSON) | quit
 profile [FRAMES] [TOP] PATH (allocation call stacks, with profile: true)
 ```
@@ -78,10 +81,10 @@ profile [FRAMES] [TOP] PATH (allocation call stacks, with profile: true)
 ## Getting around
 
 - **Title menu to a world:**
-  1. Click Single Player.
-  2. Click the player's small **Play** icon, at the bottom left of its row.
-  3. Click the world's **Play** icon.
-  4. The world takes ~10 s to load; poll `game_state` until `gameMenu` is false.
+  1. Activate Single Player.
+  2. Refresh the layout and activate **Play** with the character name as its `context`.
+  3. Refresh the layout and activate **Play** with the world name as its `context`.
+  4. The world takes ~10 s to load, so poll `game_state` until `gameMenu` is false.
 - **In game:**
   - Escape toggles the inventory.
   - The Settings button is at the bottom right while the inventory is open.

@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/Aether/UI/Menu/UIParallaxSettings.cs
-@@ -0,0 +1,44 @@
+@@ -0,0 +1,45 @@
 +using Terraria;
 +using Terraria.Audio;
 +
@@ -29,6 +29,7 @@
 +            Main.bgScroll = (int)(value * 100f);
 +            Main.caveParallax = 1f - Main.bgScroll / 500f;
 +        }, 1);
++        slider.AutomationCaption = () => Lang.menu[52].Value;
 +        slider.Left.Set(-40f - slider.Width.Pixels, 0.5f);
 +        slider.Top.Set(412f - slider.Height.Pixels / 2f, 0f);
 +        Append(slider);

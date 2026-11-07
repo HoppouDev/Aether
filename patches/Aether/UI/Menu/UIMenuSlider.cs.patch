@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/Aether/UI/Menu/UIMenuSlider.cs
-@@ -0,0 +1,97 @@
+@@ -0,0 +1,107 @@
 +using System;
 +using Microsoft.Xna.Framework;
 +using Microsoft.Xna.Framework.Graphics;
@@ -42,6 +42,16 @@
 +    public Func<bool> AlsoFocused;
 +
 +    public bool IsDragging => _dragging;
++
++    internal Func<string> AutomationCaption;
++
++    internal override string AutomationLabel => AutomationCaption?.Invoke();
++
++    internal float AutomationValue
++    {
++        get => _getValue();
++        set => _setValue(value);
++    }
 +
 +    public UIMenuSlider(Func<float> getValue, Action<float> setValue, int gamepadFeature, float barScale = 1f, Utils.ColorLerpMethod colorMethod = null)
 +    {

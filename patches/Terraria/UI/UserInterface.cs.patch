@@ -1,0 +1,35 @@
+--- a/Terraria/UI/UserInterface.cs
++++ b/Terraria/UI/UserInterface.cs
+@@ -104,6 +104,8 @@
+ 
+     public UIState CurrentState => _currentState;
+ 
++    internal int AutomationRevision { get; private set; }
++
+     public void ClearPointers()
+     {
+         LeftMouse.Clear();
+@@ -259,6 +261,7 @@
+         Use();
+         if (_currentState != null)
+         {
++            using var automation = Aether.Testing.UiAutomation.Observe(this);
+             if (_isStateDirty)
+             {
+                 _currentState.Recalculate();
+@@ -292,6 +295,7 @@
+             _currentState.Deactivate();
+         }
+         _currentState = state;
++        AutomationRevision++;
+         ResetState();
+         if (state != null)
+         {
+@@ -337,6 +341,7 @@
+ 
+     internal void RefreshState()
+     {
++        AutomationRevision++;
+         if (_currentState != null)
+         {
+             _currentState.Deactivate();

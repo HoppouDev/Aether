@@ -1,0 +1,15 @@
+--- a/Terraria/GameContent/UI/Elements/UIScrollbar.cs
++++ b/Terraria/GameContent/UI/Elements/UIScrollbar.cs
+@@ -48,6 +48,12 @@
+ 
+     public bool CanScroll => _maxViewSize != _viewSize;
+ 
++    internal float AutomationPosition
++    {
++        get => CanScroll ? ViewPosition / (_maxViewSize - _viewSize) : 0f;
++        set => ViewPosition = value * (_maxViewSize - _viewSize);
++    }
++
+     public void GoToBottom()
+     {
+         ViewPosition = _maxViewSize - _viewSize;

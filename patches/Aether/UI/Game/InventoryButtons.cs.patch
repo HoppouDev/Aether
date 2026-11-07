@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/Aether/UI/Game/InventoryButtons.cs
-@@ -0,0 +1,158 @@
+@@ -0,0 +1,159 @@
 +using Microsoft.Xna.Framework;
 +using Microsoft.Xna.Framework.Graphics;
 +using Terraria;
@@ -90,7 +90,8 @@
 +            return new Rectangle(0, _hotbarLockY, (int)((float)frame.Width * 0.9f), (int)((float)frame.Height * 0.9f));
 +        },
 +        // Hovered strictly inside, and the click isn't used up (the legacy code doesn't).
-+        CanHover = () => Main.mouseX > 0 && Main.mouseY > _hotbarLockY,
++        ExcludeNearEdges = true,
++        AutomationCaption = () => Lang.inter[Main.LocalPlayer.hbLocked ? 6 : 5].Value,
 +        ConsumesClick = false,
 +        WhileHovered = delegate
 +        {

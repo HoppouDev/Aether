@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/Aether/UI/Game/UICrafting.cs
-@@ -0,0 +1,424 @@
+@@ -0,0 +1,426 @@
 +using System;
 +using System.Collections.Generic;
 +using Microsoft.Xna.Framework;
@@ -341,6 +341,7 @@
 +    {
 +        Area = () => Around(_gridToggle),
 +        ConsumesClick = false,
++        AutomationCaption = () => Language.GetTextValue(CraftingUI.CraftingWindowTextTipKey),
 +        WhileHovered = delegate
 +        {
 +            Main.instance.MouseTextNoOverride(Language.GetTextValue(CraftingUI.CraftingWindowTextTipKey), 0, 0);
@@ -390,6 +391,7 @@
 +    {
 +        Area = () => Around(_nearbyToggle),
 +        ConsumesClick = false,
++        AutomationCaption = () => Language.GetTextValue(Player.Settings.CraftFromNearbyChests ? "GameUI.CraftFromNearbyChestsOn" : "GameUI.CraftFromNearbyChestsOff"),
 +        WhileHovered = delegate
 +        {
 +            Main.instance.MouseTextNoOverride(Language.GetTextValue(Player.Settings.CraftFromNearbyChests ? "GameUI.CraftFromNearbyChestsOn" : "GameUI.CraftFromNearbyChestsOff"), 0, 0);

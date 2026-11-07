@@ -1,0 +1,11 @@
+--- a/Terraria/GameContent/UI/Elements/UICharacterListItem.cs
++++ b/Terraria/GameContent/UI/Elements/UICharacterListItem.cs
+@@ -16,6 +16,8 @@
+ {
+     private PlayerFileData _data;
+ 
++    internal override string AutomationLabel => _data.Name;
++
+     private Asset<Texture2D> _dividerTexture;
+ 
+     private Asset<Texture2D> _innerPanelTexture;

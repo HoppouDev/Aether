@@ -1,0 +1,23 @@
+--- a/Terraria/UI/UIElement.cs
++++ b/Terraria/UI/UIElement.cs
+@@ -92,6 +92,12 @@
+ 
+     public IEnumerable<UIElement> Children => Elements;
+ 
++    internal virtual string AutomationLabel => _snapPoint?.Name;
++
++    internal bool HasAutomationClick => OnLeftClick != null;
++
++    internal bool HasAutomationRightClick => OnRightClick != null;
++
+     public bool IsMouseHovering { get; private set; }
+ 
+     public event MouseEvent OnLeftMouseDown;
+@@ -223,6 +229,7 @@
+         {
+             DrawSelf(spriteBatch);
+         }
++        Aether.Testing.UiAutomation.Record(this, spriteBatch.GraphicsDevice);
+         if (overflowHidden)
+         {
+             spriteBatch.End();

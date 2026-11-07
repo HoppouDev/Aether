@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/Aether/UI/Game/UIIngameOptions.cs
-@@ -0,0 +1,672 @@
+@@ -0,0 +1,673 @@
 +using System;
 +using System.Collections.Generic;
 +using Aether.UI.Menu;
@@ -354,6 +354,7 @@
 +        UIMenuSlider slider = new UIMenuSlider(getValue, setValue, gamepadFeature, BarScale, colorMethod);
 +        slider.Left.Set(barRight - slider.Width.Pixels - rightColumnLeft, 0f);
 +        slider.Top.Set(row.Y - 3f - slider.Height.Pixels / 2f - (row.Y - _rightStep.Y / 2f), 0f);
++        slider.AutomationCaption = label;
 +        slider.AlsoFocused = () => rowElement.IsMouseHovering;
 +        rowElement.Append(slider);
 +        rowElement.Slider = slider;

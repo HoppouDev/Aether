@@ -4,6 +4,7 @@ It drives the game through its control socket (control.py), so input never goes 
 window system: the window needn't be focused or visible, and the real cursor never moves.
 """
 
+import json
 import tempfile
 import time
 from pathlib import Path
@@ -25,8 +26,9 @@ from .control import (
 INSTRUCTIONS = """\
 Drives a running Aether (Terraria) client with synthetic mouse, keyboard and gamepad input
 that bypasses the window system: the window needn't have focus and the real cursor never moves.
-Start with game_launch (or connect to a client already started with -aethercontrol), look with
-game_screenshot, act with the mouse_/key_/type_/gamepad_ tools, and check game_state.
+Start with game_launch (or connect to a client already started with -aethercontrol).
+Use game_ui_layout and game_ui_action for direct interaction with retained controls.
+Use game_screenshot and the mouse_/key_/type_/gamepad_ tools for other areas.
 Coordinates are window pixels, the same as a full-size screenshot's (game_state gives the
 screen size; scale a scaled screenshot's coordinates back up). Every tool returns once its
 input has finished (a 400 ms drag returns after 400 ms). game_send runs raw control commands
@@ -142,6 +144,36 @@ def build_server(port: int = DEFAULT_PORT) -> FastMCP:
     def game_state() -> dict:
         """Screen size, title-menu mode, synthetic input, and in game the player's state."""
         return session.control.state()
+
+    @server.tool()
+    def game_ui_layout(interactive_only: bool = False) -> dict:
+        """Inspect the next rendered UI frame. Components include IDs, labels, bounds and available actions.
+
+        Set interactive_only to return only actionable controls. IDs belong to the latest layout.
+        """
+        return json.loads(
+            session.send("ui layout", "interactive" if interactive_only else None)
+        )
+
+    @server.tool()
+    def game_ui_action(
+        component_id: Annotated[str, Field(pattern=r"^[0-9a-f]{8}-[1-9][0-9]*$")],
+        action: Literal["activate", "secondary", "set_value", "set_text"] = "activate",
+        value: str | float | None = None,
+    ) -> str:
+        """Act on a component from game_ui_layout without moving the cursor.
+
+        Use a number from 0 to 1 for set_value and a string for set_text. Refresh after UI changes.
+        """
+        return (
+            session.send(
+                "ui act",
+                component_id,
+                action,
+                json.dumps(value) if value is not None else None,
+            )
+            or "ok"
+        )
 
     @server.tool()
     def game_screenshot(

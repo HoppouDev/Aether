@@ -1,0 +1,11 @@
+--- a/Terraria/GameContent/UI/Elements/UIText.cs
++++ b/Terraria/GameContent/UI/Elements/UIText.cs
+@@ -34,6 +34,8 @@
+ 
+     public string Text => _text.ToString();
+ 
++    internal override string AutomationLabel => Text;
++
+     public float TextOriginX { get; set; }
+ 
+     public float TextOriginY { get; set; }

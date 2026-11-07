@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/Aether/UI/Game/UIHotbar.cs
-@@ -0,0 +1,176 @@
+@@ -0,0 +1,182 @@
 +using Microsoft.Xna.Framework;
 +using Microsoft.Xna.Framework.Graphics;
 +using ReLogic.Graphics;
@@ -129,6 +129,12 @@
 +{
 +    private readonly int _slot;
 +
++    internal int Slot => _slot;
++
++    internal Item AutomationItem => Main.LocalPlayer.inventory[_slot];
++
++    internal void Select() => Main.LocalPlayer.changeItem = _slot;
++
 +    public UIHotbarSlot(int slot)
 +    {
 +        _slot = slot;
@@ -159,7 +165,7 @@
 +            player.cursorItemIconEnabled = false;
 +            if (Main.mouseLeft && !player.hbLocked && !Main.blockMouse)
 +            {
-+                player.changeItem = _slot;
++                Select();
 +            }
 +            Item item = player.inventory[_slot];
 +            Main.hoverItemName = item.AffixName();

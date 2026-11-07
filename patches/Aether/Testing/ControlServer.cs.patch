@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/Aether/Testing/ControlServer.cs
-@@ -0,0 +1,1014 @@
+@@ -0,0 +1,1122 @@
 +using System;
 +using System.Collections.Concurrent;
 +using System.Collections.Generic;
@@ -15,6 +15,7 @@
 +using Microsoft.Xna.Framework.Graphics;
 +using Microsoft.Xna.Framework.Input;
 +using Newtonsoft.Json;
++using Newtonsoft.Json.Linq;
 +using Terraria;
 +using Terraria.GameInput;
 +
@@ -46,6 +47,8 @@
 +///                                      the next drawn frame as PNG (box-filtered when S < 1);
 +///                                      answers WxH PATH
 +/// state                                JSON: screen, menu, player, synthetic input
++/// ui layout [interactive]              JSON: visible retained UI and component actions
++/// ui act ID ACTION [JSON]              activate, secondary, set_value (0..1) or set_text
 +/// release                              let go of every button, key, stick and trigger
 +/// alloc [FRAMES]                       bytes the main thread allocates over FRAMES updates (default 120),
 +///                                      overall and per retained-mode screen; JSON
@@ -282,6 +285,8 @@
 +            return Result("pong");
 +        case "state":
 +            return Result(State());
++        case "ui":
++            return Ui(line);
 +        case "alloc":
 +            return Alloc((int)Optional(words, 1, 120f));
 +        case "profile":
@@ -712,6 +717,108 @@
 +        yield break;
 +    }
 +
++    private static IEnumerable<object> Ui(string line)
++    {
++        string[] parts = line.Trim().Split(' ', 5, StringSplitOptions.RemoveEmptyEntries);
++        bool layout = parts.Length >= 2 && parts[1].Equals("layout", StringComparison.OrdinalIgnoreCase);
++        bool interactiveOnly = parts.Length == 3 && parts[2].Equals("interactive", StringComparison.OrdinalIgnoreCase);
++        UiAutomation.Actions action = UiAutomation.Actions.None;
++        JToken value = null;
++        if (layout)
++        {
++            if (parts.Length != 2 && !interactiveOnly)
++            {
++                throw new CommandError("ui layout [interactive]");
++            }
++        }
++        else
++        {
++            if (parts.Length < 4 || !parts[1].Equals("act", StringComparison.OrdinalIgnoreCase))
++            {
++                throw new CommandError("ui layout [interactive] | ui act ID ACTION [JSON]");
++            }
++            action = parts[3] switch
++            {
++                "activate" => UiAutomation.Actions.Activate,
++                "secondary" => UiAutomation.Actions.Secondary,
++                "set_value" => UiAutomation.Actions.SetValue,
++                "set_text" => UiAutomation.Actions.SetText,
++                _ => throw new CommandError("unknown UI action; use activate, secondary, set_value or set_text")
++            };
++            if (action is UiAutomation.Actions.SetValue or UiAutomation.Actions.SetText)
++            {
++                if (parts.Length != 5)
++                {
++                    throw new CommandError("this UI action requires a JSON value");
++                }
++                try
++                {
++                    value = JsonConvert.DeserializeObject<JToken>(parts[4], new JsonSerializerSettings { DateParseHandling = DateParseHandling.None });
++                }
++                catch (JsonException)
++                {
++                    throw new CommandError("invalid JSON value for UI action");
++                }
++                if (value == null)
++                {
++                    throw new CommandError("invalid JSON value for UI action");
++                }
++                if (action == UiAutomation.Actions.SetValue &&
++                    (value.Type is not (JTokenType.Float or JTokenType.Integer) ||
++                     !(value.Value<double>() is >= 0.0 and <= 1.0)))
++                {
++                    throw new CommandError("set_value requires a number from 0 to 1");
++                }
++                if (action == UiAutomation.Actions.SetText && value.Type != JTokenType.String)
++                {
++                    throw new CommandError("set_text requires a JSON string");
++                }
++            }
++            else if (parts.Length != 4)
++            {
++                throw new CommandError("this UI action does not take a value");
++            }
++        }
++
++        UiAutomation.Frame frame = UiAutomation.Capture(layout ? null : parts[2]);
++        if (frame == null)
++        {
++            throw new CommandError("stale UI component; request the current layout");
++        }
++        double deadline = Clock.Elapsed.TotalMilliseconds + 2000;
++        try
++        {
++            while (!frame.Finished)
++            {
++                if (Clock.Elapsed.TotalMilliseconds >= deadline)
++                {
++                    throw new CommandError("no UI frame was drawn");
++                }
++                yield return null;
++            }
++            if (_current.Abandoned)
++            {
++                yield break;
++            }
++            if (frame.Error != null)
++            {
++                throw new CommandError("could not read the UI: " + frame.Error.Message.Replace('\n', ' '));
++            }
++            if (layout)
++            {
++                _current.Result = UiAutomation.Publish(frame, interactiveOnly);
++            }
++            else if (!UiAutomation.TryAct(frame, parts[2], action, value, out string error))
++            {
++                throw new CommandError(error);
++            }
++        }
++        finally
++        {
++            UiAutomation.Cancel(frame);
++        }
++    }
++
 +    private static IEnumerable<object> Screenshot(string[] words, string line)
 +    {
 +        // Options first; the rest of the line is the path (which may contain spaces).
@@ -763,6 +870,7 @@
 +    private static void AfterDraw(GameTime gameTime)
 +    {
 +        _draws++;
++        UiAutomation.FinishFrame(Main.instance.GraphicsDevice);
 +        if (_screenshotPath == null)
 +        {
 +            return;

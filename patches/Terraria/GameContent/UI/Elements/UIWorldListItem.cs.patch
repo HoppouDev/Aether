@@ -1,0 +1,11 @@
+--- a/Terraria/GameContent/UI/Elements/UIWorldListItem.cs
++++ b/Terraria/GameContent/UI/Elements/UIWorldListItem.cs
+@@ -14,6 +14,8 @@
+ 
+ public class UIWorldListItem : AWorldListItem
+ {
++    internal override string AutomationLabel => _data.GetWorldName();
++
+     private Asset<Texture2D> _dividerTexture;
+ 
+     private Asset<Texture2D> _innerPanelTexture;

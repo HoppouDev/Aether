@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/Aether/UI/Game/UISmallControls.cs
-@@ -0,0 +1,168 @@
+@@ -0,0 +1,175 @@
 +using System;
 +using Microsoft.Xna.Framework;
 +using Microsoft.Xna.Framework.Graphics;
@@ -32,6 +32,12 @@
 +    private string _sizeMatcher;
 +
 +    private Action _onClick;
++
++    internal override string AutomationLabel => _text;
++
++    internal Rectangle AutomationBounds { get; private set; }
++
++    internal void Activate() => _onClick();
 +
 +    /// <summary>Called by Main.DrawSettingButton in place of its body (it keeps its state in Main.mouseExit/exitScale).</summary>
 +    public static bool Draw(int x, int y, string text, string sizeMatcher, Action onClick)
@@ -68,6 +74,7 @@
 +        }
 +        UILinkPointNavigator.SetPosition(308, _position.ToVector2());
 +        float scale = (Main.exitScale - 0.2f) * fit;
++        AutomationBounds = Utils.CenteredRectangle(_position.ToVector2(), size * scale);
 +        for (int i = 0; i < 5; i++)
 +        {
 +            Vector2 offset = i switch

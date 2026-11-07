@@ -82,6 +82,7 @@ dotnet build Aether.slnx -c Debug
   See [the mod authoring guide](docs/modding.md).
 - The client exe has no headless mode: `Main.dedServ` is only set in the separate server build, so any runtime test opens a game window.
   To drive that window without focusing it or sending system input, start it with `--control PORT` and use `./aether control` or the `aether-game` MCP server (see `.agents/skills/aether-game/SKILL.md`).
+  Use [remote UI automation](docs/ui-automation.md) to inspect and act on retained components by ID.
 - **Finding allocations:** `--profile` (Linux; with `--control`) has .NET load Aether's allocation profiler at startup (`CORECLR_PROFILER*`), a CoreCLR profiler (`ICorProfilerCallback3`) compiled from `tools/aether/profiler/aether_profiler.c` into `.aether/profiler/` (needs `cc`).
   The control command `profile [FRAMES] [TOP] PATH` (MCP: `game_profile`) then records every managed allocation's class, size and call stack and writes the methods with the most bytes allocated under them and the top sites, per frame.
   Allocation tracking turns off the runtime's allocation fast paths for the whole run, so only compare profiled runs with each other.

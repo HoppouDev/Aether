@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/Aether/UI/Game/UIOptionsCategory.cs
-@@ -0,0 +1,90 @@
+@@ -0,0 +1,92 @@
 +using System;
 +using Microsoft.Xna.Framework;
 +using Microsoft.Xna.Framework.Graphics;
@@ -20,6 +20,8 @@
 +    private const float Speed = 0.01f;
 +
 +    private readonly string _text;
++
++    internal override string AutomationLabel => _text;
 +
 +    private readonly Action _onClick;
 +

@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/Aether/UI/Game/UIGameItemSlot.cs
-@@ -0,0 +1,119 @@
+@@ -0,0 +1,134 @@
 +using System;
 +using Microsoft.Xna.Framework;
 +using Microsoft.Xna.Framework.Graphics;
@@ -33,6 +33,21 @@
 +    private readonly Func<Item> _getItem;
 +
 +    private readonly Action<Item> _setItem;
++
++    internal Item AutomationItem => _items != null ? _items()[Slot] : _getItem();
++
++    internal bool SupportsAutomationActivation => _items != null && Context is 0 or 1 or 2;
++
++    internal bool Activate()
++    {
++        if (Main.LocalPlayerHasPendingInventoryActions() || Main.LocalPlayer.itemAnimation != 0 ||
++            Main.LocalPlayer.itemTime != 0 || BeforeHandle?.Invoke() == false)
++        {
++            return false;
++        }
++        ItemSlot.LeftClick(_items(), Context, Slot, pressed: true, useCursorOverride: false);
++        return true;
++    }
 +
 +    private readonly Item[] _single = new Item[1];
 +

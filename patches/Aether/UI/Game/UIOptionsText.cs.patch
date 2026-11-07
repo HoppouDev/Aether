@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/Aether/UI/Game/UIOptionsText.cs
-@@ -0,0 +1,87 @@
+@@ -0,0 +1,91 @@
 +using System;
 +using Microsoft.Xna.Framework;
 +using Microsoft.Xna.Framework.Graphics;
@@ -26,6 +26,10 @@
 +    private readonly Vector2 _center;
 +
 +    private string _shownText;
++
++    internal override string AutomationLabel => _shownText;
++
++    internal bool HasAction => !IsHeader && _onClick != null;
 +
 +    public bool IsHeader;
 +

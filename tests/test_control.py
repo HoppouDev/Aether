@@ -46,6 +46,8 @@ def game():
             return "ok pong"
         if line == "state":
             return "ok " + json.dumps({"screen": [960, 600], "loading": False})
+        if line.startswith("ui layout"):
+            return 'ok {"components":[{"id":"abcd0123-1","actions":["set_text"]}]}'
         if line.startswith("bad"):
             return "error unknown command bad"
         return "ok"
@@ -77,6 +79,16 @@ def test_send_reconnects_once_when_the_connection_drops():
     try:
         assert Control(fake.port).send("ping") == "pong"
         assert calls == ["ping", "ping"]
+    finally:
+        fake.close()
+
+
+def test_ui_action_is_not_replayed_after_disconnect():
+    fake = FakeGame(lambda _: None)
+    try:
+        with pytest.raises(ControlError, match="closed the connection"):
+            Control(fake.port).send("ui act abcd0123-1 activate")
+        assert fake.received == ["ui act abcd0123-1 activate"]
     finally:
         fake.close()
 
@@ -145,14 +157,26 @@ def test_mcp_server_tools(game):
         async with Client(build_server(game.port)) as client:
             names = {t.name for t in await client.list_tools()}
             state = await client.call_tool("game_state", {})
+            ui = await client.call_tool("game_ui_layout", {"interactive_only": True})
+            action = await client.call_tool(
+                "game_ui_action",
+                {
+                    "component_id": ui.data["components"][0]["id"],
+                    "action": "set_text",
+                    "value": 'a "b"\nc',
+                },
+            )
             await client.call_tool(
                 "mouse_drag", {"x1": 1, "y1": 2, "x2": 3, "y2": 4, "duration_ms": 50}
             )
             await client.call_tool("type_text", {"text": "hi\nthere"})
-            return names, state.data
+            return names, state.data, action.data
 
-    names, state = asyncio.run(run())
+    names, state, action = asyncio.run(run())
     assert {"game_launch", "game_screenshot", "mouse_drag", "gamepad_stick"} <= names
     assert state["screen"] == [960, 600]
+    assert action == "ok"
+    assert "ui layout interactive" in game.received
+    assert 'ui act abcd0123-1 set_text "a \\"b\\"\\nc"' in game.received
     assert "mouse drag 1 2 3 4 50 left" in game.received
     assert "type hi\\nthere" in game.received

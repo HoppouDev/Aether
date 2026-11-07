@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/Aether/UI/Game/UIIconButton.cs
-@@ -0,0 +1,136 @@
+@@ -0,0 +1,146 @@
 +using System;
 +using Microsoft.Xna.Framework;
 +using Microsoft.Xna.Framework.Graphics;
@@ -26,6 +26,8 @@
 +    /// <summary>Hit-test with the area's right and bottom edges included (some legacy buttons do).</summary>
 +    public bool IncludeFarEdges;
 +
++    internal bool ExcludeNearEdges;
++
 +    /// <summary>When set and false, the button can't be hovered (e.g. while inventory actions are pending).</summary>
 +    public Func<bool> CanHover;
 +
@@ -45,6 +47,10 @@
 +    /// <summary>Mouse text shown after drawing while hovered, unless something else already set one.</summary>
 +    public Func<string> Tooltip;
 +
++    internal Func<string> AutomationCaption;
++
++    internal override string AutomationLabel => (AutomationCaption ?? Tooltip)?.Invoke();
++
 +    /// <summary>Whether the button ticks when the hover starts (some legacy buttons are silent, or their caller ticks).</summary>
 +    public bool TickOnHover = true;
 +
@@ -57,6 +63,10 @@
 +            return false;
 +        }
 +        Rectangle area = Area();
++        if (ExcludeNearEdges && (point.X <= area.Left || point.Y <= area.Top))
++        {
++            return false;
++        }
 +        if (IncludeFarEdges)
 +        {
 +            return point.X >= area.X && point.X <= area.Right && point.Y >= area.Y && point.Y <= area.Bottom;
