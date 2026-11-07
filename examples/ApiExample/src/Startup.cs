@@ -43,6 +43,11 @@ public sealed class Startup : IModInitializer
                 Console.WriteLine($"[api-example] {occupied} occupied player slots");
             }
         });
+        LocalCommands.Register("api-example:spawn", _ =>
+        {
+            if (Worlds.TryGetCurrent(out var world))
+                Console.WriteLine($"[api-example] {world.Name} spawn {world.Spawn}, tile {Tiles.Query(world.Spawn).Status}");
+        });
         HudOverlays.Register("api-example:label", canvas => canvas.DrawText("API example", 16, 80, HudColor.White));
         RecipeRegistry.Register("api-example:torch", new RecipeDefinition(new ItemAmount(8, 1), [new ItemAmount(9, 1)]));
     }
