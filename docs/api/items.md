@@ -43,3 +43,23 @@ Player and world saves in these profiles use a versioned Aether format.
 Use `ItemRegistry.SetState(item, json)` and `ItemRegistry.GetState(item)` to write and read up to 16 KiB of JSON per custom item.
 Passing `null` clears the state.
 Clones keep the state, and items with different state cannot stack.
+The value returned by `GetState` is a detached `JsonElement`; call `SetState` to update it.
+Keep the state schema compatible across releases of your mod.
+
+The save header records the ordered item mapping, required content mods, and a profile identity tied to the Terraria build.
+Aether checks compatibility before loading or replacing a save or recovering its backup.
+Keep both the mod archives and save files when moving a profile to another machine.
+Vanilla saves copied into a custom-item profile convert when Aether first saves them there.
+
+## Buildable example
+
+Build the API package first, then package the [custom items example](../../examples/CustomItems/src/Startup.cs).
+
+```sh
+dotnet build examples/CustomItems/CustomItems.csproj -t:PackMod
+```
+
+Install `CustomItems.aethermod` from `examples/CustomItems/bin/Debug/net10.0/` alongside `aether-api.aethermod`.
+Start a character and world in the custom-item profile, then run `/custom-items:give` in chat.
+Swing the Counter Blade and run `/custom-items:inspect` while holding it.
+Save and exit, reopen the same character and world, and inspect the blade again to see the saved counters.

@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "id": "custom-items",
+  "name": "Aether Custom Items Example",
+  "version": "0.1.0",
+  "assembly": "CustomItems.dll",
+  "entrypoint": "CustomItems.Startup",
+  "depends": {
+    "aether-api": "0.1.0"
+  }
+}
