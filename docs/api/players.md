@@ -53,3 +53,25 @@ It returns true when the effect is active after an eligible application.
 Equipment and environmental effects can return as Terraria updates.
 Both writes require single-player.
 Use `/api-example:swiftness` in the buildable example to apply Swiftness.
+
+## Temporary modifiers
+
+Register a namespaced modifier during initialization and keep its handle.
+
+```csharp
+PlayerModifier training = Players.RegisterModifier("example:training");
+WorldEvents.Entered.Register(world =>
+{
+    if (!world.IsMultiplayer && Players.TryGetLocal(out var player))
+        training.Set(player, new PlayerStatModifier { DefenseBonus = 5, MeleeDamageMultiplier = 1.25f });
+});
+```
+
+`Set` replaces that handle's contribution for the player and `Clear` removes it.
+Bonuses to maximum health, maximum mana, and defense add together.
+Overall and class damage factors multiply, with a combined limit of 16×.
+The modifier applies to Terraria's weapon multiplier, including ammo paths that use it.
+The affected effective maxima are capped at 1,000 health, 400 mana, and 1,000 defense.
+Vital and defense bonuses apply on the next stat update.
+Modifiers stay active through respawn and clear on world exit.
+Only the local player in single-player can receive a modifier.

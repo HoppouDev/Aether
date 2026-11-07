@@ -20,6 +20,7 @@ public static class ClientContent
     public static Action<object, object>? ItemUsed { get; internal set; }
     public static Action<object, object, object, int>? ItemHitNpc { get; internal set; }
     public static Action<object, object, int>? ItemEquipped { get; internal set; }
+    public static Action<object>? ApplyPlayerModifiers { get; internal set; }
     public static bool HasItems => Items.Count != 0;
     public static bool IsDedicatedServer { get; internal set; }
     public static string? ConnectionVersion { get; internal set; }
@@ -62,6 +63,7 @@ public static class ClientContent
             ItemUsed = null;
             ItemHitNpc = null;
             ItemEquipped = null;
+            ApplyPlayerModifiers = null;
             IsDedicatedServer = false;
             ConnectionVersion = null;
             ServerReady = null;

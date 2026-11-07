@@ -15,6 +15,7 @@ public sealed class ApiStartup : IModInitializer
         ClientStartup.HandleLocalCommand = LocalCommands.TryExecute;
         ClientStartup.BlockCraft = recipe => RecipeRegistry.IsBlocked((Recipe)recipe);
         ClientContent.FinalizeRegistration = ItemRegistry.Freeze;
+        ClientContent.ApplyPlayerModifiers = player => PlayerModifiers.Apply((Player)player);
         ClientContent.ServerReady = GameBridge.ReadyServer;
         ClientContent.ServerPlayerJoined = index => ServerEvents.PlayerJoined.Raise(Main.player[index]);
     }
@@ -86,6 +87,7 @@ public static class GameBridge
         if (activeWorld == null)
             return;
         activeWorld = null;
+        PlayerModifiers.ClearWorld();
         WorldEvents.Left.Raise(world);
         HudOverlays.ClearTextures();
     }
@@ -98,6 +100,8 @@ public static class GameBridge
     }
 
     public static void InstallRecipes() => RecipeRegistry.Install();
+
+    public static float GetPlayerWeaponFactor(Player player, Item item) => PlayerModifiers.WeaponFactor(player, item);
 
     public static bool IsRecipeBlocked(Recipe recipe) => RecipeRegistry.IsBlocked(recipe);
 

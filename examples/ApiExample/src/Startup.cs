@@ -8,6 +8,7 @@ public sealed class Startup : IModInitializer
 {
     public void Initialize()
     {
+        PlayerModifier training = Players.RegisterModifier("api-example:training");
         ClientEvents.Ready.Register(_ => Console.WriteLine("[api-example] Client ready"));
         WorldEvents.Entered.Register(world => Console.WriteLine($"[api-example] Entered {world.Name}"));
         WorldEvents.Left.Register(world => Console.WriteLine($"[api-example] Left {world.Name}"));
@@ -24,6 +25,15 @@ public sealed class Startup : IModInitializer
         {
             if (Players.TryGetLocal(out var player) && Terraria.Main.netMode == 0 && Players.GetStats(player).IsAlive)
                 Players.TryApplyEffect(player, BuffID.Swiftness, 600);
+        });
+        LocalCommands.Register("api-example:training", option =>
+        {
+            if (!Players.TryGetLocal(out var player) || Terraria.Main.netMode != 0 || !Players.GetStats(player).IsAlive)
+                return;
+            if (option == "off")
+                training.Clear(player);
+            else
+                training.Set(player, new PlayerStatModifier { DefenseBonus = 5, MeleeDamageMultiplier = 1.25f });
         });
         HudOverlays.Register("api-example:label", canvas => canvas.DrawText("API example", 16, 80, HudColor.White));
         RecipeRegistry.Register("api-example:torch", new RecipeDefinition(new ItemAmount(8, 1), [new ItemAmount(9, 1)]));
