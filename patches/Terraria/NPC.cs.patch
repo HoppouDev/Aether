@@ -1,10 +1,16 @@
 --- a/Terraria/NPC.cs
 +++ b/Terraria/NPC.cs
-@@ -6016,7 +6016,41 @@
+@@ -6016,7 +6016,47 @@
          }
      }
  
 -    public bool active;
++    [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
++    public string AetherSavedState { get; set; }
++
++    [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
++    public bool AetherPendingRestore { get; set; }
++
 +    private bool aetherActive;
 +
 +    public bool active
@@ -43,7 +49,7 @@
  
      private const int NPC_TARGETS_START = 300;
  
-@@ -7360,7 +7394,8 @@
+@@ -7360,7 +7400,8 @@
  
      public NetworkText GetTypeNetName()
      {
@@ -53,7 +59,7 @@
      }
  
      public void GetLifeStats(out int statLife, out int statLifeMax)
-@@ -8460,6 +8495,7 @@
+@@ -8460,6 +8501,7 @@
  
      public void SetDefaults(int Type, NPCSpawnParams spawnparams = default(NPCSpawnParams))
      {
@@ -61,7 +67,7 @@
          if (Main.getGoodWorld && !IsABestiaryIconDummy && spawnparams.sizeScaleOverride.HasValue)
          {
              spawnparams.sizeScaleOverride = (spawnparams.sizeScaleOverride + spawnparams.sizeScaleOverride * spawnparams.sizeScaleOverride) / 2f;
-@@ -17816,6 +17852,10 @@
+@@ -17816,6 +17858,10 @@
              knockBackResist = 0.5f;
              rarity = 1;
          }
@@ -72,7 +78,7 @@
          if (Main.dedServ)
          {
              frame = default;
-@@ -19864,6 +19904,11 @@
+@@ -19864,6 +19910,11 @@
  
      public void AI()
      {
@@ -84,7 +90,7 @@
          if (aiStyle == 0)
          {
              if (type >= 0 && NPCID.Sets.BoundTownNPCs[type])
-@@ -67421,6 +67466,11 @@
+@@ -67421,6 +67472,11 @@
  
      public void FindFrame()
      {
@@ -96,7 +102,16 @@
          position += netOffset;
          int num = 1;
          if (!Main.dedServ)
-@@ -78873,6 +78923,11 @@
+@@ -78727,7 +78783,7 @@
+         {
+             return;
+         }
+-        bool flag = DoesntDespawnToInactivityAndCountsNPCSlots();
++        bool flag = DoesntDespawnToInactivityAndCountsNPCSlots() || (AetherIsCustom && Aether.Modding.NpcSave.IsPersistent(type));
+         bool flag2 = false;
+         Rectangle rectangle = new Rectangle((int)(position.X + (float)(width / 2) - (float)activeRangeX), (int)(position.Y + (float)(height / 2) - (float)activeRangeY), activeRangeX * 2, activeRangeY * 2);
+         Rectangle rectangle2 = new Rectangle((int)((double)(position.X + (float)(width / 2)) - (double)sWidth * 0.5 - (double)width), (int)((double)(position.Y + (float)(height / 2)) - (double)sHeight * 0.5 - (double)height), sWidth + width * 2, sHeight + height * 2);
+@@ -78873,6 +78929,11 @@
          {
              return;
          }
@@ -108,7 +123,7 @@
          if (type == 371)
          {
              ai[0] = 1f;
-@@ -79668,7 +79723,7 @@
+@@ -79668,7 +79729,7 @@
  
      public void NPCLoot()
      {
@@ -117,7 +132,7 @@
          {
              return;
          }
-@@ -79741,6 +79796,8 @@
+@@ -79741,6 +79802,8 @@
  
      public bool IsNPCValidForBestiaryKillCredit()
      {
@@ -126,16 +141,27 @@
          switch (type)
          {
          case 121:
-@@ -81603,6 +81660,8 @@
+@@ -81585,7 +81648,7 @@
+         }
+     }
+ 
+-    internal static NPC NewNPCInstanceInSlot(int slot, byte generation = 0)
++    internal static NPC NewNPCInstanceInSlot(int slot, byte generation = 0, NPC prepared = null)
+     {
+         if (Main.netMode == 2 && Main.npc[slot].spawnNeedsSyncing)
+         {
+@@ -81603,7 +81666,9 @@
                  generation++;
              }
          }
+-        NPC nPC = new NPC();
 +        if (Main.npc[slot].AetherIsCustom)
 +            Main.npc[slot].AetherRetire(Aether.Modding.EntityRemovalReason.Replaced);
-         NPC nPC = new NPC();
++        NPC nPC = prepared ?? new NPC();
          Main.npc[slot] = nPC;
          nPC.whoAmI = slot;
-@@ -81613,6 +81672,20 @@
+         nPC.generation = generation;
+@@ -81613,6 +81678,20 @@
  
      public static int NewNPC(IEntitySource source, int X, int Y, int Type, int Start = 0, float ai0 = 0f, float ai1 = 0f, float ai2 = 0f, float ai3 = 0f, int Target = 255)
      {
@@ -156,7 +182,7 @@
          if (Main.getGoodWorld && Main.rand.Next(3) != 0)
          {
              if (Type == 46)
-@@ -81624,7 +81697,7 @@
+@@ -81624,7 +81703,7 @@
                  Type = 66;
              }
          }
@@ -165,7 +191,7 @@
          if (availableNPCSlot >= 0)
          {
              spawnSlotProtected[availableNPCSlot] = 2;
-@@ -81644,7 +81717,7 @@
+@@ -81644,7 +81723,7 @@
              nPC.ai[3] = ai3;
              nPC.target = Target;
              nPC.targetSetFrame = Main.EverLastingTicker;
@@ -174,7 +200,7 @@
              {
                  nPC.spawnNeedsSyncing = true;
              }
-@@ -81652,13 +81725,21 @@
+@@ -81652,13 +81731,24 @@
              {
                  ChatHelper.BroadcastChatMessage(NetworkText.FromKey("Announcement.HasAwoken", nPC.GetTypeNetName()), ChatColors.BossOrEvent);
              }
@@ -193,11 +219,20 @@
      }
  
 -    private static int GetAvailableNPCSlot(int Type, int startIndex)
-+    private static int GetAvailableNPCSlot(int Type, int startIndex, bool allowEviction)
++    internal static int AetherFindRestoreSlot(int type, bool[] reserved) =>
++        GetAvailableNPCSlot(type, 0, allowEviction: false, reserved);
++
++    private static int GetAvailableNPCSlot(int Type, int startIndex, bool allowEviction, bool[] reserved = null)
      {
          Type = NPCID.FromNetId(Type);
          bool b = NPCID.Sets.SearchSpawnSlotsInReverse[Type];
-@@ -81681,6 +81762,10 @@
+@@ -81676,11 +81766,15 @@
+         }
+         for (int i = startIndex; i != t; i += num)
+         {
+-            if (!IsSpawnSlotInUse(i))
++            if (!IsSpawnSlotInUse(i) && (reserved == null || !reserved[i]))
+             {
                  return i;
              }
          }
@@ -208,7 +243,7 @@
          for (int j = startIndex; j != t; j += num)
          {
              if (Main.npc[j].CanBeReplacedByOtherNPCs)
-@@ -82068,6 +82153,12 @@
+@@ -82068,6 +82162,12 @@
          {
              return 0;
          }
@@ -221,7 +256,7 @@
          bool condition = Damage >= 9999 && owner == 255;
          if (!fromNet)
          {
-@@ -82429,6 +82520,8 @@
+@@ -82429,6 +82529,8 @@
          {
              SoundEngine.PlaySound(HitSound, position);
          }
@@ -230,7 +265,7 @@
          if (realLife >= 0)
          {
              Main.npc[realLife].checkDead();
-@@ -91424,6 +91517,12 @@
+@@ -91424,6 +91526,12 @@
          {
              return;
          }
@@ -243,7 +278,7 @@
          if (Main.netMode == 2 || offSetDelayTime > 0 || Main.multiplayerNPCSmoothingRange <= 0 || NPCID.Sets.NoMultiplayerSmoothingByType[type] || NPCID.Sets.NoMultiplayerSmoothingByAI[aiStyle] || (townNPC && ai[0] == 25f))
          {
              netOffset *= 0f;
-@@ -91568,6 +91667,8 @@
+@@ -91568,6 +91676,8 @@
          TryPortalJumping();
          IdleSounds();
          AI();
@@ -252,7 +287,7 @@
          SubAI_HandleTemporaryCatchableNPCPlayerInvulnerability();
          if (Main.netMode != 2 && extraValue > 0)
          {
-@@ -91664,6 +91765,8 @@
+@@ -91664,6 +91774,8 @@
          UpdateNPC_UpdateTrails();
          UpdateNetworkCode(i);
          CheckActive();

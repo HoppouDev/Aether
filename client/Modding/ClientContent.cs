@@ -9,7 +9,7 @@ public sealed record ClientItemDefinition(string Id, string Name, string? Toolti
 public sealed record ClientEntitySprite(int VanillaType, string? ResourcePath, int Frames, int TicksPerFrame);
 
 [EditorBrowsable(EditorBrowsableState.Never)]
-public sealed record ClientNpcDefinition(string Id, string Name, ClientEntitySprite Sprite);
+public sealed record ClientNpcDefinition(string Id, string Name, ClientEntitySprite Sprite, int SaveSchema);
 
 [EditorBrowsable(EditorBrowsableState.Never)]
 public sealed record ClientProjectileDefinition(string Id, string Name, ClientEntitySprite Sprite);
@@ -60,12 +60,14 @@ public static class ClientContent
     public static Action<object, EntityRemovalReason>? ProjectileRemoved { get; internal set; }
     public static bool HasItems => Items.Count != 0;
     public static bool HasEntities => Npcs.Count != 0 || Projectiles.Count != 0;
+    public static bool HasPersistentNpcs { get; private set; }
     public static bool IsDedicatedServer { get; internal set; }
     public static string? ConnectionVersion { get; internal set; }
     public static Action? ServerReady { get; internal set; }
     public static Action? ServerStopped { get; internal set; }
     public static Action<int>? ServerPlayerJoined { get; internal set; }
     public static string? SaveIdentity => profile;
+    public static string? WorldSaveIdentity => profile ?? (HasPersistentNpcs ? "entities" : null);
     public static IReadOnlyList<ContentModRequirement> SaveRequirements { get; internal set; } = Array.Empty<ContentModRequirement>();
     internal static Action? FinalizeRegistration { get; set; }
 
@@ -106,6 +108,7 @@ public static class ClientContent
             if (npcTablesSized)
                 throw new InvalidOperationException("Terraria's NPC tables were initialized before custom NPC registration finished. Read game content from ClientEvents.Ready.");
             Npcs = Array.AsReadOnly(npcs);
+            HasPersistentNpcs = npcs.Any(npc => npc.SaveSchema != 0);
             ApplyNpcDefaults = applyDefaults;
         }
     }
@@ -133,6 +136,9 @@ public static class ClientContent
     public static string SaveRoot(string vanillaRoot) => profile == null
         ? vanillaRoot : Path.Combine(vanillaRoot, "AetherContent", profile);
 
+    public static string WorldSaveRoot(string vanillaRoot) => WorldSaveIdentity is { } identity
+        ? Path.Combine(vanillaRoot, "AetherContent", identity) : vanillaRoot;
+
     internal static void Reset()
     {
         lock (itemTableLock)
@@ -144,6 +150,7 @@ public static class ClientContent
             ItemEquipped = null;
             ApplyPlayerModifiers = null;
             Npcs = Array.Empty<ClientNpcDefinition>();
+            HasPersistentNpcs = false;
             ApplyNpcDefaults = null;
             NpcSpawned = null;
             NpcUpdated = null;

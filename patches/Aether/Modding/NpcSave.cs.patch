@@ -1,0 +1,141 @@
+--- /dev/null
++++ b/Aether/Modding/NpcSave.cs
+@@ -0,0 +1,138 @@
++using System;
++using System.Collections.Generic;
++using System.IO;
++using System.Text.Json;
++using Microsoft.Xna.Framework;
++using Terraria;
++using Terraria.ID;
++
++namespace Aether.Modding;
++
++internal static class NpcSave
++{
++    internal const int MaxStateBytes = 16 * 1024;
++
++    internal readonly record struct Entry(string Id, int Schema, Vector2 Bottom, Vector2 Velocity, int Life, string State);
++
++    internal static bool IsPersistent(int type)
++    {
++        int index = type - NPCID.VanillaCount;
++        return (uint)index < (uint)ClientContent.Npcs.Count && ClientContent.Npcs[index].SaveSchema != 0;
++    }
++
++    internal static Entry[] Capture()
++    {
++        if (!ClientContent.HasPersistentNpcs)
++            return Array.Empty<Entry>();
++
++        var entries = new List<Entry>();
++        for (int slot = 0; slot < Main.maxNPCs; slot++)
++        {
++            NPC npc = Main.npc[slot];
++            if (!npc.active || npc.life <= 0 || !IsPersistent(npc.type))
++                continue;
++
++            var definition = ClientContent.Npcs[npc.type - NPCID.VanillaCount];
++            var entry = new Entry(definition.Id, definition.SaveSchema, npc.Bottom, npc.velocity, npc.life, npc.AetherSavedState);
++            Validate(entry, Main.maxTilesX * 16, Main.maxTilesY * 16);
++            entries.Add(entry);
++        }
++        return entries.ToArray();
++    }
++
++    internal static Entry[] Read(BinaryReader reader)
++    {
++        int count = reader.ReadInt32();
++        if (count < 0 || count > Main.maxNPCs)
++            throw new ContentSaveException("Invalid persistent NPC record count.");
++
++        var entries = new Entry[count];
++        for (int i = 0; i < count; i++)
++        {
++            string id = ItemSave.ReadString(reader, 1024);
++            int schema = reader.ReadInt32();
++            Vector2 bottom = reader.ReadVector2();
++            Vector2 velocity = reader.ReadVector2();
++            int life = reader.ReadInt32();
++            string state = ItemSave.ReadString(reader, MaxStateBytes);
++            var entry = new Entry(id, schema, bottom, velocity, life, state.Length == 0 ? null : state);
++            FindType(entry);
++            Validate(entry, short.MaxValue * 16, short.MaxValue * 16);
++            if (entry.State != null)
++            {
++                using JsonDocument document = JsonDocument.Parse(entry.State);
++            }
++            entries[i] = entry;
++        }
++        return entries;
++    }
++
++    internal static void Write(BinaryWriter writer, Entry[] entries)
++    {
++        writer.Write(entries.Length);
++        foreach (var entry in entries)
++        {
++            ItemSave.WriteString(writer, entry.Id, 1024);
++            writer.Write(entry.Schema);
++            writer.WriteVector2(entry.Bottom);
++            writer.WriteVector2(entry.Velocity);
++            writer.Write(entry.Life);
++            ItemSave.WriteString(writer, entry.State ?? "", MaxStateBytes);
++        }
++    }
++
++    internal static void Restore(Entry[] entries)
++    {
++        if (entries.Length == 0)
++            return;
++        var reserved = new bool[Main.maxNPCs];
++        var staged = new (int Slot, NPC Npc)[entries.Length];
++        for (int index = 0; index < entries.Length; index++)
++        {
++            var entry = entries[index];
++            Validate(entry, Main.maxTilesX * 16, Main.maxTilesY * 16);
++            int type = FindType(entry);
++            int slot = NPC.AetherFindRestoreSlot(type, reserved);
++            if (slot < 0)
++                throw new ContentSaveException("There are too few unused NPC slots to restore the saved world.");
++
++            reserved[slot] = true;
++            var npc = new NPC();
++            npc.SetDefaults(type);
++            npc.Bottom = entry.Bottom;
++            npc.velocity = entry.Velocity;
++            npc.life = Math.Min(entry.Life, npc.lifeMax);
++            npc.AetherSavedState = entry.State;
++            npc.AetherPendingRestore = true;
++            staged[index] = (slot, npc);
++        }
++
++        foreach (var (slot, npc) in staged)
++        {
++            NPC.spawnSlotProtected[slot] = 2;
++            NPC.NewNPCInstanceInSlot(slot, prepared: npc);
++        }
++    }
++
++    private static int FindType(Entry entry)
++    {
++        for (int index = 0; index < ClientContent.Npcs.Count; index++)
++        {
++            var definition = ClientContent.Npcs[index];
++            if (definition.Id != entry.Id)
++                continue;
++            if (definition.SaveSchema == 0 || definition.SaveSchema != entry.Schema)
++                throw new ContentSaveException($"Persistent NPC '{entry.Id}' requires save schema {entry.Schema}.");
++            return NPCID.VanillaCount + index;
++        }
++        throw new ContentSaveException($"This world requires the persistent NPC definition '{entry.Id}'.");
++    }
++
++    private static void Validate(Entry entry, int width, int height)
++    {
++        if (!(entry.Bottom.X >= 0 && entry.Bottom.X < width && entry.Bottom.Y >= 0 && entry.Bottom.Y < height) ||
++            !(Math.Abs(entry.Velocity.X) <= 4096 && Math.Abs(entry.Velocity.Y) <= 4096) ||
++            entry.Life is < 1 or > 20_000_000)
++            throw new ContentSaveException($"Persistent NPC '{entry.Id}' has invalid saved position, velocity, or health.");
++    }
++}

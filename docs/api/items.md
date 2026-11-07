@@ -49,6 +49,7 @@ If a callback throws, Aether logs it and disables that callback for the session.
 Custom-item profiles use local saves under `AetherContent/` in the active save directory.
 The subfolder is derived from the game version, registered IDs, and owning mod versions.
 Player and world saves in these profiles use a versioned Aether format.
+World files also store any [persistent NPCs](entities.md#persistent-npcs) in the same save.
 Use `ItemRegistry.SetState(item, json)` and `ItemRegistry.GetState(item)` to write and read up to 16 KiB of JSON per custom item.
 Passing `null` clears the state.
 Clones keep the state, and items with different state cannot stack.

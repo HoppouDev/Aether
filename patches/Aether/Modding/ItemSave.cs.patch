@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/Aether/Modding/ItemSave.cs
-@@ -0,0 +1,334 @@
+@@ -0,0 +1,343 @@
 +using System;
 +using System.Collections.Generic;
 +using System.IO;
@@ -17,7 +17,8 @@
 +internal static class ItemSave
 +{
 +    private static ReadOnlySpan<byte> Magic => "AETHSAVE"u8;
-+    private const byte Version = 2;
++    private const byte PlayerVersion = 2;
++    private const byte WorldVersion = 3;
 +    private const int MaxRequirements = 4096;
 +    private const int MaxItems = 500_000;
 +    private const int MaxStateBytes = 16 * 1024;
@@ -26,6 +27,8 @@
 +    internal enum Kind : byte { Player = 1, World = 2 }
 +
 +    internal readonly record struct Entry(string Id, string State);
++
++    private sealed record Header(Entry[] Items, NpcSave.Entry[] Npcs);
 +
 +    internal sealed class Writer(Stream stream) : BinaryWriter(stream)
 +    {
@@ -54,9 +57,10 @@
 +        }
 +    }
 +
-+    internal sealed class Payload(Stream stream, Entry[] items = null) : IDisposable
++    internal sealed class Payload(Stream stream, Entry[] items = null, NpcSave.Entry[] npcs = null) : IDisposable
 +    {
 +        internal Stream Stream { get; } = stream;
++        internal NpcSave.Entry[] Npcs { get; } = npcs ?? Array.Empty<NpcSave.Entry>();
 +
 +        internal BinaryReader Read(Stream decoded = null) => items == null
 +            ? new BinaryReader(decoded ?? Stream) : new Reader(decoded ?? Stream, items);
@@ -106,8 +110,8 @@
 +    {
 +        try
 +        {
-+            Entry[] items = ReadHeader(source, kind, readItems: true);
-+            if (items == null)
++            Header header = ReadHeader(source, kind, readItems: true);
++            if (header == null)
 +            {
 +                return new Payload(source);
 +            }
@@ -115,7 +119,7 @@
 +            source.CopyTo(payload);
 +            payload.Position = 0;
 +            source.Dispose();
-+            return new Payload(payload, items);
++            return new Payload(payload, header.Items, header.Npcs);
 +        }
 +        catch
 +        {
@@ -147,7 +151,7 @@
 +        }
 +    }
 +
-+    private static Entry[] ReadHeader(Stream source, Kind kind, bool readItems)
++    private static Header ReadHeader(Stream source, Kind kind, bool readItems)
 +    {
 +        Span<byte> magic = stackalloc byte[8];
 +        int count = source.ReadAtLeast(magic, magic.Length, false);
@@ -160,7 +164,7 @@
 +        {
 +            using BinaryReader reader = new BinaryReader(source, Encoding.UTF8, leaveOpen: true);
 +            byte version = reader.ReadByte();
-+            if (version is not (1 or Version) || reader.ReadByte() != (byte)kind)
++            if (version < 1 || version > (kind == Kind.World ? WorldVersion : PlayerVersion) || reader.ReadByte() != (byte)kind)
 +            {
 +                throw new ContentSaveException("This Aether save format or file type is unsupported.");
 +            }
@@ -169,13 +173,14 @@
 +            {
 +                CheckRequirements(reader);
 +            }
-+            if (profile != ClientContent.SaveIdentity)
++            NpcSave.Entry[] npcs = version >= WorldVersion ? NpcSave.Read(reader) : Array.Empty<NpcSave.Entry>();
++            if (profile != Identity(kind))
 +            {
-+                throw new ContentSaveException("This save requires the custom item profile that created it.");
++                throw new ContentSaveException("This save requires the Aether content profile that created it.");
 +            }
 +            if (!readItems)
 +            {
-+                return Array.Empty<Entry>();
++                return new Header(Array.Empty<Entry>(), npcs);
 +            }
 +            int itemCount = reader.ReadInt32();
 +            if (itemCount < 0 || itemCount > MaxItems)
@@ -198,11 +203,11 @@
 +                }
 +                items[index] = new Entry(id, state.Length == 0 ? null : state);
 +            }
-+            return items;
++            return new Header(items, npcs);
 +        }
 +        catch (Exception exception) when (exception is EndOfStreamException or JsonException)
 +        {
-+            throw new ContentSaveException("The Aether save header is truncated or contains invalid item state.");
++            throw new ContentSaveException("The Aether save header is truncated or contains invalid content state.");
 +        }
 +    }
 +
@@ -251,7 +256,7 @@
 +        }
 +    }
 +
-+    internal static void Write(string path, Kind kind, Writer state, byte[] payload)
++    internal static void Write(string path, Kind kind, Writer state, byte[] payload, NpcSave.Entry[] npcs = null)
 +    {
 +        if (state.Items.Count > MaxItems || ClientContent.SaveRequirements.Count > MaxRequirements)
 +        {
@@ -265,9 +270,9 @@
 +            using (var writer = new BinaryWriter(stream))
 +            {
 +                writer.Write(Magic);
-+                writer.Write(Version);
++                writer.Write(kind == Kind.World ? WorldVersion : PlayerVersion);
 +                writer.Write((byte)kind);
-+                WriteString(writer, ClientContent.SaveIdentity, 64);
++                WriteString(writer, Identity(kind), 64);
 +                writer.Write(ClientContent.SaveRequirements.Count);
 +                foreach (ContentModRequirement mod in ClientContent.SaveRequirements)
 +                {
@@ -279,6 +284,8 @@
 +                {
 +                    WriteString(writer, item.Id, 1024);
 +                }
++                if (kind == Kind.World)
++                    NpcSave.Write(writer, npcs ?? Array.Empty<NpcSave.Entry>());
 +                writer.Write(state.Items.Count);
 +                long start = stream.Position;
 +                foreach (Entry entry in state.Items)
@@ -309,12 +316,14 @@
 +        }
 +    }
 +
-+    private static string ReadString(BinaryReader reader, int maxBytes)
++    private static string Identity(Kind kind) => kind == Kind.World ? ClientContent.WorldSaveIdentity : ClientContent.SaveIdentity;
++
++    internal static string ReadString(BinaryReader reader, int maxBytes)
 +    {
 +        int length = reader.ReadInt32();
 +        if (length < 0 || length > maxBytes)
 +        {
-+            throw new ContentSaveException("Invalid string size in the custom item table.");
++            throw new ContentSaveException("Invalid string size in the custom content table.");
 +        }
 +        byte[] bytes = reader.ReadBytes(length);
 +        if (bytes.Length != length)
@@ -324,12 +333,12 @@
 +        return Encoding.UTF8.GetString(bytes);
 +    }
 +
-+    private static void WriteString(BinaryWriter writer, string value, int maxBytes)
++    internal static void WriteString(BinaryWriter writer, string value, int maxBytes)
 +    {
 +        byte[] bytes = Encoding.UTF8.GetBytes(value);
 +        if (bytes.Length > maxBytes)
 +        {
-+            throw new ContentSaveException("A custom item ID or state exceeds the save limit.");
++            throw new ContentSaveException("A custom content ID or state exceeds the save limit.");
 +        }
 +        writer.Write(bytes.Length);
 +        writer.Write(bytes);

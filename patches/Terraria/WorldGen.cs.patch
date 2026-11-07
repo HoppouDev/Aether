@@ -11,7 +11,161 @@
          Main.netMode = 0;
          SoundEngine.StopTrackedSounds();
          CaptureInterface.ResetFocus();
-@@ -6719,11 +6723,19 @@
+@@ -6617,16 +6621,14 @@
+ 
+     private static void SaveAndQuitCallBack(object threadContext)
+     {
+-        Tuple<bool, Action> tuple = (Tuple<bool, Action>)threadContext;
+-        bool item = tuple.Item1;
+-        Action item2 = tuple.Item2;
++        var (saveWorld, callback, npcSnapshot) = ((bool, Action, Aether.Modding.NpcSave.Entry[]))threadContext;
+         Main.ActivePlayerFileData.StopPlayTimer();
+         Player.SavePlayer(Main.ActivePlayerFileData);
+         Player.ClearPlayerTempInfo();
+         Rain.ClearRain();
+-        if (item)
++        if (saveWorld)
+         {
+-            WorldFile.SaveWorld(resetTime: false, useTemps: true);
++            WorldFile.SaveWorldWithNpcSnapshot(npcSnapshot, resetTime: false, useTemps: true);
+             SoundEngine.PlaySound(10);
+         }
+         Main.fastForwardTimeToDawn = false;
+@@ -6634,9 +6636,9 @@
+         Main.UpdateTimeRate();
+         Main.QueueMainThreadAction(Main.ClearVisualPostProcessEffects);
+         Main.menuMode = 0;
+-        if (item2 != null)
++        if (callback != null)
+         {
+-            Main.QueueMainThreadAction(item2);
++            Main.QueueMainThreadAction(callback);
+         }
+     }
+ 
+@@ -6661,6 +6663,7 @@
+         Main.invasionProgressAlpha = 0f;
+         Main.invasionProgressIcon = 0;
+         bool item = Main.netMode == 0;
++        var npcSnapshot = item ? Aether.Modding.NpcSave.Capture() : null;
+         Main.menuMode = 10;
+         Main.gameMenu = true;
+         Netplay.Disconnect = true;
+@@ -6669,7 +6672,7 @@
+         SoundEngine.StopTrackedSounds();
+         CaptureInterface.ResetFocus();
+         WorldFile.SetTempToOngoing();
+-        ThreadPool.QueueUserWorkItem(SaveAndQuitCallBack, new Tuple<bool, Action>(item, callback));
++        ThreadPool.QueueUserWorkItem(SaveAndQuitCallBack, (item, callback, npcSnapshot));
+     }
+ 
+     public static void RenameWorld(WorldFileData data, string newName, Action<string> callback = null)
+@@ -6716,14 +6719,35 @@
+             }
+         }
+         Main.ToggleGameplayUpdates(state: false);
+-        WorldFile.LoadWorld();
++        if (threadContext is true)
++        {
++            WorldFile.LoadPersistentBackup();
++            if (loadFailed)
++            {
++                if (!WorldFile.ReportContentLoadError())
++                    Main.menuMode = 201;
++                return;
++            }
++        }
++        else
++        {
++            WorldFile.LoadWorld();
++        }
+         if (loadFailed)
+         {
++            if (WorldFile.ReportContentLoadError())
++            {
++                return;
++            }
+             WorldFile.LoadWorld();
+             if (loadFailed)
+             {
++                if (WorldFile.ReportContentLoadError())
++                {
++                    return;
++                }
+                 bool isCloudSave = Main.ActiveWorldFileData.IsCloudSave;
+-                if (FileUtilities.Exists(Main.worldPathName + ".bak", isCloudSave))
++                if (WorldFile.CanRecoverBackup(Main.worldPathName, isCloudSave))
+                 {
+                     worldBackup = true;
+                 }
+@@ -6748,22 +6772,35 @@
+                     Console.WriteLine(Language.GetTextValue("Error.LoadFailedNoBackup"));
+                     return;
+                 }
+-                FileUtilities.Copy(Main.worldPathName, Main.worldPathName + ".bad", isCloudSave);
+-                FileUtilities.Copy(Main.worldPathName + ".bak", Main.worldPathName, isCloudSave);
+-                FileUtilities.Delete(Main.worldPathName + ".bak", isCloudSave);
+-                WorldFile.LoadWorld();
+-                if (loadFailed)
++                if (WorldFile.UsesPersistentBackup)
+                 {
+-                    WorldFile.LoadWorld();
++                    WorldFile.LoadPersistentBackup();
+                     if (loadFailed)
+                     {
+-                        FileUtilities.Copy(Main.worldPathName, Main.worldPathName + ".bak", isCloudSave);
+-                        FileUtilities.Copy(Main.worldPathName + ".bad", Main.worldPathName, isCloudSave);
+-                        FileUtilities.Delete(Main.worldPathName + ".bad", isCloudSave);
+-                        Console.WriteLine(Language.GetTextValue("Error.LoadFailed"));
++                        if (!WorldFile.ReportContentLoadError())
++                            Console.WriteLine(Language.GetTextValue("Error.LoadFailed"));
+                         return;
+                     }
+                 }
++                else
++                {
++                    FileUtilities.Copy(Main.worldPathName, Main.worldPathName + ".bad", isCloudSave);
++                    FileUtilities.Copy(Main.worldPathName + ".bak", Main.worldPathName, isCloudSave);
++                    FileUtilities.Delete(Main.worldPathName + ".bak", isCloudSave);
++                    WorldFile.LoadWorld();
++                    if (loadFailed)
++                    {
++                        WorldFile.LoadWorld();
++                        if (loadFailed)
++                        {
++                            FileUtilities.Copy(Main.worldPathName, Main.worldPathName + ".bak", isCloudSave);
++                            FileUtilities.Copy(Main.worldPathName + ".bad", Main.worldPathName, isCloudSave);
++                            FileUtilities.Delete(Main.worldPathName + ".bad", isCloudSave);
++                            Console.WriteLine(Language.GetTextValue("Error.LoadFailed"));
++                            return;
++                        }
++                    }
++                }
+             }
+         }
+         if (Main.mapEnabled)
+@@ -6803,15 +6840,18 @@
+         ThreadPool.QueueUserWorkItem(playWorldCallBack, 1);
+     }
+ 
++    internal static void PlayPersistentBackup() => ThreadPool.QueueUserWorkItem(playWorldCallBack, true);
++
+     private static void saveAndPlayCallBack(object threadContext)
+     {
+-        WorldFile.SaveWorld(resetTime: false, useTemps: true, canBeSkipped: true);
++        WorldFile.SaveWorldWithNpcSnapshot((Aether.Modding.NpcSave.Entry[])threadContext,
++            resetTime: false, useTemps: true, canBeSkipped: true);
+     }
+ 
+     public static void saveAndPlay()
+     {
+         WorldFile.SetTempToOngoing();
+-        ThreadPool.QueueUserWorkItem(saveAndPlayCallBack, 1);
++        ThreadPool.QueueUserWorkItem(saveAndPlayCallBack, Aether.Modding.NpcSave.Capture());
+     }
+ 
+     public static void saveToonWhilePlayingCallBack(object threadContext)
+@@ -6829,11 +6869,19 @@
          WorldFile.LoadWorld();
          if (loadFailed)
          {
@@ -32,28 +186,45 @@
                  {
                      worldBackup = true;
                  }
-@@ -6829,11 +6841,19 @@
-         WorldFile.LoadWorld();
-         if (loadFailed)
-         {
-+            if (WorldFile.ReportContentLoadError())
-+            {
-+                return;
-+            }
-             WorldFile.LoadWorld();
-             if (loadFailed)
-             {
-+                if (WorldFile.ReportContentLoadError())
-+                {
-+                    return;
-+                }
-                 bool isCloudSave = Main.ActiveWorldFileData.IsCloudSave;
--                if (FileUtilities.Exists(Main.worldPathName + ".bak", isCloudSave))
-+                if (WorldFile.CanRecoverBackup(Main.worldPathName, isCloudSave))
-                 {
-                     worldBackup = true;
+@@ -6858,18 +6906,31 @@
+                     Console.WriteLine(Language.GetTextValue("Error.LoadFailedNoBackup"));
+                     return;
                  }
-@@ -44379,6 +44399,7 @@
+-                FileUtilities.Copy(Main.worldPathName + ".bak", Main.worldPathName, isCloudSave);
+-                FileUtilities.Delete(Main.worldPathName + ".bak", isCloudSave);
+-                WorldFile.LoadWorld();
+-                if (loadFailed)
++                if (WorldFile.UsesPersistentBackup)
+                 {
+-                    WorldFile.LoadWorld();
++                    WorldFile.LoadPersistentBackup();
+                     if (loadFailed)
+                     {
+-                        Console.WriteLine(Language.GetTextValue("Error.LoadFailed"));
++                        if (!WorldFile.ReportContentLoadError())
++                            Console.WriteLine(Language.GetTextValue("Error.LoadFailed"));
+                         return;
+                     }
+                 }
++                else
++                {
++                    FileUtilities.Copy(Main.worldPathName + ".bak", Main.worldPathName, isCloudSave);
++                    FileUtilities.Delete(Main.worldPathName + ".bak", isCloudSave);
++                    WorldFile.LoadWorld();
++                    if (loadFailed)
++                    {
++                        WorldFile.LoadWorld();
++                        if (loadFailed)
++                        {
++                            Console.WriteLine(Language.GetTextValue("Error.LoadFailed"));
++                            return;
++                        }
++                    }
++                }
+             }
+         }
+         SoundEngine.PlaySound(10);
+@@ -44379,6 +44440,7 @@
  
      public static bool paintTile(int x, int y, byte color, bool broadCast = false, bool paintEffects = true)
      {
@@ -61,7 +232,7 @@
          Tile tile = Main.tile[x, y];
          if (tile == null || !tile.active())
          {
-@@ -44403,6 +44424,7 @@
+@@ -44403,6 +44465,7 @@
  
      public static bool paintCoatTile(int x, int y, byte paintCoatId, bool broadcast = false, bool coatingEffects = true)
      {
@@ -69,7 +240,7 @@
          Tile tile = Main.tile[x, y];
          if (tile == null || !tile.active())
          {
-@@ -44451,6 +44473,7 @@
+@@ -44451,6 +44514,7 @@
  
      public static bool paintCoatWall(int x, int y, byte paintCoatId, bool broadcast = false, bool coatingEffects = true)
      {
@@ -77,7 +248,7 @@
          Tile tile = Main.tile[x, y];
          if (tile == null || tile.wall == 0)
          {
-@@ -44499,6 +44522,7 @@
+@@ -44499,6 +44563,7 @@
  
      public static bool paintWall(int x, int y, byte color, bool broadCast = false, bool paintEffects = true)
      {
@@ -85,7 +256,7 @@
          Tile tile = Main.tile[x, y];
          if (tile == null || tile.wall == 0)
          {
-@@ -59758,6 +59782,7 @@
+@@ -59758,6 +59823,7 @@
  
      public static bool PlaceTile(int i, int j, int Type, bool mute = false, bool forced = false, int plr = -1, int style = 0)
      {
@@ -93,7 +264,7 @@
          int num = Type;
          if (isGeneratingOrLoadingWorld && Main.tile[i, j].active() && Main.tile[i, j].type == 488)
          {
-@@ -60784,6 +60809,7 @@
+@@ -60784,6 +60850,7 @@
  
      public static void KillWall(int i, int j, bool fail = false)
      {
@@ -101,7 +272,7 @@
          if (i < 0 || j < 0 || i >= Main.maxTilesX || j >= Main.maxTilesY)
          {
              return;
-@@ -62803,7 +62829,6 @@
+@@ -62803,7 +62870,6 @@
          {
              Main.tile[x, y] = new Tile();
          }
@@ -109,7 +280,7 @@
          if (y >= 1 && y <= Main.maxTilesY - 1)
          {
              if (Main.tile[x, y - 1] == null)
-@@ -62814,6 +62839,16 @@
+@@ -62814,6 +62880,16 @@
              {
                  Main.tile[x, y + 1] = new Tile();
              }
@@ -126,7 +297,7 @@
              Tile tile2 = Main.tile[x, y - 1];
              Tile tile3 = Main.tile[x, y + 1];
              if (tile3 != null && tile3.active() && IsLockedDoor(tile3))
-@@ -62824,7 +62859,7 @@
+@@ -62824,7 +62900,7 @@
              {
                  return 0;
              }
@@ -135,7 +306,7 @@
              {
                  bool flag = IsAContainer(tile);
                  if (CheckTileBreakability_HasReasonToReturnEarly(tile.type, tile2, !flag))
-@@ -62875,7 +62910,7 @@
+@@ -62875,7 +62951,7 @@
                  for (int i = 0; i < 3; i++)
                  {
                      Tile tile4 = Main.tile[num2 + i, y - 1];
@@ -144,7 +315,7 @@
                      {
                          return 2;
                      }
-@@ -63965,6 +64000,8 @@
+@@ -63965,6 +64041,8 @@
  
      public static void KillTile(int i, int j, bool fail = false, bool effectOnly = false, bool noItem = false)
      {
@@ -153,7 +324,7 @@
          if (i < 0 || j < 0 || i >= Main.maxTilesX || j >= Main.maxTilesY)
          {
              return;
-@@ -75764,6 +75801,7 @@
+@@ -75764,6 +75842,7 @@
  
      public static void PlaceWall(int i, int j, int type, bool mute = false)
      {
@@ -161,7 +332,7 @@
          if (i <= 1 || j <= 1 || i >= Main.maxTilesX - 2 || j >= Main.maxTilesY - 2)
          {
              return;
-@@ -81985,6 +82023,8 @@
+@@ -81985,6 +82064,8 @@
  
      public static void TileFrame(int i, int j, bool resetFrame = false, bool noBreak = false)
      {

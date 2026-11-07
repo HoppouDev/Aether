@@ -78,6 +78,12 @@ public static class GameBridge
             WorldEvents.Tick.Raise(world);
     }
 
+    public static void BeforeWorldTick()
+    {
+        if (ClientContent.HasPersistentNpcs)
+            UpdateWorld();
+    }
+
     private static void UpdateWorld()
     {
         WorldFileData? current = WorldReady ? Main.ActiveWorldFileData : null;
@@ -88,6 +94,7 @@ public static class GameBridge
         if (current != null)
         {
             world = new WorldInfo(current.GetWorldName(), current.WorldId, Main.netMode != 0);
+            NpcRegistry.PublishRestored();
             WorldEvents.Entered.Raise(world);
         }
     }
@@ -152,6 +159,9 @@ internal static class GameHooks
 
     [Inject("DoUpdateInWorld()", At.RETURN)]
     private static void Tick(CallbackInfo callback) => GameBridge.Tick();
+
+    [Inject("DoUpdateInWorld()", At.HEAD)]
+    private static void BeforeWorldTick(CallbackInfo callback) => GameBridge.BeforeWorldTick();
 
     [Inject("DrawInterface", At.RETURN)]
     private static void DrawHud(CallbackInfo callback) => GameBridge.DrawHud();

@@ -111,3 +111,38 @@ The server owns custom entity spawns, state, and removal.
 A vanilla strike against a custom NPC sends a request with the spawn identity.
 The server checks the actor, identity, distance, damage fields, and hit cooldown before applying it.
 See [dedicated servers](server.md) for connection requirements.
+
+## Persistent NPCs
+
+Set `NpcDefinition.Persistence` to opt in.
+A persistent NPC survives inactivity and saves with the world while it is alive.
+Death and explicit despawn remove it from subsequent saves.
+Aether records its stable type ID, position, velocity, health, and optional JSON state.
+Projectiles and per-spawn behavior state remain transient.
+
+```csharp
+NpcRegistry.Register("example:keeper", new NpcDefinition("Keeper", EntitySprite.Vanilla(NPCID.BlueSlime))
+{
+    Persistence = new NpcPersistence(SchemaVersion: 1)
+    {
+        OnRestored = context => context.Behavior.State.Value = context.SavedState
+    }
+});
+```
+
+Use `NpcRegistry.SetSavedState(handle, json)` and `NpcRegistry.GetSavedState(handle)` on the simulation owner for a live persistent NPC.
+Each payload is optional and limited to 16 KiB of UTF-8 JSON.
+Pass null to clear it.
+The definition must still declare the schema version written in the save.
+A restored NPC receives `OnRestored` before its first gameplay tick, with the new handle and saved state.
+It receives `OnSpawn` only when newly created.
+If the restore callback throws, Aether logs and disables the callback and retains the restored NPC and its saved state.
+
+Worlds with persistent NPC definitions use local Aether save profiles.
+With custom items installed, the item profile stores both item and NPC data in the same world file.
+With persistent NPCs alone, worlds use `AetherContent/entities/Worlds/` under the active save directory and players use the regular `Players/` directory.
+To adopt an existing world, copy its `.wld` file into the appropriate profile.
+The copy uses the Aether format when next saved.
+Keep the mods that define the persistent NPCs with the world backups.
+Aether refuses to load or replace a save when its required definitions or schema versions are unavailable, including under `-nomods`.
+Backup recovery validates and restores the backup before replacing the primary world file.

@@ -34,19 +34,39 @@
          catch (Exception exception)
          {
              return WorldFileData.FromInvalidWorld(file, cloudSave, StatusID.UnknownError, exception);
-@@ -706,8 +715,9 @@
+@@ -643,7 +652,9 @@
+         }
+     }
+ 
+-    public static void LoadWorld()
++    public static void LoadWorld() => LoadWorldCore(Main.worldPathName);
++
++    private static void LoadWorldCore(string path, byte[] contents = null)
+     {
+         if (Main.rand == null)
+         {
+@@ -659,7 +670,7 @@
+             WorldGen.loadFailed = true;
+             return;
+         }
+-        if (!FileUtilities.Exists(Main.worldPathName, _isWorldOnCloud) && Main.autoGen)
++        if (path == Main.worldPathName && !FileUtilities.Exists(path, _isWorldOnCloud) && Main.autoGen)
+         {
+             if (!_isWorldOnCloud)
+             {
+@@ -706,8 +717,9 @@
          }
          try
          {
 -            using MemoryStream memoryStream = new MemoryStream(FileUtilities.ReadAllBytes(Main.worldPathName, _isWorldOnCloud));
 -            using BinaryReader binaryReader = new BinaryReader(memoryStream);
-+            using ItemSave.Payload payload = ItemSave.Open(new MemoryStream(FileUtilities.ReadAllBytes(Main.worldPathName, _isWorldOnCloud)), ItemSave.Kind.World);
++            using ItemSave.Payload payload = ItemSave.Open(new MemoryStream(contents ?? FileUtilities.ReadAllBytes(path, _isWorldOnCloud)), ItemSave.Kind.World);
 +            Stream memoryStream = payload.Stream;
 +            using BinaryReader binaryReader = payload.Read();
              try
              {
                  WorldGen.loadFailed = false;
-@@ -736,6 +746,7 @@
+@@ -736,6 +748,7 @@
                          Main.ActiveWorldFileData.CreationTime = DateTime.Now;
                      }
                  }
@@ -54,7 +74,15 @@
                  binaryReader.Close();
                  memoryStream.Close();
                  if (num3 != StatusID.Ok)
-@@ -863,6 +874,26 @@
+@@ -777,6 +790,7 @@
+                 Cloud.resetClouds();
+                 WorldGen.WaterCheck();
+                 WorldGen.isGeneratingOrLoadingWorld = false;
++                NpcSave.Restore(payload.Npcs);
+                 NPC.setFireFlyChance();
+                 WorldGen.Skyblock.ScanTiles();
+                 if (Main.slimeRainTime > 0.0)
+@@ -863,17 +877,74 @@
          }
      }
  
@@ -78,10 +106,93 @@
 +            (cloud || ItemSave.CanRecover(path, ItemSave.Kind.World) && ItemSave.CanRecover(backup, ItemSave.Kind.World));
 +    }
 +
++    internal static bool UsesPersistentBackup => ClientContent.HasPersistentNpcs && !Main.ActiveWorldFileData.IsCloudSave;
++
++    internal static void LoadPersistentBackup()
++    {
++        string path = Main.worldPathName;
++        string temporary = path + "." + Guid.NewGuid().ToString("N") + ".recovery";
++        try
++        {
++            ItemSave.CheckCompatibility(path, ItemSave.Kind.World);
++            byte[] contents = File.ReadAllBytes(path + ".bak");
++            LoadWorldCore(path + ".bak", contents);
++            if (WorldGen.loadFailed)
++                return;
++
++            using (var stream = new FileStream(temporary, FileMode.CreateNew))
++            {
++                stream.Write(contents);
++                stream.Flush(flushToDisk: true);
++            }
++            if (File.Exists(path))
++                File.Copy(path, path + ".bad", overwrite: true);
++            File.Move(temporary, path, overwrite: true);
++        }
++        catch (Exception error)
++        {
++            LastThrownLoadException = error;
++            WorldGen.loadFailed = true;
++        }
++        finally
++        {
++            File.Delete(temporary);
++        }
++    }
++
      public static void SaveNewWorld()
      {
          _isWorldOnCloud = Main.ActiveWorldFileData.IsCloudSave;
-@@ -935,18 +966,38 @@
+         SaveWorld(resetTime: true);
+     }
+ 
+-    public static void SaveWorld(bool resetTime = false, bool useTemps = false, bool canBeSkipped = false)
++    public static void SaveWorld(bool resetTime = false, bool useTemps = false, bool canBeSkipped = false) =>
++        SaveWorldWithNpcSnapshot(null, resetTime, useTemps, canBeSkipped);
++
++    internal static void SaveWorldWithNpcSnapshot(NpcSave.Entry[] npcSnapshot, bool resetTime = false, bool useTemps = false, bool canBeSkipped = false)
+     {
+         try
+         {
+-            _SaveWorld(_isWorldOnCloud, resetTime, useTemps, canBeSkipped);
++            _SaveWorld(_isWorldOnCloud, resetTime, useTemps, canBeSkipped, npcSnapshot);
+         }
+         catch (Exception exception)
+         {
+@@ -882,7 +953,7 @@
+         }
+     }
+ 
+-    private static void _SaveWorld(bool useCloudSaving, bool resetTime, bool useTemps, bool canBeSkipped)
++    private static void _SaveWorld(bool useCloudSaving, bool resetTime, bool useTemps, bool canBeSkipped, NpcSave.Entry[] npcSnapshot)
+     {
+         if (useCloudSaving && SocialAPI.Cloud == null)
+         {
+@@ -902,7 +973,7 @@
+             {
+                 FileUtilities.ProtectedInvoke(() =>
+                 {
+-                    InternalSaveWorld(useCloudSaving, resetTime, useTemps);
++                    InternalSaveWorld(useCloudSaving, resetTime, useTemps, npcSnapshot);
+                 });
+                 return;
+             }
+@@ -915,12 +986,12 @@
+         {
+             lock (IOLock)
+             {
+-                _SaveWorld(useCloudSaving, resetTime, useTemps, canBeSkipped);
++                _SaveWorld(useCloudSaving, resetTime, useTemps, canBeSkipped, npcSnapshot);
+             }
+         }
+     }
+ 
+-    private static void InternalSaveWorld(bool useCloudSaving, bool resetTime, bool useTemps)
++    private static void InternalSaveWorld(bool useCloudSaving, bool resetTime, bool useTemps, NpcSave.Entry[] npcSnapshot)
+     {
+         Utils.TryCreatingDirectory(Main.WorldPath);
+         if (!useTemps)
+@@ -935,18 +1006,41 @@
          {
              return;
          }
@@ -89,6 +200,9 @@
 +        {
 +            ItemSave.CheckCompatibility(Main.worldPathName, ItemSave.Kind.World);
 +        }
++        bool modded = ClientContent.WorldSaveIdentity != null && !useCloudSaving;
++        if (modded)
++            npcSnapshot ??= NpcSave.Capture();
          new Stopwatch().Start();
          int num;
          byte[] array;
@@ -96,7 +210,7 @@
          using (MemoryStream memoryStream = new MemoryStream(7000000))
          {
 -            using (BinaryWriter writer = new BinaryWriter(memoryStream))
-+            using (BinaryWriter writer = ClientContent.HasItems && !useCloudSaving
++            using (BinaryWriter writer = modded
 +                ? custom = new ItemSave.Writer(memoryStream) : new BinaryWriter(memoryStream))
              {
                  SaveWorld_Version2(writer);
@@ -115,13 +229,13 @@
 +            {
 +                DoRollingBackups(Main.worldPathName + ".bak");
 +            }
-+            ItemSave.Write(Main.worldPathName, ItemSave.Kind.World, custom, array);
++            ItemSave.Write(Main.worldPathName, ItemSave.Kind.World, custom, array, npcSnapshot);
 +            return;
 +        }
          byte[] array2 = null;
          if (FileUtilities.Exists(Main.worldPathName, useCloudSaving))
          {
-@@ -1691,7 +1742,7 @@
+@@ -1691,7 +1785,7 @@
                  writer.Write((short)item.stack);
                  if (item.stack > 0)
                  {
@@ -130,7 +244,7 @@
                      writer.Write(item.prefix);
                  }
              }
-@@ -1726,7 +1777,7 @@
+@@ -1726,7 +1820,7 @@
  
      public static int SaveNPCs(BinaryWriter writer)
      {
@@ -139,7 +253,7 @@
          writer.Write(array.Count(value: true));
          for (int i = 0; i < array.Length; i++)
          {
-@@ -1738,7 +1789,7 @@
+@@ -1738,7 +1832,7 @@
          for (int j = 0; j < Main.npc.Length; j++)
          {
              NPC nPC = Main.npc[j];
@@ -148,7 +262,7 @@
              {
                  writer.Write(nPC.active);
                  writer.Write(nPC.netID);
-@@ -1762,7 +1813,7 @@
+@@ -1762,7 +1856,7 @@
          for (int k = 0; k < Main.npc.Length; k++)
          {
              NPC nPC2 = Main.npc[k];
@@ -157,7 +271,7 @@
              {
                  writer.Write(nPC2.active);
                  writer.Write(nPC2.netID);
-@@ -2786,13 +2837,13 @@
+@@ -2786,13 +2880,13 @@
                  Item item = new Item();
                  if (num6 > 0)
                  {
@@ -173,7 +287,7 @@
                      item.Prefix(reader.ReadByte());
                      item.stack = 1;
                  }
-@@ -3284,8 +3335,10 @@
+@@ -3284,8 +3378,10 @@
              {
                  num = 0;
              }

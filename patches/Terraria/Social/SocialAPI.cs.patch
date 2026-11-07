@@ -5,7 +5,7 @@
          Friends = LoadModule<Terraria.Social.Steam.FriendsSocialModule>();
          Achievements = LoadModule<Terraria.Social.Steam.AchievementsSocialModule>();
 -        Cloud = LoadModule<Terraria.Social.Steam.CloudSocialModule>();
-+        if (!Aether.Modding.ClientContent.HasItems)
++        if (Aether.Modding.ClientContent.WorldSaveIdentity == null)
 +        {
 +            Cloud = LoadModule<Terraria.Social.Steam.CloudSocialModule>();
 +        }
@@ -17,7 +17,7 @@
      {
          LoadModule<Terraria.Social.WeGame.CoreSocialModule>();
 -        Cloud = LoadModule<Terraria.Social.WeGame.CloudSocialModule>();
-+        if (!Aether.Modding.ClientContent.HasItems)
++        if (Aether.Modding.ClientContent.WorldSaveIdentity == null)
 +        {
 +            Cloud = LoadModule<Terraria.Social.WeGame.CloudSocialModule>();
 +        }

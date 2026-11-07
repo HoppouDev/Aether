@@ -9,7 +9,8 @@ The optional Aether API adds server lifecycle events, custom item registration, 
 Build the client once and place the server's `.aethermod` archives directly in its save directory's `Mods/`.
 The default server save directory is `.aether/server-saves/`.
 Pass `--save-dir` to select a different directory and use an absolute path for the world.
-For a custom-item profile, copy the matching world from the client's `AetherContent/<profile>/Worlds/`.
+For custom item or persistent NPC profiles, copy the matching world from the client's `AetherContent/<profile>/Worlds/`.
+See [persistent NPCs](entities.md#persistent-npcs) for the world-only profile and backup behavior.
 
 ```sh
 ./aether build
