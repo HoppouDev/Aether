@@ -101,7 +101,50 @@
          if (i < 0 || j < 0 || i >= Main.maxTilesX || j >= Main.maxTilesY)
          {
              return;
-@@ -63965,6 +63991,7 @@
+@@ -62803,7 +62829,6 @@
+         {
+             Main.tile[x, y] = new Tile();
+         }
+-        Tile tile = Main.tile[x, y];
+         if (y >= 1 && y <= Main.maxTilesY - 1)
+         {
+             if (Main.tile[x, y - 1] == null)
+@@ -62814,6 +62839,16 @@
+             {
+                 Main.tile[x, y + 1] = new Tile();
+             }
++        }
++        return AetherCheckTileBreakability(x, y);
++    }
++
++    [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
++    public static int AetherCheckTileBreakability(int x, int y)
++    {
++        Tile tile = Main.tile[x, y];
++        if (y >= 1 && y <= Main.maxTilesY - 1)
++        {
+             Tile tile2 = Main.tile[x, y - 1];
+             Tile tile3 = Main.tile[x, y + 1];
+             if (tile3 != null && tile3.active() && IsLockedDoor(tile3))
+@@ -62824,7 +62859,7 @@
+             {
+                 return 0;
+             }
+-            if (tile2.active())
++            if (tile2 != null && tile2.active())
+             {
+                 bool flag = IsAContainer(tile);
+                 if (CheckTileBreakability_HasReasonToReturnEarly(tile.type, tile2, !flag))
+@@ -62875,7 +62910,7 @@
+                 for (int i = 0; i < 3; i++)
+                 {
+                     Tile tile4 = Main.tile[num2 + i, y - 1];
+-                    if (tile4.active() && CheckTileBreakability_HasReasonToReturnEarly(tile.type, tile4, scanForContainer: true))
++                    if (tile4 != null && tile4.active() && CheckTileBreakability_HasReasonToReturnEarly(tile.type, tile4, scanForContainer: true))
+                     {
+                         return 2;
+                     }
+@@ -63965,6 +64000,7 @@
  
      public static void KillTile(int i, int j, bool fail = false, bool effectOnly = false, bool noItem = false)
      {
@@ -109,7 +152,7 @@
          if (i < 0 || j < 0 || i >= Main.maxTilesX || j >= Main.maxTilesY)
          {
              return;
-@@ -75764,6 +75791,7 @@
+@@ -75764,6 +75800,7 @@
  
      public static void PlaceWall(int i, int j, int type, bool mute = false)
      {
@@ -117,7 +160,7 @@
          if (i <= 1 || j <= 1 || i >= Main.maxTilesX - 2 || j >= Main.maxTilesY - 2)
          {
              return;
-@@ -81985,6 +82013,7 @@
+@@ -81985,6 +82022,7 @@
  
      public static void TileFrame(int i, int j, bool resetFrame = false, bool noBreak = false)
      {
