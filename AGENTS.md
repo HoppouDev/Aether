@@ -5,6 +5,13 @@ It is **not** a decompilation project.
 The client's changes are kept as *patches* against the game's code, and the game's own code and data are never committed: every developer regenerates them locally from their own copy of the game, which is decompiled only to give the patches something to apply to.
 Notes on the game's modules live in `AGENTS.md` files under `src/Terraria/`; read the nearest one before editing a module.
 
+## Pre-release compatibility
+
+Until Aether's first formal release, prefer breaking changes that simplify the design or fix a flawed contract over preserving compatibility with earlier Aether builds.
+Remove superseded APIs, CLI options, manifest fields, and formats when replacing them, and update in-tree callers, examples, tests, and documentation in the same change.
+Add compatibility shims, aliases, or migrations only for an explicit requirement.
+Honor existing vanilla Terraria compatibility requirements and reject unreadable saves before overwriting them.
+
 ## Patch workflow
 
 ```bash
