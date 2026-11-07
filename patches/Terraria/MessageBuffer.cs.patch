@@ -251,7 +251,15 @@
              break;
          }
          case 43:
-@@ -3399,6 +3475,10 @@
+@@ -2475,6 +2551,7 @@
+             }
+             Array.Clear(player19.buffType, num227, player19.buffType.Length - num227);
+             Array.Clear(player19.buffTime, num227, player19.buffTime.Length - num227);
++            player19.AetherObservedStats |= PlayerObservation.Effects;
+             if (Main.netMode == 2)
+             {
+                 NetMessage.TrySendData(50, -1, whoAmI, null, num226);
+@@ -3399,6 +3476,10 @@
              int type = reader.ReadInt16();
              int prefix = reader.ReadByte();
              int stack = reader.ReadInt16();
@@ -262,7 +270,7 @@
              using (Item.DefaultAssignNewItemsToPlayer(whoAmI))
              {
                  TEItemFrame.TryPlacing(x, y, type, prefix, stack);
-@@ -3955,6 +4035,16 @@
+@@ -3955,6 +4036,16 @@
                  TEDisplayDoll.ReadDummySync(num251, num252, reader);
                  break;
              }
@@ -279,7 +287,7 @@
              result7.ReadData(num251, num252, reader);
              if (Main.netMode == 2)
              {
-@@ -4009,6 +4099,10 @@
+@@ -4009,6 +4100,10 @@
              int type19 = reader.ReadInt16();
              int prefix4 = reader.ReadByte();
              int stack8 = reader.ReadInt16();
@@ -290,7 +298,7 @@
              using (Item.DefaultAssignNewItemsToPlayer(whoAmI))
              {
                  TEWeaponsRack.TryPlacing(x14, y14, type19, prefix4, stack8);
-@@ -4036,6 +4130,16 @@
+@@ -4036,6 +4131,16 @@
                  reader.ReadByte();
                  break;
              }
@@ -307,7 +315,7 @@
              result4.ReadItem(num183, reader, flag20);
              if (Main.netMode == 2)
              {
-@@ -4181,6 +4285,10 @@
+@@ -4181,6 +4286,10 @@
              int type12 = reader.ReadInt16();
              int prefix3 = reader.ReadByte();
              int stack6 = reader.ReadInt16();
@@ -318,7 +326,7 @@
              using (Item.DefaultAssignNewItemsToPlayer(whoAmI))
              {
                  TEFoodPlatter.TryPlacing(x9, y9, type12, prefix3, stack6);
-@@ -4378,6 +4486,10 @@
+@@ -4378,6 +4487,10 @@
              int type6 = reader.ReadInt16();
              int prefix2 = reader.ReadByte();
              int stack4 = reader.ReadInt16();

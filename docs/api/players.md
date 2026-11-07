@@ -37,3 +37,19 @@ Writes require a living local player in single-player.
 Character mode and base vitals follow Terraria's normal character saving.
 Hardcore deaths carry Terraria's normal consequences.
 Use `/api-example:player` in the buildable API example to print the local snapshot.
+
+## Effects
+
+Use a Terraria `BuffID` to look up, apply, or remove a buff or debuff.
+`TryGetEffects` returns a read-only snapshot in slot order.
+False indicates unavailable data, while a successful empty snapshot indicates no active effects.
+`TryGetEffect` looks up one active effect.
+Each entry reports whether it is a debuff and whether its countdown is timed, untimed, or unavailable.
+Remote buff lists carry effect IDs without authoritative countdowns.
+
+`TryApplyEffect` takes 1–5,184,000 simulation ticks and follows Terraria's immunity, duration adjustments, stacking, and slot rules.
+It returns true when the effect is active after an eligible application.
+`RemoveEffect` clears an active effect and reports whether it was present.
+Equipment and environmental effects can return as Terraria updates.
+Both writes require single-player.
+Use `/api-example:swiftness` in the buildable example to apply Swiftness.

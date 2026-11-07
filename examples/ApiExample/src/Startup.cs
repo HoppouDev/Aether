@@ -1,5 +1,6 @@
 using Aether.Api;
 using Aether.Modding;
+using Terraria.ID;
 
 namespace ApiExample;
 
@@ -18,6 +19,11 @@ public sealed class Startup : IModInitializer
                 return;
             PlayerStats stats = Players.GetStats(player);
             Console.WriteLine($"[api-example] {stats.Name} ({stats.GameMode}) has {stats.Health}/{stats.MaxHealth} health and {stats.Mana}/{stats.MaxMana} mana");
+        });
+        LocalCommands.Register("api-example:swiftness", _ =>
+        {
+            if (Players.TryGetLocal(out var player) && Terraria.Main.netMode == 0 && Players.GetStats(player).IsAlive)
+                Players.TryApplyEffect(player, BuffID.Swiftness, 600);
         });
         HudOverlays.Register("api-example:label", canvas => canvas.DrawText("API example", 16, 80, HudColor.White));
         RecipeRegistry.Register("api-example:torch", new RecipeDefinition(new ItemAmount(8, 1), [new ItemAmount(9, 1)]));
