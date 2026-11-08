@@ -1,5 +1,5 @@
 diff --git a/src/Audio/SoundEffectInstance.cs b/src/Audio/SoundEffectInstance.cs
-index 0481f45..3d63f78 100644
+index 0481f45..1103fdd 100644
 --- a/src/Audio/SoundEffectInstance.cs
 +++ b/src/Audio/SoundEffectInstance.cs
 @@ -115,9 +115,12 @@ namespace Microsoft.Xna.Framework.Audio
@@ -51,3 +51,41 @@ index d816dcf..68959c4 100644
 
  			if ((initFlags & SDL.SDL_WindowFlags.SDL_WINDOW_VULKAN) == SDL.SDL_WindowFlags.SDL_WINDOW_VULKAN)
  			{
+diff --git a/src/Graphics/SpriteBatch.cs b/src/Graphics/SpriteBatch.cs
+index b60a0f4..d76098b 100644
+--- a/src/Graphics/SpriteBatch.cs
++++ b/src/Graphics/SpriteBatch.cs
+@@ -1496,6 +1496,12 @@ namespace Microsoft.Xna.Framework.Graphics
+
+ 		private void DrawPrimitives(Texture texture, int baseSprite, int batchSize)
+ 		{
++			/* Aether: see Texture.SamplerEXT */
++			SamplerState sampler = texture.SamplerEXT ?? samplerState;
++			if (GraphicsDevice.SamplerStates[0] != sampler)
++			{
++				GraphicsDevice.SamplerStates[0] = sampler;
++			}
+ 			if (customEffect != null)
+ 			{
+ 				foreach (EffectPass pass in customEffect.CurrentTechnique.Passes)
+diff --git a/src/Graphics/Texture.cs b/src/Graphics/Texture.cs
+index b1d3202..248a768 100644
+--- a/src/Graphics/Texture.cs
++++ b/src/Graphics/Texture.cs
+@@ -31,6 +31,16 @@ namespace Microsoft.Xna.Framework.Graphics
+ 			protected set;
+ 		}
+
++		/* Aether: the sampler SpriteBatch draws this texture with, in place of
++		 * the batch's (null: the batch's). Terraria's fonts are smooth, so they
++		 * stay linear in a UI drawn with point sampling.
++		 */
++		public SamplerState SamplerEXT
++		{
++			get;
++			set;
++		}
++
+ 		public override string Name
+ 		{
+ 			get
