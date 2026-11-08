@@ -76,14 +76,14 @@ internal sealed class UIModList : UIState, IHaveBackButtonCommand
         var browser = new UIPanel
         {
             Width = StyleDimension.FromPixelsAndPercent(-5f, 0.4f),
-            Height = StyleDimension.FromPixelsAndPercent(-100f, 1f),
+            Height = StyleDimension.FromPixelsAndPercent(-110f, 1f),
             BackgroundColor = PanelColor
         };
         body.Append(browser);
         _detailPanel = new UIPanel
         {
             Width = StyleDimension.FromPixelsAndPercent(-5f, 0.6f),
-            Height = StyleDimension.FromPixelsAndPercent(-100f, 1f),
+            Height = StyleDimension.FromPixelsAndPercent(-110f, 1f),
             HAlign = 1f,
             BackgroundColor = PanelColor
         };
@@ -194,16 +194,18 @@ internal sealed class UIModList : UIState, IHaveBackButtonCommand
 
     private static UITextPanel<LocalizedText> AddButton(UIElement parent, string key, Action action, float align, bool footer = false)
     {
-        var button = new UITextPanel<LocalizedText>(Language.GetText(key), footer ? 0.62f : 0.9f, large: footer)
+        // UITextPanel draws its text at the top of its padding, so the padding centres it.
+        var button = new UITextPanel<LocalizedText>(Language.GetText(key), footer ? 0.7f : 0.9f, large: footer)
         {
             Width = StyleDimension.FromPixelsAndPercent(-5f, 0.5f),
-            Height = StyleDimension.FromPixels(footer ? 42f : 30f),
-            Top = StyleDimension.FromPixels(footer ? -50f : 0f),
+            Height = StyleDimension.FromPixels(footer ? 50f : 32f),
+            Top = StyleDimension.FromPixels(footer ? -45f : 0f),
             HAlign = align,
             VAlign = 1f,
             BackgroundColor = ButtonColor
         };
-        button.SetPadding(3f);
+        if (!footer)
+            button.SetPadding(8f);
         button.OnMouseOver += (_, _) =>
         {
             SoundEngine.PlaySound(12);
