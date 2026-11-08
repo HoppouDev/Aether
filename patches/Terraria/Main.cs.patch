@@ -2069,11 +2069,12 @@
          base.EndDraw();
          DetailedFPS.End();
          DetailedFPS.StartNextFrame();
-@@ -63035,6 +63231,11 @@
+@@ -63035,6 +63231,12 @@
  
      private void DoDraw(GameTime gameTime)
      {
 +        Aether.Graphics.VisualAnimationTime.BeginFrame();
++        PlayerInput.RefreshMousePosition();
 +        Aether.Graphics.CursorHooks.SampleMouse();
 +        Aether.Graphics.EntityMotion.EntityVisuals.BeginFrame();
 +        Aether.Graphics.SectionFramingScheduler.BeginFrame();
@@ -2081,7 +2082,7 @@
          if (showSplash)
          {
              TimeLogger.StartTimestamp fromTimestamp = TimeLogger.Start();
-@@ -63045,11 +63246,14 @@
+@@ -63045,11 +63247,14 @@
          TimeLogger.StartTimestamp fromTimestamp2 = TimeLogger.Start();
          int num = renderCount;
          DebugVisualizer.PreDraw();
@@ -2099,7 +2100,7 @@
          MenuUI.IsVisible = gameMenu && menuMode == 888;
          InGameUI.IsVisible = !gameMenu && InGameUI.CurrentState != null;
          PlayerInput.UpdateMainMouse();
-@@ -63177,16 +63381,30 @@
+@@ -63177,16 +63382,30 @@
              _rainbowBoulderMusicFramesCounter--;
          }
          ClearHoverItem();
@@ -2132,7 +2133,7 @@
              if (renderNow)
              {
                  renderCount = 99;
-@@ -63201,7 +63419,7 @@
+@@ -63201,7 +63420,7 @@
              }
              renderNow = false;
          }
@@ -2141,7 +2142,7 @@
          {
              waterTarget.UpdateContent(() =>
              {
-@@ -63251,7 +63469,7 @@
+@@ -63251,7 +63470,7 @@
          {
              num4 = 1;
          }
@@ -2150,7 +2151,7 @@
          if (gameMenu)
          {
              num5 *= 20f;
-@@ -63367,6 +63585,20 @@
+@@ -63367,6 +63586,20 @@
                  Terraria.Graphics.Effects.Filters.Scene.Deactivate("Sepia");
              }
          }
@@ -2171,7 +2172,7 @@
          bool flag2 = Terraria.Graphics.Effects.Filters.Scene.CanCapture() || ForegroundSunlightEffects;
          bool flag3 = (!drawToScreen && !mapFullscreen && !onlyDrawFancyUI && Lighting.NotRetro) & flag2;
          if (flag3)
-@@ -63481,7 +63713,7 @@
+@@ -63481,7 +63714,7 @@
          if (InGameUI.CurrentState != null && onlyDrawFancyUI)
          {
              TimeLogger.StartTimestamp fromTimestamp9 = TimeLogger.Start();
@@ -2180,7 +2181,7 @@
              InGameUI.Draw(spriteBatch, gameTime);
              DrawPendingMouseText();
              DrawCursor(DrawThickCursor());
-@@ -63491,7 +63723,10 @@
+@@ -63491,7 +63724,10 @@
              return;
          }
          onlyDrawFancyUI = false;
@@ -2192,7 +2193,7 @@
          spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, DefaultSamplerState, DepthStencilState.None, Rasterizer, null, Transform);
          if (mapFullscreen)
          {
-@@ -63503,7 +63738,7 @@
+@@ -63503,7 +63739,7 @@
              PlayerInput.SetZoom_Unscaled();
              DrawMap(gameTime);
              spriteBatch.End();
@@ -2201,7 +2202,7 @@
              PlayerInput.SetZoom_UI();
              DrawFPS();
              DrawPlayerChat();
-@@ -63564,16 +63799,9 @@
+@@ -63564,16 +63800,9 @@
          }
          Overlays.Scene.Draw(spriteBatch, RenderLayers.Background);
          ScreenDarkness.DrawBack(spriteBatch);
@@ -2221,7 +2222,7 @@
          PlayerInput.SetZoom_World();
          DoDraw_WallsTilesNPCs();
          Overlays.Scene.Draw(spriteBatch, RenderLayers.TilesAndNPCs);
-@@ -63612,7 +63840,7 @@
+@@ -63612,7 +63841,7 @@
          DrawCachedNPCs(DrawCacheNPCsOverPlayers, behindTiles: false);
          if (!gamePaused)
          {
@@ -2230,7 +2231,7 @@
              if (essScale > 1f)
              {
                  essDir = -1;
-@@ -63625,6 +63853,17 @@
+@@ -63625,6 +63854,17 @@
              }
          }
          DrawItems();
@@ -2248,7 +2249,7 @@
          DrawRain();
          try
          {
-@@ -63683,7 +63922,7 @@
+@@ -63683,7 +63923,7 @@
          if (!hideUI)
          {
              TimeLogger.StartTimestamp fromTimestamp12 = TimeLogger.Start();
@@ -2257,7 +2258,7 @@
              DrawPlayerChatBubbles();
              spriteBatch.End();
              spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.LinearClamp, null, null, null, GameViewMatrix.ZoomMatrix);
-@@ -63757,7 +63996,7 @@
+@@ -63757,7 +63997,7 @@
              PopupText.DrawItemTextPopups(targetScale);
              PlayerInput.SetZoom_UI();
              spriteBatch.End();
@@ -2266,7 +2267,7 @@
              DrawNetplayStatusText();
              DrawFPS();
              RecordReplay.DrawHUD();
-@@ -63861,6 +64100,30 @@
+@@ -63861,6 +64101,30 @@
          }
      }
  
@@ -2297,7 +2298,7 @@
      private static void DrawLensFlare()
      {
          PlayerInput.SetZoom_Background();
-@@ -63998,9 +64261,7 @@
+@@ -63998,9 +64262,7 @@
              }
          }
          instance.CameraModifiers.ApplyTo(ref screenPosition);
@@ -2308,7 +2309,7 @@
      }
  
      public static void DebugCameraPan(bool left, bool right, bool up, bool down)
-@@ -65345,73 +65606,91 @@
+@@ -65345,73 +65607,91 @@
          {
              scAdj = 0f;
          }
@@ -2435,7 +2436,7 @@
          try
          {
              DrawSurfaceBG(parentSpriteBatchBeginner);
-@@ -65426,6 +65705,7 @@
+@@ -65426,6 +65706,7 @@
              {
                  throw;
              }
@@ -2443,7 +2444,7 @@
              TimeLogger.DrawException(e);
          }
      }
-@@ -65681,7 +65961,7 @@
+@@ -65681,7 +65962,7 @@
  
      public void DrawInfernoRings()
      {
@@ -2452,7 +2453,7 @@
          for (int i = 0; i < 255; i++)
          {
              if (!player[i].active || player[i].outOfRange || !player[i].inferno || player[i].dead)
-@@ -67754,7 +68034,7 @@
+@@ -67754,7 +68035,7 @@
      {
          bool flag = false;
          Form form = null;
@@ -2461,7 +2462,7 @@
          {
              form = Control.FromHandle(instance.Window.Handle);
              screenMaximized = form.WindowState == FormWindowState.Maximized;
-@@ -67785,7 +68065,7 @@
+@@ -67785,7 +68066,7 @@
                      TryPickingDefaultUIScale(800f);
                  }
              }
@@ -2470,7 +2471,7 @@
              {
                  form.MinimumSize = new Size(0, 0);
                  if (!fullscreen && !flag3)
-@@ -67824,7 +68104,7 @@
+@@ -67824,7 +68105,7 @@
          else
          {
              PlayerInput.RawMouseScale = Vector2.One;
@@ -2479,7 +2480,7 @@
              {
                  form.MinimumSize = new Size(minScreenW, minScreenH);
                  if (flag)
-@@ -67839,7 +68119,7 @@
+@@ -67839,7 +68120,7 @@
              num4 = graphics.GraphicsDevice.Viewport.Height;
              flag2 = graphics.PreferredBackBufferWidth != graphics.GraphicsDevice.Viewport.Width || graphics.PreferredBackBufferHeight != graphics.GraphicsDevice.Viewport.Height;
          }
@@ -2488,7 +2489,7 @@
          {
              if (form.ClientSize.Width < graphics.PreferredBackBufferWidth)
              {
-@@ -67884,7 +68164,7 @@
+@@ -67884,7 +68165,7 @@
              PendingResolutionWidth = screenWidth;
              PendingResolutionHeight = screenHeight;
              PlayerInput.CacheOriginalScreenDimensions();
@@ -2497,7 +2498,7 @@
              {
                  if (screenBorderless)
                  {
-@@ -67909,9 +68189,10 @@
+@@ -67909,9 +68190,10 @@
              instance._needsMenuUIRecalculation = true;
              Console.WriteLine(Language.GetTextValue("Misc.ResolutionChanged", width, height));
          }

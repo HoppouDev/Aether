@@ -50,15 +50,23 @@
          {
              uIElement?.ScrollWheel(new UIScrollWheelEvent(uIElement, MousePosition, PlayerInput.ScrollWheelDeltaForUI));
              PlayerInput.ScrollWheelDeltaForUI = 0;
-@@ -259,6 +271,7 @@
+@@ -257,8 +269,15 @@
+     public void Draw(SpriteBatch spriteBatch, GameTime time)
+     {
          Use();
++        // Aether: the mouse as of this frame (PlayerInput.RefreshMousePosition), for what follows it
++        // while drawing (a dragged scrollbar), as Update only runs with the game's updates.
++        if (!PlayerInput.UsingGamepad)
++        {
++            MousePosition = PlayerInput.UIMousePosition;
++        }
          if (_currentState != null)
          {
 +            using var automation = Aether.Testing.UiAutomation.Observe(this);
              if (_isStateDirty)
              {
                  _currentState.Recalculate();
-@@ -292,6 +305,7 @@
+@@ -292,6 +311,7 @@
              _currentState.Deactivate();
          }
          _currentState = state;
@@ -66,7 +74,7 @@
          ResetState();
          if (state != null)
          {
-@@ -337,6 +351,7 @@
+@@ -337,6 +357,7 @@
  
      internal void RefreshState()
      {
