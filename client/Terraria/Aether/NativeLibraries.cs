@@ -1,0 +1,44 @@
+using System;
+using System.IO;
+using System.Reflection;
+using System.Runtime.InteropServices;
+using System.Runtime.Loader;
+
+namespace Aether;
+
+/// <summary>
+/// Finds native libraries next to the client for assemblies .NET can't place: the libraries the
+/// game embeds and loads from bytes (Steamworks.NET, ...) have no location, so .NET only looks in
+/// its own folder for what they P/Invoke. (FNA maps its own natives with FNA.dll.config.)
+/// </summary>
+public static class NativeLibraries
+{
+    private static readonly string[] Patterns = OperatingSystem.IsWindows()
+        ? new string[2] { "{0}.dll", "{0}" }
+        : OperatingSystem.IsMacOS()
+            ? new string[4] { "lib{0}.dylib", "{0}.dylib", "lib{0}.0.dylib", "{0}" }
+            : new string[5] { "lib{0}.so", "{0}.so", "lib{0}.so.0", "{0}.so.0", "{0}" };
+
+    public static void Install()
+    {
+        var context = AssemblyLoadContext.GetLoadContext(typeof(NativeLibraries).Assembly);
+        AssemblyLoadContext.Default.ResolvingUnmanagedDll += Resolve;
+        if (context != null && context != AssemblyLoadContext.Default)
+        {
+            context.ResolvingUnmanagedDll += Resolve;
+        }
+    }
+
+    private static IntPtr Resolve(Assembly assembly, string name)
+    {
+        foreach (string pattern in Patterns)
+        {
+            string path = Path.Combine(AppContext.BaseDirectory, string.Format(pattern, name));
+            if (File.Exists(path) && NativeLibrary.TryLoad(path, out var handle))
+            {
+                return handle;
+            }
+        }
+        return IntPtr.Zero;
+    }
+}

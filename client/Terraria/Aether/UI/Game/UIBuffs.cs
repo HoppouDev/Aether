@@ -1,0 +1,302 @@
+using System;
+using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
+using ReLogic.Graphics;
+using Terraria;
+using Terraria.GameContent;
+using Terraria.GameInput;
+using Terraria.ID;
+using Terraria.Localization;
+using Terraria.UI;
+using Terraria.UI.Gamepad;
+
+namespace Aether.UI.Game;
+
+/// <summary>
+/// One of the local player's buffs, like Main.DrawBuffIcon: the icon and its remaining time; it
+/// brightens while hovered, and right-clicking it (or pressing it with the gamepad in the inventory)
+/// cancels it.
+/// </summary>
+public class UIBuffIcon : UIElement
+{
+    public readonly int BuffSlot;
+
+    // The duration text last made (it changes once a second), and for which seconds and language.
+    private string _durationText;
+
+    private int _durationSeconds = -1;
+
+    private GameCulture _durationCulture;
+
+    public UIBuffIcon(int buffSlot)
+    {
+        BuffSlot = buffSlot;
+    }
+
+    public void Place(int x, int y)
+    {
+        Left.Set(x, 0f);
+        Top.Set(y, 0f);
+    }
+
+    /// <summary>Draws the icon and handles it; returns whether it's hovered.</summary>
+    public bool DrawIcon(SpriteBatch spriteBatch)
+    {
+        Player player = Main.LocalPlayer;
+        int type = player.buffType[BuffSlot];
+        if (type == 0)
+        {
+            return false;
+        }
+        CalculatedStyle dimensions = GetDimensions();
+        int x = (int)dimensions.X;
+        int y = (int)dimensions.Y;
+        Texture2D texture = TextureAssets.Buff[type].Value;
+        float alpha = Main.buffAlpha[BuffSlot];
+        Color color = new Color(alpha, alpha, alpha, alpha);
+        spriteBatch.Draw(texture, new Vector2(x, y), color);
+        string text = null;
+        if (BuffID.Sets.BuffTextHandlers.TryGetValue(type, out var handler))
+        {
+            text = handler.HandleBuffText();
+        }
+        if (text == null && Main.TryGetBuffTime(BuffSlot, out var time) && time > 2)
+        {
+            int seconds = time / 60;
+            if (seconds != _durationSeconds || Language.ActiveCulture != _durationCulture)
+            {
+                _durationSeconds = seconds;
+                _durationCulture = Language.ActiveCulture;
+                _durationText = Lang.LocalizedDuration(new TimeSpan(0, 0, seconds), abbreviated: true, showAllAvailableUnits: false);
+            }
+            text = _durationText;
+        }
+        if (text != null)
+        {
+            spriteBatch.DrawString(FontAssets.ItemStack.Value, text, new Vector2(x, y + texture.Height), color, 0f, default(Vector2), 0.8f, SpriteEffects.None, 0f);
+        }
+        // Strictly inside the icon, as in the legacy hit test.
+        bool hovered = Main.mouseX > x && Main.mouseX < x + texture.Width && Main.mouseY > y && Main.mouseY < y + texture.Height && !PlayerInput.IgnoreMouseInterface;
+        if (hovered)
+        {
+            Main.buffAlpha[BuffSlot] += 0.1f * Aether.Graphics.VisualAnimationTime.FrameScale;
+            bool cancel = Main.mouseRight && Main.mouseRightRelease;
+            if (PlayerInput.UsingGamepad)
+            {
+                cancel = Main.mouseLeft && Main.mouseLeftRelease && Main.playerInventory;
+                if (Main.playerInventory)
+                {
+                    player.mouseInterface = true;
+                }
+            }
+            else
+            {
+                player.mouseInterface = true;
+            }
+            if (cancel)
+            {
+                Main.TryRemovingBuff(BuffSlot, type);
+            }
+        }
+        else
+        {
+            Main.buffAlpha[BuffSlot] -= 0.05f * Aether.Graphics.VisualAnimationTime.FrameScale;
+        }
+        Main.buffAlpha[BuffSlot] = MathHelper.Clamp(Main.buffAlpha[BuffSlot], 0.4f, 1f);
+        return hovered && !(PlayerInput.UsingGamepad && !Main.playerInventory);
+    }
+}
+
+/// <summary>Buff icons laid out by the legacy code around them; shows the hovered buff's name and tooltip.</summary>
+public abstract class UIBuffList : UIGameScreen
+{
+    protected readonly UIBuffIcon[] Icons = new UIBuffIcon[Player.maxBuffs];
+
+    private int _hovered;
+
+    public override void OnInitialize()
+    {
+        for (int i = 0; i < Player.maxBuffs; i++)
+        {
+            Icons[i] = new UIBuffIcon(i)
+            {
+                IgnoresMouseInteraction = true
+            };
+            Append(Icons[i]);
+        }
+    }
+
+    /// <summary>Places the active buffs' icons (index: the n-th active buff) and returns how many there are.</summary>
+    protected abstract void Layout();
+
+    /// <summary>Draws an icon at its spot, after which the legacy code may adjust it.</summary>
+    protected virtual void AfterIcon(UIBuffIcon icon, int index)
+    {
+    }
+
+    protected abstract void ShowTooltip(string name, string tooltip, bool melee);
+
+    public override void UpdateState()
+    {
+        Layout();
+        Recalculate();
+    }
+
+    protected override void DrawChildren(SpriteBatch spriteBatch)
+    {
+        _hovered = -1;
+        Player player = Main.LocalPlayer;
+        int index = 0;
+        for (int i = 0; i < Player.maxBuffs; i++)
+        {
+            if (player.buffType[i] <= 0)
+            {
+                OnInactive(i);
+                continue;
+            }
+            if (Icons[i].DrawIcon(spriteBatch))
+            {
+                _hovered = i;
+            }
+            AfterIcon(Icons[i], index);
+            index++;
+        }
+        if (_hovered < 0)
+        {
+            return;
+        }
+        int type = player.buffType[_hovered];
+        if (type > 0)
+        {
+            if (type == 147)
+            {
+                Main.bannerMouseOver = true;
+            }
+            ShowTooltip(Lang.GetBuffName(type), Main.GetBuffTooltip(player, type), Main.meleeBuff[type]);
+        }
+    }
+
+    protected virtual void OnInactive(int buffSlot)
+    {
+    }
+}
+
+/// <summary>The buff row under the hotbar (Main.DrawInterface_Resources_Buffs): 11 per row.</summary>
+public class UIBuffBar : UIBuffList
+{
+    public static readonly UIBuffBar Instance = new UIBuffBar();
+
+    /// <summary>Called by Main.DrawInterface_Resources_Buffs in place of its body.</summary>
+    public static bool Draw()
+    {
+        InGamePreview.Update();
+        if (!UIInventorySlots.Enabled)
+        {
+            return false;
+        }
+        Main.PipsUseGrid = false;
+        GameScreens.Draw(Instance, Main.spriteBatch);
+        return true;
+    }
+
+    protected override void Layout()
+    {
+        int index = 0;
+        for (int i = 0; i < Player.maxBuffs; i++)
+        {
+            if (Main.LocalPlayer.buffType[i] > 0)
+            {
+                Icons[i].Place(32 + index % 11 * 38, 76 + index / 11 * 50);
+                index++;
+            }
+        }
+    }
+
+    protected override void OnInactive(int buffSlot)
+    {
+        Main.buffAlpha[buffSlot] = 0.4f;
+    }
+
+    protected override void ShowTooltip(string name, string tooltip, bool melee)
+    {
+        if (melee)
+        {
+            Main.instance.MouseTextHackZoom(name, -10, 0, tooltip, noOverride: true);
+        }
+        else
+        {
+            Main.instance.MouseTextHackZoom(name, tooltip, noOverride: true);
+        }
+    }
+}
+
+/// <summary>
+/// The buff columns under the misc equipment page (Main.DrawInventory, EquipPage 2): columns of 3 to 6
+/// (more on taller screens) growing leftwards, with gamepad points 9000+.
+/// </summary>
+public class UIBuffColumns : UIBuffList
+{
+    public static readonly UIBuffColumns Instance = new UIBuffColumns();
+
+    private const int Step = 46;
+
+    private int _x;
+
+    private int _y;
+
+    private int _perColumn;
+
+    private int _count;
+
+    /// <summary>Called by Main.DrawInventory in place of the misc page's buff loop.</summary>
+    public static bool Draw(int x, int y, int perColumn)
+    {
+        if (!UIInventorySlots.Enabled)
+        {
+            return false;
+        }
+        Instance._x = x;
+        Instance._y = y;
+        Instance._perColumn = perColumn;
+        GameScreens.Draw(Instance, Main.spriteBatch);
+        UILinkPointNavigator.Shortcuts.BUFFS_DRAWN = Instance._count;
+        UILinkPointNavigator.Shortcuts.BUFFS_PER_COLUMN = perColumn;
+        return true;
+    }
+
+    protected override void Layout()
+    {
+        int index = 0;
+        for (int i = 0; i < Player.maxBuffs; i++)
+        {
+            if (Main.LocalPlayer.buffType[i] > 0)
+            {
+                Icons[i].Place(_x - index / _perColumn * Step, _y + index % _perColumn * Step);
+                index++;
+            }
+        }
+        _count = index;
+    }
+
+    protected override void AfterIcon(UIBuffIcon icon, int index)
+    {
+        CalculatedStyle dimensions = icon.GetDimensions();
+        UILinkPointNavigator.SetPosition(9000 + index, new Vector2(dimensions.X + 30f, dimensions.Y + 30f));
+        if (Main.buffAlpha[icon.BuffSlot] < 0.65f)
+        {
+            Main.buffAlpha[icon.BuffSlot] = 0.65f;
+        }
+    }
+
+    protected override void ShowTooltip(string name, string tooltip, bool melee)
+    {
+        if (melee)
+        {
+            Main.instance.MouseTextHackZoom(name, -10, 0, tooltip);
+        }
+        else
+        {
+            Main.instance.MouseTextHackZoom(name, tooltip);
+        }
+    }
+}

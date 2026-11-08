@@ -1,0 +1,210 @@
+using Terraria;
+using System.Threading;
+using Microsoft.Xna.Framework;
+using System;
+using System.Collections.Generic;
+using System.Runtime.InteropServices;
+
+namespace Aether.Graphics.Terrain;
+
+[Flags]
+public enum TerrainGpuCapabilities : uint { Vulkan = 1, Compute = 2, Buffers = 4, Markers = 8, Draw = 16, Streamed = 32, GeometryCompute = 64 }
+[Flags]
+public enum TerrainBufferUsage : uint { Vertex = 1, Index = 2, Indirect = 4, GraphicsRead = 8, ComputeRead = 16, ComputeWrite = 32 }
+
+// This class never stores an SDL command-buffer pointer. Native calls resolve the
+// current buffer from the owning FNA3D device on every operation.
+public sealed partial class TerrainGpuContext : IDisposable
+{
+    private readonly record struct RetiredResources(nint Fence, TerrainGpuResource[] Buffers);
+
+    public const uint AbiVersion = 1;
+    public const long MaxResidentBytes = 512L * 1024 * 1024;
+    private readonly int ownerThread = Thread.CurrentThread.ManagedThreadId;
+    private readonly nint library, device;
+    private readonly BufferCreate createBuffer;
+    private readonly BufferUpload uploadBuffer;
+    private readonly BufferRelease releaseBuffer;
+
+    private readonly Error error;
+    private readonly FenceSubmit submitFence;
+    private readonly FenceQuery queryFence;
+    private readonly FenceRelease releaseFence;
+    private readonly MarkerPush? pushMarker;
+    private readonly MarkerPop? popMarker;
+    private readonly List<TerrainGpuResource> buffers = new();
+    private readonly List<TerrainGpuResource> retiring = new();
+    private readonly Queue<RetiredResources> retired = new();
+    private long resident;
+    private bool disposed;
+    public TerrainGpuCapabilities Capabilities { get; }
+    public long ResidentBytes => resident;
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate uint Abi();
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate uint Caps(nint device);
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate nint Error();
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate nint BufferCreate(nint device, uint size, uint usage);
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate int BufferUpload(nint device, nint buffer, nint bytes, uint size);
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate void BufferRelease(nint device, nint buffer);
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate nint FenceSubmit(nint device);
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate int FenceQuery(nint device, nint fence);
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate void FenceRelease(nint device, nint fence);
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate void MarkerPush(nint device, [MarshalAs(UnmanagedType.LPStr)] string name);
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate void MarkerPop(nint device);
+    public MarkerScope Marker(string name)
+    {
+        CheckOwner();
+        if (string.IsNullOrEmpty(name)) throw new ArgumentException(nameof(name));
+        pushMarker?.Invoke(device, name);
+        return new MarkerScope(pushMarker is null ? null : this);
+    }
+    public readonly struct MarkerScope : IDisposable
+    {
+        private readonly TerrainGpuContext? context;
+        internal MarkerScope(TerrainGpuContext? context) => this.context = context;
+        public void Dispose()
+        {
+            if (context is null || context.disposed) return;
+            context.CheckOwner(); context.popMarker!(context.device);
+        }
+    }
+    private static T Load<T>(nint library, string name) where T : Delegate => (T)Marshal.GetDelegateForFunctionPointer(NativeLibrary.GetExport(library, name), typeof(T));
+    private TerrainGpuContext(nint device, nint library, TerrainGpuCapabilities capabilities)
+    {
+        this.device = device;
+        this.library = library;
+        Capabilities = capabilities;
+        createBuffer = Load<BufferCreate>(library, "TA_TerrainCreateBuffer");
+        uploadBuffer = Load<BufferUpload>(library, "TA_TerrainUploadBuffer");
+        releaseBuffer = Load<BufferRelease>(library, "TA_TerrainReleaseBuffer");
+        error = Load<Error>(library, "TA_TerrainError");
+        submitFence = Load<FenceSubmit>(library, "TA_TerrainSubmitFence");
+        queryFence = Load<FenceQuery>(library, "TA_TerrainQueryFence");
+        releaseFence = Load<FenceRelease>(library, "TA_TerrainReleaseFence");
+        InitializeDrawApi();
+        InitializeStreamingApi();
+        InitializeComputeGeometryApi();
+        if ((capabilities & TerrainGpuCapabilities.Markers) != 0)
+        {
+            pushMarker = Load<MarkerPush>(library, "TA_TerrainPushMarker");
+            popMarker = Load<MarkerPop>(library, "TA_TerrainPopMarker");
+        }
+    }
+    public static bool TryCreate(nint device, string path, out TerrainGpuContext? context, out string reason)
+    {
+        context = null;
+        reason = "";
+        nint library = 0;
+        try
+        {
+            if (device == 0) { reason = "No native graphics device"; return false; }
+            if (!NativeLibrary.TryLoad(path, out library)) { reason = "Renderer native library unavailable"; return false; }
+            if (!NativeLibrary.TryGetExport(library, "TA_TerrainAbi", out nint entry) || ((Abi)Marshal.GetDelegateForFunctionPointer(entry, typeof(Abi)))() != AbiVersion)
+            { reason = "Terrain bridge ABI unavailable or incompatible"; return false; }
+            var capabilities = (TerrainGpuCapabilities)Load<Caps>(library, "TA_TerrainCapabilities")(device);
+            if ((capabilities & (TerrainGpuCapabilities.Vulkan | TerrainGpuCapabilities.Compute | TerrainGpuCapabilities.Buffers)) != (TerrainGpuCapabilities.Vulkan | TerrainGpuCapabilities.Compute | TerrainGpuCapabilities.Buffers))
+            { reason = "Vulkan terrain compute capabilities unavailable"; return false; }
+            context = new TerrainGpuContext(device, library, capabilities);
+            library = 0;
+            return true;
+        }
+        catch (Exception ex) when (ex is DllNotFoundException or EntryPointNotFoundException or BadImageFormatException)
+        { reason = ex.Message; return false; }
+        finally { if (library != 0) NativeLibrary.Free(library); }
+    }
+    private void CheckOwner()
+    {
+        if (disposed) throw new ObjectDisposedException(GetType().Name);
+        if (Thread.CurrentThread.ManagedThreadId != ownerThread)
+            throw new InvalidOperationException("Terrain GPU operations require the graphics owning thread");
+    }
+    private string LastError => Marshal.PtrToStringAnsi(error()) ?? "GPU operation failed";
+    public TerrainGpuBuffer CreateBuffer(int size, TerrainBufferUsage usage)
+    {
+        CheckOwner();
+        if (size < 4 || size % 4 != 0 || usage == 0 || ((uint)usage & ~63u) != 0) throw new ArgumentOutOfRangeException(nameof(size));
+        if (resident + size > MaxResidentBytes) throw new InvalidOperationException("Terrain VRAM budget exceeded");
+        nint handle = createBuffer(device, (uint)size, (uint)usage);
+        if (handle == 0) throw new InvalidOperationException(LastError);
+        var buffer = new TerrainGpuBuffer(this, handle, size, usage);
+        buffers.Add(buffer);
+        resident += size;
+        return buffer;
+    }
+    public void Upload(TerrainGpuBuffer buffer, byte[] data)
+    {
+        CheckOwner();
+        if (!ReferenceEquals(buffer.Owner, this) || buffer.Retiring || buffer.Handle == 0) throw new ArgumentException("Buffer is not live in this context");
+        if (data.Length == 0 || data.Length > buffer.Size) throw new ArgumentOutOfRangeException(nameof(data));
+        GCHandle pin = GCHandle.Alloc(data, GCHandleType.Pinned);
+        try { if (uploadBuffer(device, buffer.Handle, pin.AddrOfPinnedObject(), (uint)data.Length) == 0) throw new InvalidOperationException(LastError); }
+        finally { pin.Free(); }
+    }
+    internal void Retire(TerrainGpuResource buffer)
+    {
+        CheckOwner();
+        if (buffer.Retiring || buffer.Handle == 0) return;
+        buffer.Retiring = true;
+        retiring.Add(buffer);
+    }
+    public void EndFrame()
+    {
+        CheckOwner();
+        CollectRetired();
+        if (retiring.Count == 0) return;
+        nint fence = submitFence(device);
+        if (fence == 0) throw new InvalidOperationException(LastError);
+        retired.Enqueue(new RetiredResources(fence, retiring.ToArray()));
+        retiring.Clear();
+    }
+    public void CollectRetired()
+    {
+        CheckOwner();
+        while (retired.Count != 0 && queryFence(device, retired.Peek().Fence) != 0)
+        {
+            RetiredResources batch = retired.Dequeue();
+            foreach (var buffer in batch.Buffers) Release(buffer);
+            releaseFence(device, batch.Fence);
+        }
+    }
+    private void Release(TerrainGpuResource buffer)
+    {
+        if (buffer.Handle == 0) return;
+        buffer.ReleaseNative();
+        buffer.Handle = 0;
+        resident -= buffer.Bytes;
+        buffers.Remove(buffer);
+    }
+    internal void ReleaseBufferHandle(nint handle) => releaseBuffer(device, handle);
+    public void Dispose()
+    {
+        if (disposed) return;
+        CheckOwner();
+        // SDL defers destruction of released resources still referenced by submissions.
+        // Call before the owning GraphicsDevice is destroyed, never after it.
+        foreach (var buffer in buffers.ToArray()) Release(buffer);
+        foreach (var batch in retired) releaseFence(device, batch.Fence);
+        retiring.Clear(); retired.Clear();
+        NativeLibrary.Free(library);
+        disposed = true;
+    }
+}
+
+public abstract class TerrainGpuResource : IDisposable
+{
+    internal TerrainGpuContext Owner { get; }
+    internal nint Handle { get; set; }
+    internal bool Retiring { get; set; }
+    public long Bytes { get; }
+    internal TerrainGpuResource(TerrainGpuContext owner, nint handle, long bytes) { Owner = owner; Handle = handle; Bytes = bytes; }
+    internal abstract void ReleaseNative();
+    public void Dispose() { if (Handle != 0) Owner.Retire(this); }
+}
+public sealed class TerrainGpuBuffer : TerrainGpuResource
+{
+    public int Size => (int)Bytes;
+    public TerrainBufferUsage Usage { get; }
+    internal TerrainGpuBuffer(TerrainGpuContext owner, nint handle, int size, TerrainBufferUsage usage) : base(owner, handle, size) { Usage = usage; }
+    internal override void ReleaseNative() => Owner.ReleaseBufferHandle(Handle);
+}

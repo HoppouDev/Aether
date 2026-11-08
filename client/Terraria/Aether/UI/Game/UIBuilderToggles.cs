@@ -1,0 +1,207 @@
+using System;
+using System.Collections.Generic;
+using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
+using Terraria;
+using Terraria.Audio;
+using Terraria.GameContent;
+using Terraria.GameInput;
+using Terraria.Localization;
+using Terraria.UI.Gamepad;
+
+namespace Aether.UI.Game;
+
+/// <summary>
+/// The builder accessory toggles beside the open inventory (Main.DrawBuilderAccToggles): a column of
+/// small icons for the rulers, actuation device, paint sprayer and wire display (each only while the
+/// accessory is equipped), then the block replacement and torch swap toggles.
+/// </summary>
+public class UIBuilderToggles : UIIconButtonGroup
+{
+    // The legacy loop's order of builderAccStatus slots: wire modes (8, 9) first, then 0 to 7.
+    private static readonly int[] Order = new int[10] { 8, 9, 0, 1, 2, 3, 4, 5, 6, 7 };
+
+    private static readonly string[] WireNames = new string[5] { "Game.RedWires", "Game.BlueWires", "Game.GreenWires", "Game.YellowWires", "Game.Actuators" };
+
+    // After the arrays above: static fields are initialized in order, and the constructor uses them.
+    public static readonly UIBuilderToggles Instance = new UIBuilderToggles();
+
+    private readonly Rectangle[] _areas = new Rectangle[12];
+
+    private readonly int[] _linkPoints = new int[12];
+
+    private Vector2 _start;
+
+    private bool _pushedUp;
+
+    public UIBuilderToggles()
+    {
+        foreach (int slot in Order)
+        {
+            Add(Toggle(slot));
+        }
+        Add(SideToggle(10));
+        Add(SideToggle(11));
+    }
+
+    /// <summary>Called by Main.DrawBuilderAccToggles after its visibility checks.</summary>
+    public static bool Draw(Vector2 start)
+    {
+        Instance._start = start;
+        return Instance.Draw();
+    }
+
+    private static bool IsEquipped(int slot)
+    {
+        Player player = Main.LocalPlayer;
+        return slot switch
+        {
+            0 => player.rulerLine,
+            1 => player.rulerGrid,
+            2 => player.autoActuator,
+            3 => player.autoPaint,
+            _ => player.InfoAccMechShowWires
+        };
+    }
+
+    public override void UpdateState()
+    {
+        Player player = Main.LocalPlayer;
+        Main.GetBuilderAccsCountToShow(player, out var blockReplaceIcons, out var torchGodIcons, out var totalDrawnIcons);
+        _pushedUp = totalDrawnIcons >= 10;
+        Vector2 start = _start + new Vector2(0f, 24 * torchGodIcons);
+        int shown = 0;
+        foreach (int slot in Order)
+        {
+            if (!IsEquipped(slot))
+            {
+                _areas[slot] = Rectangle.Empty;
+                continue;
+            }
+            Vector2 center = start + new Vector2(0f, shown * 24 - (_pushedUp ? 24 : 0));
+            _areas[slot] = Utils.CenteredRectangle(center, new Vector2(14f));
+            _linkPoints[slot] = 6000 + shown + blockReplaceIcons + torchGodIcons;
+            shown++;
+        }
+        // The two side toggles are at the left edge, under the hotbar lock.
+        _areas[10] = SideArea(_pushedUp ? 23 : 44, TextureAssets.blockReplaceIcon[0].Value.Frame(3));
+        _areas[11] = player.unlockedBiomeTorches ? SideArea(_pushedUp ? 47 : 68, TextureAssets.Extra[211].Value.Frame(4)) : Rectangle.Empty;
+        UILinkPointNavigator.Shortcuts.BUILDERACCCOUNT = shown + 1 + (player.unlockedBiomeTorches ? 1 : 0);
+    }
+
+    private static Rectangle SideArea(int y, Rectangle frame)
+    {
+        return new Rectangle(0, y, (int)Math.Ceiling((float)frame.Width * 0.9f), (int)Math.Ceiling((float)frame.Height * 0.9f));
+    }
+
+    private UIIconButton Toggle(int slot)
+    {
+        return new UIIconButton
+        {
+            Area = () => _areas[slot],
+            WhileHovered = delegate
+            {
+                Main.instance.MouseTextNoOverride(ToggleText(slot), 0, 0);
+                Main.mouseText = true;
+            },
+            OnPress = delegate
+            {
+                int[] status = Main.LocalPlayer.builderAccStatus;
+                // Wire display cycles bright, normal, faded; the rest switch on and off.
+                status[slot] = (slot >= 4 && slot != 8) ? ((status[slot] + 1) % 3) : ((status[slot] == 0) ? 1 : 0);
+                SoundEngine.PlaySound(12);
+            },
+            DrawIcon = delegate(SpriteBatch spriteBatch, Rectangle area, bool hovered)
+            {
+                if (area.IsEmpty)
+                {
+                    return;
+                }
+                int status = Main.LocalPlayer.builderAccStatus[slot];
+                Color off = new Color(127, 127, 127);
+                Color color = (status == 0) ? Color.White : off;
+                if (slot >= 4 && slot != 8 && status >= 2)
+                {
+                    color = off.MultiplyRGBA((status == 2) ? new Color(0.66f, 0.66f, 0.66f, 0.66f) : new Color(0.33f, 0.33f, 0.33f, 0.33f));
+                }
+                Rectangle frame = new Rectangle(slot * 16, 16, 14, 14);
+                Vector2 center = area.Center.ToVector2();
+                spriteBatch.Draw(TextureAssets.BuilderAcc.Value, center, frame, color, 0f, frame.Size() / 2f, 1f, SpriteEffects.None, 0f);
+                if (hovered)
+                {
+                    Texture2D highlight = TextureAssets.InfoIcon[13].Value;
+                    spriteBatch.Draw(highlight, center, null, Main.OurFavoriteColor, 0f, highlight.Size() / 2f, 1f, SpriteEffects.None, 0f);
+                }
+                UILinkPointNavigator.SetPosition(_linkPoints[slot], center + frame.Size() * 0.15f);
+            }
+        };
+    }
+
+    private static string ToggleText(int slot)
+    {
+        int status = Main.LocalPlayer.builderAccStatus[slot];
+        switch (slot)
+        {
+        case 8:
+            return Language.GetTextValue((status == 0) ? "GameUI.WireModeForced" : "GameUI.WireModeNormal");
+        case 0:
+            return Language.GetTextValue((status == 0) ? "GameUI.RulerOn" : "GameUI.RulerOff");
+        case 1:
+            return Language.GetTextValue((status == 0) ? "GameUI.MechanicalRulerOn" : "GameUI.MechanicalRulerOff");
+        case 3:
+            return Language.GetTextValue((status == 0) ? "GameUI.PaintSprayerOn" : "GameUI.PaintSprayerOff");
+        case 2:
+            return Language.GetTextValue((status == 0) ? "GameUI.ActuationDeviceOn" : "GameUI.ActuationDeviceOff");
+        }
+        string wires = Language.GetTextValue(WireNames[(slot == 9) ? 4 : (slot - 4)]);
+        string state = Language.GetTextValue(status switch
+        {
+            0 => "GameUI.Bright",
+            1 => "GameUI.Normal",
+            2 => "GameUI.Faded",
+            _ => "GameUI.Hidden"
+        });
+        return wires + ": " + state;
+    }
+
+    // Block replacement (slot 10) and torch swapping (11): strictly-inside hit test, a click doesn't
+    // use up the mouse press, and they make the hotbar lock's sound.
+    private UIIconButton SideToggle(int slot)
+    {
+        return new UIIconButton
+        {
+            Area = () => _areas[slot],
+            ExcludeNearEdges = true,
+            ConsumesClick = false,
+            WhileHovered = delegate
+            {
+                bool on = Main.LocalPlayer.builderAccStatus[slot] == 0;
+                Main.instance.MouseText(Language.GetTextValue((slot == 10) ? (on ? "GameUI.BlockReplacerOn" : "GameUI.BlockReplacerOff") : (on ? "GameUI.TorchTypeSwapperOn" : "GameUI.TorchTypeSwapperOff")), 0, 0);
+                Main.mouseText = true;
+            },
+            OnPress = delegate
+            {
+                SoundEngine.PlaySound(22);
+                int[] status = Main.LocalPlayer.builderAccStatus;
+                status[slot] = (status[slot] == 0) ? 1 : 0;
+            },
+            DrawIcon = delegate(SpriteBatch spriteBatch, Rectangle area, bool hovered)
+            {
+                if (area.IsEmpty)
+                {
+                    return;
+                }
+                bool on = Main.LocalPlayer.builderAccStatus[slot] == 0;
+                Texture2D texture = (slot == 10) ? TextureAssets.blockReplaceIcon[0].Value : TextureAssets.Extra[211].Value;
+                Rectangle frame = (slot == 10) ? texture.Frame(3, 1, (!on) ? 1 : 0) : texture.Frame(4, 1, on ? 1 : 0);
+                Vector2 position = new Vector2(area.X, area.Y);
+                spriteBatch.Draw(texture, position, frame, Color.White, 0f, default(Vector2), 0.9f, SpriteEffects.None, 0f);
+                if (hovered)
+                {
+                    spriteBatch.Draw(texture, position, (slot == 10) ? texture.Frame(3, 1, 2) : texture.Frame(4, 1, on ? 3 : 2), Main.OurFavoriteColor, 0f, default(Vector2), 0.9f, SpriteEffects.None, 0f);
+                }
+                UILinkPointNavigator.SetPosition(6000 + slot - 10, position + frame.Size() * 0.65f);
+            }
+        };
+    }
+}

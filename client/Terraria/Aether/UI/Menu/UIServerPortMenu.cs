@@ -1,0 +1,71 @@
+using System;
+using Terraria;
+using Terraria.Audio;
+using Terraria.GameContent.UI.States;
+using Terraria.GameInput;
+
+namespace Aether.UI.Menu;
+
+/// <summary>"Enter server port" (menuMode 131); with gamepad hints on it opens the virtual keyboard.</summary>
+public class UIServerPortMenu : UIMenuScreen
+{
+    protected override void BuildItems()
+    {
+        AddLabel(() => Lang.menu[90].Value);
+        AddLabel(() => WithCursor(Main.getPort), 1f, -20f);
+        UIMenuItem accept = AddItem(Lang.menu[4].Value, delegate
+        {
+            Main.OnSubmitServerPort(Main.getPort);
+        }, 1f, 20f);
+        accept.IsDisabled = () => !IsValidPort(Main.getPort);
+        AddItem(Lang.menu[5].Value, GoBack);
+    }
+
+    // DrawMenu's check, slightly stricter than the virtual keyboard's IsGoodPortAddress (no port 0).
+    private static bool IsValidPort(string text)
+    {
+        try
+        {
+            int num = Convert.ToInt32(text);
+            return num > 0 && num <= 65535;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    public override void UpdateState()
+    {
+        // In a preview, show the keyboard version of the screen rather than leaving it.
+        if (PlayerInput.SettingsForUI.ShowGamepadHints && !MenuPreview.IsPreviewing)
+        {
+            OpenVirtualKeyboard();
+            return;
+        }
+        Main.getPort = ReadTextInput(Main.getPort);
+        BlinkCursor();
+        if (Main.menuMode == 131 && Main.inputTextEnter && IsValidPort(Main.getPort))
+        {
+            Act("Enter", delegate
+            {
+                Main.OnSubmitServerPort(Main.getPort);
+            });
+        }
+    }
+
+    private static void OpenVirtualKeyboard()
+    {
+        UIVirtualKeyboard uIVirtualKeyboard = new UIVirtualKeyboard(Lang.menu[90].Value, Main.getPort, Main.OnSubmitServerPort, Main.CreateGoToMenuEvent(13), 0, allowEmpty: true);
+        uIVirtualKeyboard.CustomTextValidationForUpdate = Main.IsGoodPortAddress;
+        uIVirtualKeyboard.CustomTextValidationForSubmit = Main.IsGoodPortAddress;
+        Main.MenuUI.SetState(uIVirtualKeyboard);
+        Main.menuMode = 888;
+    }
+
+    public override void GoBack()
+    {
+        SoundEngine.PlaySound(11);
+        Main.menuMode = 1;
+    }
+}

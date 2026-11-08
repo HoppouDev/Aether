@@ -9,7 +9,7 @@
     <Nullable>disable</Nullable>
     <ImplicitUsings>disable</ImplicitUsings>
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
-    <!-- Sources live in src/ (base + patches); never glob .base/ or lib/. -->
+    <!-- Compile tracked Aether code alongside the generated game sources. -->
     <EnableDefaultItems>False</EnableDefaultItems>
   </PropertyGroup>
   <PropertyGroup>
@@ -19,6 +19,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="Aether/**/*.cs" />
     <Compile Include="../../src/**/*.cs" Exclude="../../src/ReLogic/**" />
     <ProjectReference Include="../Modding/Aether.Modding.csproj" />
   </ItemGroup>

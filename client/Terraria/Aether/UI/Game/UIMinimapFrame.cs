@@ -1,0 +1,168 @@
+using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
+using Terraria;
+using Terraria.Audio;
+using Terraria.GameContent;
+using Terraria.GameContent.UI.Minimap;
+using Terraria.GameInput;
+using Terraria.UI;
+
+namespace Aether.UI.Game;
+
+/// <summary>
+/// The minimap's frame and its zoom in / zoom out / reset buttons (MinimapFrame). The map is drawn
+/// between the frame's two parts, so this is too: <see cref="Draw" /> (from MinimapFrame.Update,
+/// just before the map) handles the buttons and draws the dark background, and
+/// <see cref="DrawForeground" /> (after the map) the frame and the hovered button. A button acts every
+/// frame it's held, ticking as it's pressed.
+/// </summary>
+public class UIMinimapFrame : UIGameScreen
+{
+    public static readonly UIMinimapFrame Instance = new UIMinimapFrame();
+
+    private MinimapFrame _frame;
+
+    private readonly UIMinimapButton[] _buttons = new UIMinimapButton[3];
+
+    /// <summary>Whether this draws the minimap frame (MinimapFrame skips its own drawing then).</summary>
+    public static bool Handles => UIInventorySlots.Enabled;
+
+    public override void OnInitialize()
+    {
+        for (int i = 0; i < 3; i++)
+        {
+            _buttons[i] = new UIMinimapButton(i);
+            Append(_buttons[i]);
+        }
+    }
+
+    /// <summary>Called by MinimapFrame.Update (as MinimapFrameManager.DrawTo draws the minimap).</summary>
+    public static bool Draw(MinimapFrame frame)
+    {
+        InGamePreview.Update();
+        if (!Handles)
+        {
+            return false;
+        }
+        Instance._frame = frame;
+        GameScreens.Draw(Instance, Main.spriteBatch);
+        return true;
+    }
+
+    /// <summary>Called by MinimapFrame.DrawForeground, after the map.</summary>
+    public static bool DrawForeground(MinimapFrame frame, SpriteBatch spriteBatch)
+    {
+        if (!Handles)
+        {
+            return false;
+        }
+        spriteBatch.Draw(frame._frameTexture.Value, frame.FramePosition, Color.White);
+        foreach (UIMinimapButton button in Instance._buttons)
+        {
+            button?.DrawHighlight(spriteBatch, frame);
+        }
+        return true;
+    }
+
+    internal static MinimapFrame.Button ButtonOf(MinimapFrame frame, int index)
+    {
+        return index switch
+        {
+            0 => frame._zoomInButton,
+            1 => frame._zoomOutButton,
+            _ => frame._resetButton
+        };
+    }
+
+    public override void UpdateState()
+    {
+        // Like MinimapFrame.Update: one button at a time (reset over zoom out over zoom in).
+        UIMinimapButton previous = null;
+        UIMinimapButton underMouse = null;
+        Vector2 mouse = new Vector2(Main.mouseX, Main.mouseY);
+        foreach (UIMinimapButton button in _buttons)
+        {
+            if (button.IsHighlighted)
+            {
+                previous = button;
+            }
+            button.IsHighlighted = false;
+        }
+        for (int i = 0; i < 3; i++)
+        {
+            if (underMouse == null && ButtonOf(_frame, i).IsTouchingPoint(mouse, _frame.FramePosition))
+            {
+                underMouse = _buttons[i];
+            }
+        }
+        if (underMouse == null || PlayerInput.IgnoreMouseInterface || Main.LocalPlayer.controlTorch)
+        {
+            return;
+        }
+        Main.instance.MouseTextNoOverride(string.Empty, 0, 0);
+        underMouse.IsHighlighted = true;
+        Main.LocalPlayer.mouseInterface = true;
+        if (previous != underMouse)
+        {
+            SoundEngine.PlaySound(12);
+        }
+        if (Main.mouseLeft)
+        {
+            underMouse.Press();
+            if (Main.mouseLeftRelease)
+            {
+                SoundEngine.PlaySound(12);
+            }
+        }
+    }
+
+    // The dark square behind the minimap.
+    protected override void DrawSelf(SpriteBatch spriteBatch)
+    {
+        Vector2 position = _frame.MinimapPosition;
+        spriteBatch.Draw(TextureAssets.MagicPixel.Value, new Rectangle((int)position.X - 6, (int)position.Y - 6, 244, 244), Color.Black * Main.mapMinimapAlpha);
+    }
+
+    protected override void DrawChildren(SpriteBatch spriteBatch)
+    {
+    }
+}
+
+/// <summary>A minimap zoom button (0: zoom in, 1: zoom out, 2: reset); only its hover image is drawn.</summary>
+public class UIMinimapButton : UIElement
+{
+    private readonly int _index;
+
+    public bool IsHighlighted;
+
+    public UIMinimapButton(int index)
+    {
+        _index = index;
+        IgnoresMouseInteraction = true;
+    }
+
+    public void Press()
+    {
+        switch (_index)
+        {
+        case 0:
+            Main.mapMinimapScale *= 1.025f;
+            break;
+        case 1:
+            Main.mapMinimapScale *= 0.975f;
+            break;
+        default:
+            Main.mapMinimapScale = 1.05f;
+            break;
+        }
+    }
+
+    public void DrawHighlight(SpriteBatch spriteBatch, MinimapFrame frame)
+    {
+        if (IsHighlighted)
+        {
+            MinimapFrame.Button button = UIMinimapFrame.ButtonOf(frame, _index);
+            spriteBatch.Draw(button._hoverTexture.Value, button._position + frame.FramePosition, Color.White);
+        }
+    }
+}

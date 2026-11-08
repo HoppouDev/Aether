@@ -1,0 +1,160 @@
+using System;
+using Microsoft.Xna.Framework;
+using Terraria;
+using Terraria.GameInput;
+using Terraria.UI;
+
+namespace Aether.UI.Game;
+
+/// <summary>
+/// A 10×4 grid of container slots under the inventory, at (73, Main.instance.invBottom), 0.755 scale:
+/// the open chest's (or bank's) and the NPC shop's.
+/// </summary>
+public abstract class UIContainerGrid : UIGameScreen
+{
+    protected const int Columns = 10;
+
+    protected const int Rows = 4;
+
+    protected const float Scale = 0.755f;
+
+    private readonly UIGameItemSlot[] _slots = new UIGameItemSlot[Columns * Rows];
+
+    private int _invBottom = -1;
+
+    protected Item[] Items;
+
+    protected int Context;
+
+    /// <summary>Index of the top-left slot (scrolled containers).</summary>
+    protected int FirstSlot;
+
+    public override void OnInitialize()
+    {
+        for (int i = 0; i < Columns * Rows; i++)
+        {
+            UIGameItemSlot slot = new UIGameItemSlot(() => Items, 0, 0);
+            slot.IsShown = () => slot.Slot < Items.Length;
+            _slots[i] = slot;
+            Append(slot);
+        }
+    }
+
+    /// <summary>Sets Items, Context and FirstSlot for this frame, and claims the mouse over the grid.</summary>
+    protected abstract void Resolve(int invBottom);
+
+    public override void UpdateState()
+    {
+        int invBottom = Main.instance.invBottom;
+        Main.inventoryScale = Scale;
+        Resolve(invBottom);
+        for (int i = 0; i < Columns; i++)
+        {
+            for (int j = 0; j < Rows; j++)
+            {
+                UIGameItemSlot slot = _slots[i + j * Columns];
+                slot.Slot = i + j * Columns + FirstSlot;
+                slot.Context = Context;
+                if (invBottom != _invBottom)
+                {
+                    slot.Place(new Vector2((int)(73f + (float)(i * 56) * Scale), (int)((float)invBottom + (float)(j * 56) * Scale)), Scale);
+                }
+            }
+        }
+        if (invBottom != _invBottom)
+        {
+            _invBottom = invBottom;
+            Recalculate();
+        }
+    }
+}
+
+/// <summary>
+/// The open chest's (or piggy bank's, safe's, ...) slots (ChestUI.DrawSlots), scrolled by
+/// ChestUI.StartingRowForDrawing for containers with more than 40 slots.
+/// </summary>
+public class UIChestSlots : UIContainerGrid
+{
+    public static readonly UIChestSlots Instance = new UIChestSlots();
+
+    /// <summary>Called by ChestUI.DrawSlots in place of its body; false: draw the legacy slots.</summary>
+    public static bool Draw()
+    {
+        InGamePreview.Update();
+        if (!UIInventorySlots.Enabled)
+        {
+            return false;
+        }
+        GameScreens.Draw(Instance, Main.spriteBatch);
+        return true;
+    }
+
+    protected override void Resolve(int invBottom)
+    {
+        Player player = Main.LocalPlayer;
+        Chest chest;
+        switch (player.chest)
+        {
+        case -2:
+            Context = 4;
+            chest = player.bank;
+            break;
+        case -3:
+            Context = 4;
+            chest = player.bank2;
+            break;
+        case -4:
+            Context = 4;
+            chest = player.bank3;
+            break;
+        case -5:
+            Context = 32;
+            chest = player.bank4;
+            break;
+        default:
+            Context = 3;
+            chest = Main.chest[player.chest];
+            break;
+        }
+        Items = chest.item;
+        Rectangle area = (ChestUI.LastChestDisplayRectangle = new Rectangle(73, invBottom, (int)((float)(Columns * 56) * Scale), (int)((float)(Rows * 56) * Scale)));
+        if (area.Contains(Main.mouseX, Main.mouseY) && !PlayerInput.IgnoreMouseInterface)
+        {
+            player.mouseInterface = true;
+        }
+        int highestRow = (int)Math.Max(0.0, Math.Ceiling((float)chest.maxItems / (float)Columns) - 4.0);
+        ChestUI.StartingRowForDrawing = Utils.Clamp(ChestUI.StartingRowForDrawing, 0, highestRow);
+        ChestUI.LastHighestChestRow = highestRow;
+        FirstSlot = ChestUI.StartingRowForDrawing * Columns;
+        ItemSlot.PrepareForChest(chest);
+    }
+}
+
+/// <summary>The open NPC shop's slots (Main.DrawInventory; context 15).</summary>
+public class UIShopSlots : UIContainerGrid
+{
+    public static readonly UIShopSlots Instance = new UIShopSlots();
+
+    /// <summary>Called by Main.DrawInventory in place of the shop's slot loop; false: draw the legacy one.</summary>
+    public static bool Draw()
+    {
+        InGamePreview.Update();
+        if (!UIInventorySlots.Enabled)
+        {
+            return false;
+        }
+        GameScreens.Draw(Instance, Main.spriteBatch);
+        return true;
+    }
+
+    protected override void Resolve(int invBottom)
+    {
+        Items = Main.instance.shop[Main.npcShop].item;
+        Context = 15;
+        FirstSlot = 0;
+        if (Main.mouseX > 73 && Main.mouseX < (int)(73f + 560f * Scale) && Main.mouseY > invBottom && Main.mouseY < (int)((float)invBottom + 224f * Scale) && !PlayerInput.IgnoreMouseInterface)
+        {
+            Main.LocalPlayer.mouseInterface = true;
+        }
+    }
+}

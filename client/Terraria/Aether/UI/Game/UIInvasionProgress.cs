@@ -1,0 +1,243 @@
+using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
+using Terraria;
+using Terraria.GameContent;
+using Terraria.Localization;
+using Terraria.UI;
+
+namespace Aether.UI.Game;
+
+/// <summary>
+/// The invasion or event's progress panel at the bottom right (above it, the event's icon and name).
+/// With waves (Pumpkin and Frost Moon, Old One's Army), the wave and its progress; otherwise the
+/// progress towards clearing the invasion.
+/// </summary>
+public class UIInvasionProgressPanel : UIElement
+{
+    public float Scale;
+
+    public float Alpha;
+
+    public UIInvasionProgressPanel()
+    {
+        IgnoresMouseInteraction = true;
+    }
+
+    // The panel's text, made again only when the progress (or the language) changes.
+    private string _text;
+
+    private int _textProgress = -1;
+
+    private int _textMax = -1;
+
+    private int _textWave = -1;
+
+    private GameCulture _textIn;
+
+    private string Text()
+    {
+        if (Main.invasionProgress != _textProgress || Main.invasionProgressMax != _textMax || Main.invasionProgressWave != _textWave || Language.ActiveCulture != _textIn)
+        {
+            _textProgress = Main.invasionProgress;
+            _textMax = Main.invasionProgressMax;
+            _textWave = Main.invasionProgressWave;
+            _textIn = Language.ActiveCulture;
+            string progress = Main.invasionProgressMax != 0 ? ((int)((float)Main.invasionProgress * 100f / (float)Main.invasionProgressMax) + "%") : null;
+            _text = Main.invasionProgressWave > 0 ? Language.GetTextValue("Game.WaveMessage", Main.invasionProgressWave, progress ?? Language.GetTextValue("Game.InvasionPoints", Main.invasionProgress)) : Language.GetTextValue("Game.WaveCleared", progress);
+        }
+        return _text;
+    }
+
+    protected override void DrawSelf(SpriteBatch spriteBatch)
+    {
+        float scale = Scale;
+        float alpha = Alpha;
+        int width = (int)(200f * scale);
+        int height = (int)(45f * scale);
+        Vector2 center = new Vector2(Main.screenWidth - 120, Main.screenHeight - 40);
+        Utils.DrawInvBG(spriteBatch, new Rectangle((int)center.X - width / 2, (int)center.Y - height / 2, width, height), new Color(63, 65, 151, 255) * 0.785f);
+        Texture2D colorBar = TextureAssets.ColorBar.Value;
+        float fill = MathHelper.Clamp((float)Main.invasionProgress / (float)Main.invasionProgressMax, 0f, 1f);
+        float barWidth = 169f * scale;
+        float barHeight = 8f * scale;
+        Vector2 barCenter = center + Vector2.UnitY * barHeight + Vector2.UnitX * 1f;
+        if (Main.invasionProgressWave > 0)
+        {
+            string text = Text();
+            if (Main.invasionProgressMax == 0)
+            {
+                fill = 1f;
+            }
+            Utils.DrawBorderString(spriteBatch, text, barCenter, Color.White * alpha, scale, 0.5f, 1f);
+            spriteBatch.Draw(colorBar, center, null, Color.White * alpha, 0f, new Vector2(colorBar.Width / 2, 0f), scale, SpriteEffects.None, 0f);
+        }
+        else
+        {
+            if (Main.invasionProgressMax == 0)
+            {
+                return;
+            }
+            string text = Text();
+            spriteBatch.Draw(colorBar, center, null, Color.White * alpha, 0f, new Vector2(colorBar.Width / 2, 0f), scale, SpriteEffects.None, 0f);
+            Vector2 size = FontAssets.MouseText.Value.MeasureString(text);
+            float textScale = scale;
+            if (size.Y > 22f)
+            {
+                textScale *= 22f / size.Y;
+            }
+            Utils.DrawBorderString(spriteBatch, text, barCenter + new Vector2(0f, -4f), Color.White * alpha, textScale, 0.5f, 1f);
+        }
+        barCenter += Vector2.UnitX * (fill - 0.5f) * barWidth;
+        Texture2D pixel = TextureAssets.MagicPixel.Value;
+        spriteBatch.Draw(pixel, barCenter, new Rectangle(0, 0, 1, 1), new Color(255, 241, 51) * alpha, 0f, new Vector2(1f, 0.5f), new Vector2(barWidth * fill, barHeight), SpriteEffects.None, 0f);
+        spriteBatch.Draw(pixel, barCenter, new Rectangle(0, 0, 1, 1), new Color(255, 165, 0, 127) * alpha, 0f, new Vector2(1f, 0.5f), new Vector2(2f, barHeight), SpriteEffects.None, 0f);
+        spriteBatch.Draw(pixel, barCenter, new Rectangle(0, 0, 1, 1), Color.Black * alpha, 0f, new Vector2(0f, 0.5f), new Vector2(barWidth * (1f - fill), barHeight), SpriteEffects.None, 0f);
+    }
+}
+
+/// <summary>The invasion or event's icon and name, on a panel in its colour, above the progress panel.</summary>
+public class UIInvasionTitle : UIElement
+{
+    public float Scale;
+
+    public float Alpha;
+
+    public UIInvasionTitle()
+    {
+        IgnoresMouseInteraction = true;
+    }
+
+    /// <summary>The icon, name and panel colour for Main.invasionProgressIcon.</summary>
+    public static void Describe(int icon, out Texture2D texture, out string name, out Color color)
+    {
+        texture = TextureAssets.Extra[9].Value;
+        name = "";
+        color = Color.White;
+        switch (icon)
+        {
+        case 1:
+            texture = TextureAssets.Extra[8].Value;
+            name = Lang.inter[83].Value;
+            color = new Color(64, 109, 164) * 0.5f;
+            break;
+        case 2:
+            texture = TextureAssets.Extra[12].Value;
+            name = Lang.inter[84].Value;
+            color = new Color(112, 86, 114) * 0.5f;
+            break;
+        case 3:
+            texture = TextureAssets.Extra[79].Value;
+            name = Language.GetTextValue("DungeonDefenders2.InvasionProgressTitle");
+            color = new Color(88, 0, 160) * 0.5f;
+            break;
+        case 7:
+            texture = TextureAssets.Extra[10].Value;
+            name = Lang.inter[85].Value;
+            color = new Color(165, 160, 155) * 0.5f;
+            break;
+        case 6:
+            texture = TextureAssets.Extra[11].Value;
+            name = Lang.inter[86].Value;
+            color = new Color(148, 122, 72) * 0.5f;
+            break;
+        case 5:
+            texture = TextureAssets.Extra[7].Value;
+            name = Lang.inter[87].Value;
+            color = new Color(173, 135, 140) * 0.5f;
+            break;
+        case 4:
+            texture = TextureAssets.Extra[9].Value;
+            name = Lang.inter[88].Value;
+            color = new Color(94, 72, 131) * 0.5f;
+            break;
+        }
+    }
+
+    protected override void DrawSelf(SpriteBatch spriteBatch)
+    {
+        float scale = Scale;
+        Describe(Main.invasionProgressIcon, out var texture, out var name, out var color);
+        Vector2 size = FontAssets.MouseText.Value.MeasureString(name);
+        float right = 120f;
+        if (size.X > 200f)
+        {
+            right += size.X - 200f;
+        }
+        Rectangle panel = Utils.CenteredRectangle(new Vector2((float)Main.screenWidth - right, Main.screenHeight - 80), (size + new Vector2(texture.Width + 12, 6f)) * scale);
+        Utils.DrawInvBG(spriteBatch, panel, color);
+        spriteBatch.Draw(texture, panel.Left() + Vector2.UnitX * scale * 8f, null, Color.White * Alpha, 0f, new Vector2(0f, texture.Height / 2), scale * 0.8f, SpriteEffects.None, 0f);
+        Utils.DrawBorderString(spriteBatch, name, panel.Right() + Vector2.UnitX * scale * -22f, Color.White * Alpha, scale * 0.9f, 1f, 0.4f);
+    }
+}
+
+/// <summary>
+/// Invasion and event progress (Main.DrawInvasionProgress): shown for a while whenever the progress
+/// changes (and while near an invasion, in mode 2), fading in and out.
+/// </summary>
+public class UIInvasionProgress : UIGameScreen
+{
+    public static readonly UIInvasionProgress Instance = new UIInvasionProgress();
+
+    private UIInvasionProgressPanel _progress;
+
+    private UIInvasionTitle _title;
+
+    public override void OnInitialize()
+    {
+        _progress = new UIInvasionProgressPanel();
+        _title = new UIInvasionTitle();
+        Append(_progress);
+        Append(_title);
+    }
+
+    /// <summary>Called by Main.DrawInvasionProgress in place of its body; false: run that.</summary>
+    public static bool Draw()
+    {
+        if (!UIInventorySlots.Enabled)
+        {
+            return false;
+        }
+        if (Main.invasionProgress != -1 && UpdateFade())
+        {
+            GameScreens.Draw(Instance, Main.spriteBatch);
+        }
+        return true;
+    }
+
+    /// <summary>Counts down the display time and fades; whether it's visible.</summary>
+    private static bool UpdateFade()
+    {
+        if (Main.invasionProgressMode == 2 && Main.invasionProgressNearInvasion && Main.invasionProgressDisplayLeft < 160)
+        {
+            Main.invasionProgressDisplayLeft = 160;
+        }
+        if (!Main.gamePaused && Main.invasionProgressDisplayLeft > 0)
+        {
+            Main.invasionProgressDisplayLeft = System.Math.Max(0, Main.invasionProgressDisplayLeft - Aether.Graphics.VisualAnimationTime.WholeTicks);
+        }
+        if (Main.invasionProgressDisplayLeft > 0)
+        {
+            Main.invasionProgressAlpha += 0.05f * Aether.Graphics.VisualAnimationTime.FrameScale;
+        }
+        else
+        {
+            Main.invasionProgressAlpha -= 0.05f * Aether.Graphics.VisualAnimationTime.FrameScale;
+        }
+        if (Main.invasionProgressMode == 0)
+        {
+            Main.invasionProgressDisplayLeft = 0;
+            Main.invasionProgressAlpha = 0f;
+        }
+        Main.invasionProgressAlpha = MathHelper.Clamp(Main.invasionProgressAlpha, 0f, 1f);
+        return Main.invasionProgressAlpha > 0f;
+    }
+
+    public override void UpdateState()
+    {
+        float scale = 0.5f + Main.invasionProgressAlpha * 0.5f;
+        _progress.Scale = scale;
+        _progress.Alpha = Main.invasionProgressAlpha;
+        _title.Scale = scale;
+        _title.Alpha = Main.invasionProgressAlpha;
+    }
+}

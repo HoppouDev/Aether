@@ -1,0 +1,57 @@
+using System;
+using Aether.Graphics;
+using Aether.Graphics.Terrain;
+using Terraria;
+using Terraria.Audio;
+using Terraria.Localization;
+
+namespace Aether.UI.Menu;
+
+internal sealed class UIAetherGraphicsSettings : UIMenuScreen
+{
+    internal const int Mode = 44110;
+    private const float Scale = 0.6f;
+
+    public UIAetherGraphicsSettings()
+    {
+        ItemsTop = 186f;
+        ItemSpacing = 34f;
+    }
+
+    protected override void BuildItems()
+    {
+        AddToggle(() => Language.GetTextValue("AetherGraphics.Renderer", Language.GetTextValue("AetherGraphics." + GraphicsSettings.TerrainMode)),
+            () => GraphicsSettings.TerrainMode = (RendererMode)(((int)GraphicsSettings.TerrainMode + 1) % 3), Scale);
+        AddToggle(() => Language.GetTextValue("AetherGraphics.Quality", Language.GetTextValue("AetherGraphics." + GraphicsSettings.TerrainQuality)),
+            () => GraphicsSettings.TerrainQuality = GraphicsSettings.TerrainQuality == RendererQuality.Standard ? RendererQuality.Performance : RendererQuality.Standard, Scale);
+        AddGraphicsToggle("Compute", () => GraphicsSettings.ComputeTerrain, () => GraphicsSettings.ComputeTerrain = !GraphicsSettings.ComputeTerrain);
+        AddGraphicsToggle("FastTerrain", () => GraphicsSettings.FastTerrain, () => GraphicsSettings.FastTerrain = !GraphicsSettings.FastTerrain);
+        AddGraphicsToggle("Lighting", () => GraphicsSettings.BackgroundLighting, () => GraphicsSettings.BackgroundLighting = !GraphicsSettings.BackgroundLighting);
+        AddGraphicsToggle("Motion", () => GraphicsSettings.SmoothEntityMovement, () => GraphicsSettings.SmoothEntityMovement = !GraphicsSettings.SmoothEntityMovement);
+        AddGraphicsToggle("Uncapped", () => GraphicsSettings.UncappedFps, ToggleUncapped);
+        AddItem(() => Lang.menu[5].Value, GoBack, 1f, 8f);
+    }
+
+    private void AddGraphicsToggle(string key, Func<bool> enabled, Action toggle)
+    {
+        AddToggle(() => Language.GetTextValue("AetherGraphics." + key,
+            Language.GetTextValue(enabled() ? "AetherGraphics.On" : "AetherGraphics.Off")), toggle, Scale);
+    }
+
+    private static void ToggleUncapped()
+    {
+        GraphicsSettings.UncappedFps = !GraphicsSettings.UncappedFps;
+        Main.QueueMainThreadAction(() =>
+        {
+            Main.graphics.SynchronizeWithVerticalRetrace = !GraphicsSettings.UncappedFps;
+            Main.graphics.ApplyChanges();
+        });
+    }
+
+    public override void GoBack()
+    {
+        SoundEngine.PlaySound(11);
+        Main.SaveSettings();
+        Main.menuMode = 1111;
+    }
+}

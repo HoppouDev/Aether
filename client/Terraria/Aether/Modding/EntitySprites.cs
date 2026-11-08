@@ -1,0 +1,103 @@
+using System;
+using System.Buffers.Binary;
+using System.IO;
+using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
+using ReLogic.Content;
+using ReLogic.Content.Readers;
+using Terraria;
+using Terraria.GameContent;
+using Terraria.ID;
+
+namespace Aether.Modding;
+
+internal static class EntitySprites
+{
+    internal static int[] AddNpcFrames(int[] frames)
+    {
+        Array.Resize(ref frames, NPCID.Count);
+        for (int i = 0; i < ClientContent.Npcs.Count; i++)
+        {
+            var sprite = ClientContent.Npcs[i].Sprite;
+            frames[NPCID.VanillaCount + i] = sprite.ResourcePath == null ? frames[sprite.VanillaType] : sprite.Frames;
+        }
+        return frames;
+    }
+
+    internal static void FillProjectileFrames()
+    {
+        for (int i = 0; i < ClientContent.Projectiles.Count; i++)
+        {
+            var sprite = ClientContent.Projectiles[i].Sprite;
+            Main.projFrames[ProjectileID.VanillaCount + i] = sprite.ResourcePath == null ? Main.projFrames[sprite.VanillaType] : sprite.Frames;
+        }
+    }
+
+    internal static Asset<Texture2D> Load(string id, ClientEntitySprite sprite, Asset<Texture2D>[] vanilla)
+    {
+        if (sprite.ResourcePath is not { } path)
+            return vanilla[sprite.VanillaType];
+
+        try
+        {
+            using Stream stream = ModResources.OpenRead(id[..id.IndexOf(':')], path);
+            Span<byte> header = stackalloc byte[24];
+            stream.ReadExactly(header);
+            int width = BinaryPrimitives.ReadInt32BigEndian(header[16..20]);
+            int height = BinaryPrimitives.ReadInt32BigEndian(header[20..24]);
+            if (BinaryPrimitives.ReadUInt64BigEndian(header) != 0x89504E470D0A1A0A ||
+                BinaryPrimitives.ReadUInt32BigEndian(header[8..12]) != 13 ||
+                !header[12..16].SequenceEqual("IHDR"u8) ||
+                width is < 1 or > 4096 || height is < 1 or > 4096 || height % sprite.Frames != 0)
+                throw new InvalidDataException("Expected a PNG no larger than 4096×4096 with equal vertically stacked frames.");
+
+            stream.Position = 0;
+            using var reader = new PngReader(Main.instance.GraphicsDevice);
+            Texture2D texture = reader.FromStream<Texture2D>(stream);
+            if (texture.Width != width || texture.Height != height)
+            {
+                texture.Dispose();
+                throw new InvalidDataException("The decoded image dimensions differ from the PNG header.");
+            }
+            return Asset<Texture2D>.AetherFromValue(id, texture);
+        }
+        catch (Exception error)
+        {
+            throw new InvalidDataException($"Could not load sprite '{path}' for entity '{id}'.", error);
+        }
+    }
+
+    internal static void AnimateNpc(NPC npc)
+    {
+        if (Main.dedServ || TextureAssets.Npc[npc.type] is not { IsLoaded: true } asset)
+            return;
+
+        int frames = Main.npcFrameCount[npc.type];
+        int ticks = ClientContent.Npcs[npc.type - NPCID.VanillaCount].Sprite.TicksPerFrame;
+        int height = asset.Value.Height / frames;
+        npc.frame = new Rectangle(0, (int)(npc.frameCounter / ticks) * height, asset.Value.Width, height);
+        npc.frameCounter = (npc.frameCounter + 1) % (frames * ticks);
+    }
+
+    internal static void AnimateProjectile(Projectile projectile)
+    {
+        if (Main.dedServ)
+            return;
+        int ticks = ClientContent.Projectiles[projectile.type - ProjectileID.VanillaCount].Sprite.TicksPerFrame;
+        if (++projectile.frameCounter >= ticks)
+        {
+            projectile.frameCounter = 0;
+            projectile.frame = (projectile.frame + 1) % Main.projFrames[projectile.type];
+        }
+    }
+
+    internal static void Dispose()
+    {
+        for (int i = 0; i < ClientContent.Npcs.Count; i++)
+            if (ClientContent.Npcs[i].Sprite.ResourcePath != null)
+                TextureAssets.Npc[NPCID.VanillaCount + i]?.Dispose();
+        for (int i = 0; i < ClientContent.Projectiles.Count; i++)
+            if (ClientContent.Projectiles[i].Sprite.ResourcePath != null)
+                TextureAssets.Projectile[ProjectileID.VanillaCount + i]?.Dispose();
+    }
+}

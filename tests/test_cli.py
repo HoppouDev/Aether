@@ -5,7 +5,7 @@ from typer.testing import CliRunner
 
 from aether import cli
 
-from .conftest import needs_diff_patch
+from .conftest import needs_diff_patch, write_files
 
 pytestmark = needs_diff_patch
 
@@ -52,6 +52,27 @@ def test_apply_exit_code_reflects_conflicts(repo):
     base_main = repo.base / "Terraria/Main.cs"
     base_main.write_text(base_main.read_text().replace("int a = 1;", "int a = 3;"))
     assert runner.invoke(cli.app, ["apply", "--force"]).exit_code == 1
+
+
+def test_diff_refuses_to_recreate_patches_for_moved_project_source(repo):
+    repo.make_base(BASE_FILES)
+    old_source = "Aether/Feature.cs"
+    write_files(repo.src, {old_source: "class Feature {}\n"})
+    repo.diff()
+
+    (repo.patches / f"{old_source}.patch").unlink()
+    tracked_source = "client/Terraria/Aether/Feature.cs"
+    write_files(repo.root, {tracked_source: "class Feature { int revision; }\n"})
+
+    result = runner.invoke(cli.app, ["diff"])
+    assert result.exit_code == 1
+    assert f"src/{old_source} has no counterpart in .base/" in str(result.exception)
+    assert not (repo.patches / f"{old_source}.patch").exists()
+
+    assert runner.invoke(cli.app, ["apply"]).exit_code == 0
+    assert not (repo.src / old_source).exists()
+    assert "int revision;" in (repo.root / tracked_source).read_text()
+    assert runner.invoke(cli.app, ["diff", "--check"]).exit_code == 0
 
 
 def test_main_reports_errors_without_traceback(repo, monkeypatch, capsys):

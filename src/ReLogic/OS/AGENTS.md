@@ -25,5 +25,5 @@ A small service locator over the operating system.
 ## Editing notes
 
 - Adding a service: define the interface here, implement it, register it in `LinuxPlatform`, `OsxPlatform` and `FnaWindowsPlatform`, then use `Platform.Get<T>()` from Terraria.
-- `Windows/FnaWindowsPlatform` (Aether's) is Windows under FNA: the SDL-based Linux clipboard and window services, `FnaIme`, and the Windows `PathService` (Documents/My Games).
+- Aether's [FnaWindowsPlatform](../../../client/ReLogic/FnaWindowsPlatform.cs) uses the SDL-based Linux clipboard and window services, `FnaIme`, and the Windows `PathService` (Documents/My Games).
   Re-Logic's `WindowsPlatform` (window-message hook, Imm32 IME, `WindowsMouseNotifier`) assumes XNA's WinForms window and is never constructed.

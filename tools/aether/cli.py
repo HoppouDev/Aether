@@ -46,7 +46,8 @@ from .update import update_available
 from .util import AetherError, log, require_executables, run
 
 app = typer.Typer(
-    help=(package_doc or "").split("\n\n")[0] + " Edit src/, commit patches/.",
+    help=(package_doc or "").split("\n\n")[0]
+    + " Edit Aether code in client/ and patch game code in src/.",
     no_args_is_help=True,
     add_completion=False,
     pretty_exceptions_enable=False,
@@ -497,7 +498,7 @@ def control(
     The input goes straight into the game (no window focus or system input): mouse moves and
     drags, keys, typing, a synthetic gamepad, screenshots and state. Start a client for it with
     e.g. `./aether run --control 47321`. The commands are listed in
-    src/Aether/Testing/ControlServer.cs; agents can use the `aether mcp` server instead.
+    client/Terraria/Aether/Testing/ControlServer.cs. Agents can use the `aether mcp` server instead.
     """
     game = Control(port)
     lines = commands if commands else (line.rstrip("\n") for line in sys.stdin)
@@ -535,14 +536,24 @@ def diff(
         bool, typer.Option("--quiet", help="Don't list changed patch files.")
     ] = False,
 ) -> None:
-    """Regenerate patches/ from src/ vs .base/."""
+    """Regenerate game patches from src/ vs .base/. Put new C# files in client/."""
     require_executables("diff")
     require_base()
     if not paths.SRC.is_dir():
         raise AetherError(
             "src/ doesn't exist. Run `./aether apply` (or `./aether setup`)."
         )
-    new_files = regenerated_patch_set()
+    source_changes = changed_files(paths.SRC, paths.BASE)
+    new_source = next(
+        (path for path in source_changes[1] if path.suffix.lower() == ".cs"), None
+    )
+    if new_source is not None:
+        raise AetherError(
+            f"src/{new_source.as_posix()} has no counterpart in .base/.\n"
+            "Put new C# files in the tracked client project. If this is a leftover "
+            "from an older checkout, run `./aether apply` after moving any local edits to client/."
+        )
+    new_files = regenerated_patch_set(source_changes)
     base_version = load_base_json()["game_version"]
     if check:
         if new_files != patch_files(paths.PATCHES):

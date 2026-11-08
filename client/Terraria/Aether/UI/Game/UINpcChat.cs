@@ -1,0 +1,342 @@
+using System;
+using System.Collections.Generic;
+using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
+using ReLogic.Graphics;
+using Terraria;
+using Terraria.Audio;
+using Terraria.GameContent;
+using Terraria.GameContent.UI;
+using Terraria.GameInput;
+using Terraria.UI;
+using Terraria.GameContent.UI.Chat;
+using Terraria.UI.Chat;
+using Terraria.UI.Gamepad;
+using ReLogic.OS;
+using ReLogic.Localization.IME;
+
+namespace Aether.UI.Game;
+
+/// <summary>
+/// The NPC chat / sign panel (NPCChatPanel.Draw): the dialogue box with its text, the NPC's portrait,
+/// the corner item (or housing button), and a row of interaction buttons (Shop, Happiness, Quest, ...)
+/// that grow while hovered. The panel's text wrapping and the list of interactions are still prepared
+/// by NPCChatPanel; this draws them and handles input.
+/// </summary>
+public class UINpcChat : UIGameScreen
+{
+    public static readonly UINpcChat Instance = new UINpcChat();
+
+    private const int PanelWidth = 500;
+
+    private NPCChatPanel _panel;
+
+    private Rectangle _area;
+
+    private readonly List<UINpcChatButton> _buttons = new List<UINpcChatButton>();
+
+    private UINpcChatCornerItem _cornerItem;
+
+    /// <summary>Called by NPCChatPanel.Draw in place of its body.</summary>
+    public static bool Draw(NPCChatPanel panel)
+    {
+        InGamePreview.Update();
+        if (!UIInventorySlots.Enabled)
+        {
+            return false;
+        }
+        if (!panel.CanHoldConversation())
+        {
+            panel.Close();
+            return true;
+        }
+        Instance._panel = panel;
+        GameScreens.Draw(Instance, Main.spriteBatch);
+        return true;
+    }
+
+    public override void OnInitialize()
+    {
+        _cornerItem = new UINpcChatCornerItem();
+        Append(_cornerItem);
+    }
+
+    public override void UpdateState()
+    {
+        _panel.PrepareText();
+        _panel.PrepareInteractions();
+        _panel.PrepareVirtualKeyboard();
+        int lines = _panel._neededInteractionLines;
+        _area = new Rectangle(Main.screenWidth / 2 - PanelWidth / 2, 100, PanelWidth, 30 + 30 * _panel._textDisplayCache.AmountOfLines + 30 * lines + Math.Max(0, 2 * (lines - 1)));
+        _cornerItem.BottomRight = new Vector2(_area.Right, _area.Bottom);
+        while (_buttons.Count < _panel._interactions.Count)
+        {
+            UINpcChatButton button = new UINpcChatButton();
+            _buttons.Add(button);
+            Append(button);
+        }
+        if (!PlayerInput.IgnoreMouseInterface && _area.Contains(new Point(Main.mouseX, Main.mouseY)))
+        {
+            Main.LocalPlayer.mouseInterface = true;
+        }
+    }
+
+    // The box: its top part stretched to the text's height, then its bottom edge.
+    protected override void DrawSelf(SpriteBatch spriteBatch)
+    {
+        Color back = new Color(200, 200, 200, 200);
+        int grey = (Main.mouseTextColor * 2 + 255) / 3;
+        Texture2D texture = TextureAssets.ChatBack.Value;
+        spriteBatch.Draw(texture, _area.TopLeft(), new Rectangle(0, 0, texture.Width, _area.Height - 30), back);
+        spriteBatch.Draw(texture, new Vector2(_area.X, _area.Bottom - 30), new Rectangle(0, texture.Height - 30, texture.Width, 30), back);
+        DrawText(spriteBatch, new Color(grey, grey, grey, grey));
+        Main.DrawNPCPortrait(back, _area.TopLeft());
+    }
+
+    // One per line of text (at most 10), so tagged lines are parsed once, not every frame.
+    private readonly ChatText[] _lines = new ChatText[10];
+
+    private readonly ChatText _caret = new ChatText();
+
+    private readonly ChatText _composition = new ChatText();
+
+    /// <summary>The panel's text, as NPCChatPanel.DrawText draws it: the wrapped lines, and while editing a sign the IME composition and the blinking caret.</summary>
+    private void DrawText(SpriteBatch spriteBatch, Color textColor)
+    {
+        Vector2 topLeft = _area.TopLeft() + new Vector2(20f, 20f);
+        DynamicSpriteFont font = FontAssets.MouseText.Value;
+        string[] textLines = _panel._textDisplayCache.TextLines;
+        int amountOfLines = _panel._textDisplayCache.AmountOfLines;
+        for (int i = 0; i < amountOfLines; i++)
+        {
+            string text = textLines[i];
+            if (text == null)
+            {
+                continue;
+            }
+            if (_panel.allowRichText)
+            {
+                if (i >= _lines.Length)
+                {
+                    ChatManager.DrawColorCodedStringWithShadow(spriteBatch, font, text, topLeft + new Vector2(0f, i * 30), textColor, 0f, Vector2.Zero, Vector2.One);
+                    continue;
+                }
+                (_lines[i] ??= new ChatText()).DrawWithShadow(spriteBatch, font, text, topLeft + new Vector2(0f, i * 30), textColor, 0f, Vector2.Zero, Vector2.One);
+            }
+            else
+            {
+                Utils.DrawBorderStringFourWay(spriteBatch, font, text, topLeft.X, topLeft.Y + (float)(i * 30), textColor, Color.Black, Vector2.Zero);
+            }
+        }
+        if (!Main.editSign || textLines[amountOfLines - 1] == null)
+        {
+            return;
+        }
+        Vector2 caret = topLeft + new Vector2(0f, (amountOfLines - 1) * 30);
+        caret.X += font.MeasureString(textLines[amountOfLines - 1]).X;
+        string composition = Platform.Get<IImeService>().CompositionString;
+        if (composition != null && composition.Length > 0)
+        {
+            float width = font.MeasureString(composition).X;
+            if (width + caret.X - topLeft.X > 460f)
+            {
+                caret = topLeft + new Vector2(0f, amountOfLines * 30);
+            }
+            _composition.DrawWithShadow(spriteBatch, font, composition, caret, Main.imeCompositionStringColor, 0f, Vector2.Zero, Vector2.One);
+            Main.instance.SetIMEPanelAnchor(caret + new Vector2(0f, 54f), 0f);
+            caret.X += width;
+        }
+        if (++_panel.textBlinkerCount >= 20)
+        {
+            _panel.textBlinkerState = (_panel.textBlinkerState == 0) ? 1 : 0;
+            _panel.textBlinkerCount = 0;
+        }
+        if (_panel.textBlinkerState == 1)
+        {
+            _caret.DrawWithShadow(spriteBatch, font, "|", caret, textColor, 0f, Vector2.Zero, Vector2.One);
+        }
+    }
+
+    // Buttons flow four to a line along the bottom of the box; ones with a price leave room for it.
+    protected override void DrawChildren(SpriteBatch spriteBatch)
+    {
+        _cornerItem.DrawItem(spriteBatch);
+        List<NPCInteraction> interactions = _panel._interactions;
+        int lines = _panel._neededInteractionLines;
+        UILinkPointNavigator.Shortcuts.NPCCHAT_ButtonsNew = true;
+        UILinkPointNavigator.Shortcuts.NPCCHAT_ButtonsCount = interactions.Count;
+        Vector2 origin = new Vector2(_area.Left, _area.Bottom) + new Vector2(30f, -22 * lines + Math.Max(0, 2 * (lines - 1)) - 4);
+        Rectangle slot = new Rectangle((int)origin.X, (int)origin.Y, 100, 22);
+        int hovered = -1;
+        for (int i = 0; i < interactions.Count; i++)
+        {
+            if (i % 4 == 0)
+            {
+                slot.X = (int)origin.X;
+                slot.Y = i / 4 * 22 + (int)origin.Y;
+            }
+            if (_buttons[i].DrawButton(spriteBatch, interactions[i], i, ref slot))
+            {
+                hovered = i;
+            }
+        }
+        if (_panel._lastHovered != hovered && (!PlayerInput.UsingGamepad || hovered != -1))
+        {
+            SoundEngine.PlaySound(12);
+        }
+        _panel._lastHovered = hovered;
+    }
+}
+
+/// <summary>One NPC chat button: its text (scaled down if long, up while hovered) and its price, if any.</summary>
+public class UINpcChatButton : UIElement
+{
+    private const float Scale = 0.9f;
+
+    // The button's text, measured and split once rather than every frame.
+    private readonly ChatText _measured = new ChatText();
+
+    private readonly SplitChatText _drawn = new SplitChatText();
+
+    public UINpcChatButton()
+    {
+        IgnoresMouseInteraction = true;
+    }
+
+    /// <summary>Draws the button in slot (advancing slot past it) and returns whether it's hovered.</summary>
+    public bool DrawButton(SpriteBatch spriteBatch, NPCInteraction interaction, int index, ref Rectangle slot)
+    {
+        DynamicSpriteFont font = FontAssets.MouseText.Value;
+        byte c = Main.mouseTextColor;
+        Color color = new Color(c, (int)((double)(int)c / 1.1), c / 2, c);
+        string text = interaction.GetText();
+        bool hasPrice = interaction.TryAddCoins(ref color, out var price);
+        Vector2 size = _measured.Measure(font, text, new Vector2(Scale));
+        float fit = (size.X > 260f) ? (260f / size.X) : 1f;
+        slot.Width = (int)(size.X * fit);
+        bool hovered = slot.Contains(new Point(Main.mouseX, Main.mouseY));
+        Left.Set(slot.X, 0f);
+        Top.Set(slot.Y, 0f);
+        Vector2 position = new Vector2(slot.Left, slot.Center.Y);
+        if (hovered)
+        {
+            position.X -= (int)((1.2f - Scale) * (float)slot.Width * 0.5f);
+            size *= 1.2f / Scale;
+        }
+        Vector2 scale = new Vector2(hovered ? 1.2f : Scale) * fit;
+        Vector2 origin = new Vector2(0f, _measured.Measure(font, text, new Vector2(Scale)).Y * 0.5f);
+        _drawn.DrawShadow(spriteBatch, font, text, position, hovered ? Color.Brown : Color.Black, 0f, origin, scale);
+        _drawn.Draw(spriteBatch, font, text, position, color, 0f, origin, scale);
+        UILinkPointNavigator.SetPosition(2500 + index, slot.Center.ToVector2());
+        slot.X += slot.Width + 30;
+        if (interaction.ShowExclamation)
+        {
+            Utils.DrawNotificationIcon(spriteBatch, position + new Vector2(size.X * fit, 0f) + new Vector2(8f, 0f), 0f);
+        }
+        if (hasPrice)
+        {
+            ItemSlot.DrawMoney(spriteBatch, "", slot.X - 45, slot.Y - 44, CachedText.CoinsSplit(price), horizontal: true);
+            slot.X += 106;
+        }
+        if (!PlayerInput.IgnoreMouseInterface && hovered)
+        {
+            Player player = Main.LocalPlayer;
+            player.mouseInterface = true;
+            player.releaseUseItem = false;
+            if (Main.mouseLeft && Main.mouseLeftRelease)
+            {
+                Main.mouseLeftRelease = false;
+                interaction.Interact();
+            }
+        }
+        return hovered;
+    }
+}
+
+/// <summary>
+/// The NPC chat's bottom-right corner (Main.DrawNPCChatBottomRightItem): an item the NPC mentions
+/// (click: link it in chat), or (npcChatCornerItem -1) a button to the housing page.
+/// </summary>
+public class UINpcChatCornerItem : UIElement
+{
+    public Vector2 BottomRight;
+
+    // The item shown, set up once per item type (an Item is large to make every frame).
+    private readonly Item _item = new Item();
+
+    public UINpcChatCornerItem()
+    {
+        IgnoresMouseInteraction = true;
+    }
+
+    private static float FitScale(Rectangle frame)
+    {
+        if (frame.Width > 32 || frame.Height > 32)
+        {
+            return (frame.Width <= frame.Height) ? (32f / (float)frame.Height) : (32f / (float)frame.Width);
+        }
+        return 1f;
+    }
+
+    private static bool IsHovered(Vector2 bottomRight, Rectangle frame, float scale)
+    {
+        int width = (int)((float)frame.Width * scale);
+        int height = (int)((float)frame.Height * scale);
+        return new Rectangle((int)bottomRight.X - width, (int)bottomRight.Y - height, width, height).Contains(new Point(Main.mouseX, Main.mouseY));
+    }
+
+    public void DrawItem(SpriteBatch spriteBatch)
+    {
+        if (Main.npcChatCornerItem > 0)
+        {
+            Vector2 corner = BottomRight - Vector2.One * 8f;
+            if (_item.type != Main.npcChatCornerItem)
+            {
+                _item.SetDefaults(Main.npcChatCornerItem);
+            }
+            Item item = _item;
+            Main.GetItemDrawFrame(item.type, out var texture, out var frame);
+            float scale = FitScale(frame);
+            spriteBatch.Draw(texture, corner, frame, item.GetAlpha(Color.White), 0f, frame.Size(), scale, SpriteEffects.None, 0f);
+            if (item.color != default(Color))
+            {
+                spriteBatch.Draw(texture, corner, frame, item.GetColor(item.color), 0f, frame.Size(), scale, SpriteEffects.None, 0f);
+            }
+            if (!IsHovered(corner, frame, scale))
+            {
+                return;
+            }
+            Main.cursorOverride = 2;
+            if (Main.mouseLeftRelease && Main.mouseLeft)
+            {
+                if (!Main.drawingPlayerChat)
+                {
+                    Main.OpenPlayerChat();
+                }
+                if (ChatManager.AddChatText(FontAssets.MouseText.Value, ItemTagHandler.GenerateTag(item), Vector2.One))
+                {
+                    SoundEngine.PlaySound(12);
+                }
+            }
+            Main.instance.MouseText(item.Name, -11, 0);
+        }
+        else if (Main.npcChatCornerItem == -1)
+        {
+            Vector2 corner = BottomRight - Vector2.One * 12f;
+            Texture2D texture = TextureAssets.EquipPage[5].Value;
+            Rectangle frame = texture.Frame();
+            float scale = FitScale(frame);
+            if (IsHovered(corner, frame, scale))
+            {
+                spriteBatch.Draw(TextureAssets.EquipPage[7].Value, corner, null, Main.OurFavoriteColor, 0f, frame.Size() + new Vector2(2f), scale, SpriteEffects.None, 0f);
+                if (Main.mouseLeftRelease && Main.mouseLeft)
+                {
+                    Main.CloseNPCChatOrSign(quiet: true);
+                    Player.OpenInventory();
+                    Main.EquipPageSelected = 1;
+                }
+            }
+            spriteBatch.Draw(texture, corner, frame, Color.White, 0f, frame.Size(), scale, SpriteEffects.None, 0f);
+        }
+    }
+}

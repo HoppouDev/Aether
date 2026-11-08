@@ -1,0 +1,107 @@
+using System;
+using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
+using Terraria;
+using Terraria.Audio;
+using Terraria.GameInput;
+using Terraria.UI;
+
+namespace Aether.UI.Game;
+
+/// <summary>
+/// A small toggle drawn over an equipment slot's corner (accessory visibility, pet and light
+/// visibility, the minecart upgrade), like the legacy ones in Main.DrawInventory: only there while the
+/// cursor holds no item, it takes the click from the slot under it and toggles on press, and names the
+/// state in the hover text.
+/// </summary>
+public class UIEquipToggle : UIElement
+{
+    private readonly Func<Texture2D> _texture;
+
+    private readonly Func<bool> _isOn;
+
+    private readonly Action _toggle;
+
+    private readonly Func<int, string> _hoverText;
+
+    private readonly Color _tint;
+
+    private Rectangle _area;
+
+    /// <summary>When set, only shown when this is true (as well as the cursor being empty).</summary>
+    public Func<bool> IsAvailable;
+
+    public UIEquipToggle(Func<Texture2D> texture, Func<bool> isOn, Action toggle, Func<int, string> hoverText, Color tint)
+    {
+        _texture = texture;
+        _isOn = isOn;
+        _toggle = toggle;
+        _hoverText = hoverText;
+        _tint = tint;
+    }
+
+    /// <summary>The click area (and drawing position), in screen coordinates.</summary>
+    public void Place(Rectangle area)
+    {
+        _area = area;
+        Left.Set(area.X, 0f);
+        Top.Set(area.Y, 0f);
+        Width.Set(area.Width, 0f);
+        Height.Set(area.Height, 0f);
+    }
+
+    private bool Shown
+    {
+        get
+        {
+            if (Main.mouseItem.IsAir)
+            {
+                if (IsAvailable != null)
+                {
+                    return IsAvailable();
+                }
+                return true;
+            }
+            return false;
+        }
+    }
+
+    public override bool ContainsPoint(Vector2 point)
+    {
+        if (Shown && !PlayerInput.IgnoreMouseInterface)
+        {
+            return _area.Contains(point.ToPoint());
+        }
+        return false;
+    }
+
+    protected override void DrawSelf(SpriteBatch spriteBatch)
+    {
+        if (!Shown)
+        {
+            return;
+        }
+        int state = 0;
+        if (IsMouseHovering)
+        {
+            Main.player[Main.myPlayer].mouseInterface = true;
+            if (Main.mouseLeft && Main.mouseLeftRelease)
+            {
+                _toggle();
+                Main.mouseLeftRelease = false;
+                SoundEngine.PlaySound(12);
+                if (Main.netMode == 1)
+                {
+                    NetMessage.SendData(4, -1, -1, null, Main.myPlayer);
+                }
+            }
+            state = _isOn() ? 1 : 2;
+        }
+        spriteBatch.Draw(_texture(), new Vector2(_area.X, _area.Y), _tint);
+        if (state > 0)
+        {
+            Main.ClearHoverItem();
+            Main.hoverItemName = _hoverText(state);
+        }
+    }
+}

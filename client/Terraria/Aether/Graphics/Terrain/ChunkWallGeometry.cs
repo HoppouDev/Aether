@@ -1,0 +1,91 @@
+using Terraria;
+using System.Threading;
+using System;
+using Microsoft.Xna.Framework;
+
+namespace Aether.Graphics.Terrain;
+
+// Ordinary wall records, independent of live visibility, light, textures and Main.
+// Each material retains the original y/x append order, including active layers.
+public sealed class ChunkWallGeometry
+{
+    public const int MaterialCount = 53 * 2;
+    public const int MaximumBytes = 4096 * (192 + 3) + MaterialCount * 68 + 1024;
+    private readonly TerrainVertex[][] vertices;
+    private readonly byte[] materials;
+    private readonly ushort[] starts;
+    private readonly Vector2[] extents;
+    private readonly int[] used;
+    public bool Packed { get; }
+    public int Count { get; }
+    public int Bytes { get; }
+    public int[] UsedMaterials => used;
+    // Broad static-wall caching increased ordered submissions in flight tests.
+    // Keep those walls compatible; compact slots cover the validated appearances.
+    private static int Slot(int wall) => wall switch
+    {
+        >=1 and <=44 => wall-1,
+        225 => 44,
+        318 => 45,
+        >=341 and <=347 => wall-341+46,
+        _ => -1
+    };
+    public static int Material(int wall, bool active)
+    { int slot=Slot(wall); return slot>=0 ? slot*2+(active?1:0) : -1; }
+    public static int Wall(int material)
+    {int slot=material/2;return slot<44?slot+1:slot==44?225:slot==45?318:slot-46+341;}
+    public int VertexCount(int material)=>vertices[material].Length*(Packed?6:1);
+    public TerrainVertex[] Vertices(int material)
+    {if(Packed)throw new InvalidOperationException("Packed records require compute expansion");return vertices[material];}
+    internal TerrainVertex[] UploadData(int material) => vertices[material];
+    public Vector2 Extent(int material) => extents[material];
+    public bool TryMatch(int x, int y, int material, int frameX, int frameY, out int first)
+    {
+        first = 0;
+        if ((uint)x>=64 || (uint)y>=64 || material<0 || material>=MaterialCount || materials[x*64+y]!=material+1) return false;
+        first=starts[x*64+y]; var uv=vertices[material][Packed?first/6:first].TextureUV;
+        return uv.X==frameX && uv.Y==frameY;
+    }
+    public static ChunkWallGeometry Build(ChunkSnapshot snapshot, CancellationToken token,bool packed=false)
+    {
+        var tiles=snapshot.Tiles; var counts=new int[MaterialCount]; var materials=new byte[4096]; var starts=new ushort[4096];
+        var extents=new Vector2[MaterialCount]; int total=0;
+        for(int y=0;y<64;y++)
+        {
+            token.ThrowIfCancellationRequested();
+            for(int x=0;x<64;x++)
+            {
+                var tile=tiles[(x+1)*ChunkSnapshot.Side+y+1]; int material=Material(tile.Wall,(tile.Header&32)!=0);
+                if(material<0) continue;
+                materials[x*64+y]=(byte)(material+1); counts[material]++; total++;
+                extents[material]=Vector2.Max(extents[material],new((tile.Header2&15)*36+32,(tile.Header3&7)*36+32));
+            }
+        }
+        var result=new TerrainVertex[MaterialCount][]; var used=new System.Collections.Generic.List<int>();
+        for(int i=0;i<MaterialCount;i++) { result[i]=counts[i]==0?new TerrainVertex[0]:new TerrainVertex[counts[i]*(packed?1:6)]; if(counts[i]!=0)used.Add(i); }
+        Array.Clear(counts, 0, counts.Length);
+        for(int y=0;y<64;y++)
+        {
+            token.ThrowIfCancellationRequested();
+            for(int x=0;x<64;x++)
+            {
+                int material=materials[x*64+y]-1; if(material<0)continue;
+                var tile=tiles[(x+1)*ChunkSnapshot.Side+y+1];
+                Vector2 position=new((snapshot.Key.X*64+x)*16-8,(snapshot.Key.Y*64+y)*16-8);
+                Vector2 uv=new((tile.Header2&15)*36,(tile.Header3&7)*36);
+                uint anchor=(uint)(x|(y<<8));
+                TerrainVertex Vertex(int dx,int dy)=>new(position+new Vector2(dx,dy),uv+new Vector2(dx,dy),new(dx/32f,dy/32f),anchor);
+                var output=result[material]; int at=counts[material]; starts[x*64+y]=(ushort)at;
+                if(packed){output[at/6]=new(position,uv,Vector2.Zero,anchor,32);counts[material]+=6;continue;}
+                output[at]=Vertex(0,0); output[at+1]=Vertex(32,0); output[at+2]=Vertex(32,32);
+                output[at+3]=output[at]; output[at+4]=output[at+2]; output[at+5]=Vertex(0,32); counts[material]+=6;
+            }
+        }
+        return new(result,materials,starts,extents,used.ToArray(),total,packed);
+    }
+    private ChunkWallGeometry(TerrainVertex[][] vertices,byte[] materials,ushort[] starts,Vector2[] extents,int[] used,int count,bool packed)
+    {
+        this.vertices=vertices;this.materials=materials;this.starts=starts;this.extents=extents;this.used=used;Count=count;Packed=packed;
+        Bytes=count*(packed?32:192)+4096*3+MaterialCount*64+used.Length*4+256;
+    }
+}

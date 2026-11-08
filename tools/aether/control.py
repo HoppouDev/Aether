@@ -3,7 +3,7 @@
 The game listens on 127.0.0.1 and runs one command per line on its main thread, feeding the
 input to the game in place of the real devices: no window focus, cursor movement or system
 input is involved. Each command is answered with one line once it has finished (`ok [RESULT]`
-or `error MESSAGE`). The protocol is documented in src/Aether/Testing/ControlServer.cs.
+or `error MESSAGE`). The protocol is documented in client/Terraria/Aether/Testing/ControlServer.cs.
 """
 
 import json

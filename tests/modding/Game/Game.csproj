@@ -6,7 +6,7 @@
     <AssemblyVersion>1.4.5.8</AssemblyVersion>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="../../../src/Aether/NativeLibraries.cs" Link="NativeLibraries.cs" />
+    <Compile Include="../../../client/Terraria/Aether/NativeLibraries.cs" Link="NativeLibraries.cs" />
     <ProjectReference Include="../../../client/Modding/Aether.Modding.csproj" />
   </ItemGroup>
 </Project>

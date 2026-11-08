@@ -1,5 +1,5 @@
-# Game code and data are never committed; only patches/ is.
-# src/ is the editable decompiled tree; its AGENTS.md docs are ours and stay tracked.
+# src/ is the editable game tree. Track its AGENTS.md docs and keep game edits in patches/.
+# Aether's own client source lives under client/.
 src/**
 !src/**/
 !src/**/AGENTS.md

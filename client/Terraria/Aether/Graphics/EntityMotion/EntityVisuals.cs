@@ -1,0 +1,241 @@
+using Terraria;
+using Microsoft.Xna.Framework;
+using System;
+using System.Collections.Concurrent;
+using System.Diagnostics;
+using System.Reflection;
+using System.Threading;
+using Microsoft.Xna.Framework.Graphics;
+using Terraria.Graphics.Capture;
+using Terraria.DataStructures;
+using Terraria.Graphics;
+
+namespace Aether.Graphics.EntityMotion;
+
+public static class EntityVisuals
+{
+    private struct Track
+    {
+        public Entity? Entity;
+        public object? Identity;
+        public MotionHistory History;
+        public Vector2 Offset;
+        public int Age;
+    }
+    private static Track[] players=new Track[0],npcs=new Track[0],projectiles=new Track[0],items=new Track[0];
+    private static readonly ConcurrentQueue<Entity> invalidations=new();
+    private static int queued,tracking,resetRequested;
+    private static int owner;
+    private static object? world;
+    private static int worldId;
+    private static long lastCommit;
+    private static bool frameEnabled,cameraValid;
+    private static Player? cameraTarget;
+    private static Vector2 rawCamera;
+    private static readonly Action<SpriteBatch,Vector2>? setOffset;
+    private static readonly Func<SpriteBatch,Vector2>? getOffset;
+    public static bool Supported=>setOffset is not null&&getOffset is not null;
+    public static bool Active=>frameEnabled;
+    public static float Fraction { get; private set; }
+    static EntityVisuals()
+    {
+        // A legacy/unpatched TNA remains buildable and selects ordinary drawing.
+        try
+        {
+            var property=typeof(SpriteBatch).GetProperty("DrawOffsetEXT");
+            if(property?.PropertyType!=typeof(Vector2)||property.GetSetMethod() is null||property.GetGetMethod() is null)return;
+            setOffset=(Action<SpriteBatch,Vector2>)Delegate.CreateDelegate(typeof(Action<SpriteBatch,Vector2>), property.GetSetMethod()!);
+            getOffset=(Func<SpriteBatch,Vector2>)Delegate.CreateDelegate(typeof(Func<SpriteBatch,Vector2>), property.GetGetMethod()!);
+        }
+        catch(Exception exception) when(exception is ArgumentException or MemberAccessException or NotSupportedException) { }
+    }
+    private static bool Requested=>Supported&&GraphicsSettings.SmoothEntityMovement&&!Main.dedServ;
+    private static void CheckOwner()
+    {
+        int current=Thread.CurrentThread.ManagedThreadId;if(owner==0)owner=current;
+        if(owner!=current)throw new InvalidOperationException("Entity presentation belongs to the main thread");
+    }
+    private static bool CanDraw=>Requested&&!Main.gameMenu&&!Main.gamePaused&&!WorldGen.generatingWorld&&
+        !CaptureManager.Instance.Active&&!Main.mapFullscreen;
+    private static void Clear()
+    {
+        Array.Clear(players, 0, players.Length);Array.Clear(npcs, 0, npcs.Length);Array.Clear(projectiles, 0, projectiles.Length);Array.Clear(items, 0, items.Length);
+        world=null;lastCommit=0;cameraValid=false;cameraTarget=null;
+    }
+    // Spawn/teleport notifications can originate on a loader/network thread.
+    // Only queue identities here; all world reads and history writes stay local
+    // to the main update/draw thread.
+    public static void Invalidate(Entity entity)
+    {
+        if(Thread.VolatileRead(ref tracking)==0)return;
+        if(Interlocked.Increment(ref queued)>2048)
+        {Interlocked.Decrement(ref queued);Interlocked.Exchange(ref resetRequested,1);return;}
+        invalidations.Enqueue(entity);
+    }
+    private static Track[]? Group(Entity entity)=>entity switch
+    {Player=>players,NPC=>npcs,Projectile=>projectiles,WorldItem=>items,_=>null};
+    private static void Drain()
+    {
+        if(Interlocked.Exchange(ref resetRequested,0)!=0)Clear();
+        while(invalidations.TryDequeue(out var entity))
+        {
+            Interlocked.Decrement(ref queued);
+            var group=Group(entity);int index=entity.whoAmI;
+            if(group is not null&&(uint)index<(uint)group.Length&&ReferenceEquals(group[index].Entity,entity))group[index]=default;
+            if(ReferenceEquals(cameraTarget,entity)){cameraValid=false;cameraTarget=null;}
+        }
+    }
+    private static Vector2 Origin(Entity entity)=>entity switch
+    {
+        Player p=>p.position+p.netOffset+new Vector2(0,p.gfxOffY),
+        NPC n=>n.position+n.netOffset,
+        _=>entity.position
+    };
+    private static long Key(Entity entity)=>entity switch
+    {
+        Player p=>((long)(p.mount.Active?p.mount.Type+1:0)<<4)|(p.dead?1:0)|(p.ghost?2:0),
+        NPC n=>((long)n.type<<32)|(uint)n.netID,
+        Projectile p=>((long)p.type<<32)|(uint)p.key,
+        WorldItem i=>i.type,
+        _=>0
+    };
+    private static object Identity(Entity entity)=>entity is WorldItem item?item.inner:entity;
+    private static bool Alive(Entity entity)=>entity switch
+    {Player p=>p.active,NPC n=>n.active,Projectile p=>p.active&&!p.isAPreviewDisplayDoll,WorldItem i=>i.active,_=>false};
+    private static void Capture(Track[] group,Entity[] entities)
+    {
+        for(int i=0;i<group.Length&&i<entities.Length;i++)
+        {
+            var entity=entities[i];ref var track=ref group[i];
+            if(entity is null||!Alive(entity)){track=default;continue;}
+            object identity=Identity(entity);
+            if(!ReferenceEquals(track.Entity,entity)||!ReferenceEquals(track.Identity,identity))track=default;
+            if(entity is WorldItem lifetime&&lifetime.timeSinceItemSpawned<track.Age)track.History.Clear();
+            track.Entity=entity;track.Identity=identity;
+            track.Age=entity is WorldItem age?age.timeSinceItemSpawned:0;
+            float expected=entity.velocity.Length()*(entity is Projectile p?p.extraUpdates+1:1);
+            track.History.Sample(Origin(entity),entity.velocity,Key(entity),expected);
+        }
+    }
+    public static void CommitUpdate()
+    {
+        CheckOwner();
+        if(!Requested||Main.gameMenu||WorldGen.generatingWorld)return;
+        Drain();
+        if(!ReferenceEquals(world,Main.tile)||worldId!=Main.worldID)
+        {Clear();world=Main.tile;worldId=Main.worldID;}
+        if(players.Length!=Main.maxPlayers)players=new Track[Main.maxPlayers];
+        if(npcs.Length!=Main.maxNPCs)npcs=new Track[Main.maxNPCs];
+        if(projectiles.Length!=Main.maxProjectiles)projectiles=new Track[Main.maxProjectiles];
+        if(items.Length!=Main.maxItems)items=new Track[Main.maxItems];
+        Capture(players,Main.player);Capture(npcs,Main.npc);Capture(projectiles,Main.projectile);Capture(items,Main.item);
+        lastCommit=Stopwatch.GetTimestamp();
+    }
+    private static void Evaluate(Track[] group)
+    {
+        for (int i = 0; i < group.Length; i++)
+        {
+            ref Track track = ref group[i];
+            track.Offset=Vector2.Zero;
+            var entity=track.Entity;if(entity is null||!Alive(entity))continue;
+            if(!ReferenceEquals(track.Identity,Identity(entity))||!track.History.Matches(Origin(entity),Key(entity))||
+                (entity is WorldItem age&&age.timeSinceItemSpawned<track.Age))
+            {track.History.Clear();continue;}
+            bool local=ReferenceEquals(entity,Main.LocalPlayer)&&entity is Player p&&!p.dead;
+            Vector2 velocity = local ? LocalMovementPreview.Velocity((Player)entity) : entity.velocity;
+            if(local&&entity is Player step&&step.velocity.Y==0&&step.gfxOffY!=0)
+                velocity.Y=GraphicsMath.Clamp(track.History.Current.Y-track.History.Previous.Y,-Math.Abs(step.gfxOffY),Math.Abs(step.gfxOffY));
+            track.Offset=track.History.Offset(Origin(entity),Fraction,local,velocity);
+            if(local)
+                track.Offset=LocalMovementPreview.Clip((Player)entity,track.Offset);
+        }
+    }
+    public static void BeginFrame()
+    {
+        CheckOwner();
+        frameEnabled=false;Drain();
+        if(world is not null&&(!ReferenceEquals(world,Main.tile)||worldId!=Main.worldID))Clear();
+        if(!CanDraw)
+        {
+            Thread.VolatileWrite(ref tracking,0);Clear();
+            if(Main.GameViewMatrix is not null)Main.GameViewMatrix.RenderOffset=Vector2.Zero;
+            return;
+        }
+        Thread.VolatileWrite(ref tracking,1);
+        Fraction = lastCommit == 0 ? 1f : GraphicsMath.Clamp((float)((Stopwatch.GetTimestamp() - lastCommit) * 60.0 / Stopwatch.Frequency), 0f, 1f);
+        bool stale=lastCommit==0||Stopwatch.GetTimestamp()-lastCommit>Stopwatch.Frequency/20;
+        if(stale)Fraction=1;
+        Evaluate(players);Evaluate(npcs);Evaluate(projectiles);Evaluate(items);
+        if (stale && (uint)Main.myPlayer < (uint)players.Length)
+            players[Main.myPlayer].Offset = Vector2.Zero;
+        // A held projectile must remain attached to its owner's rendered body.
+        for(int i=0;i<players.Length;i++)
+        {
+            if(players[i].Entity is not Player p)continue;
+            int held=p.heldProj;
+            if((uint)held<(uint)projectiles.Length&&projectiles[held].Entity is Projectile shot&&shot.owner==i)
+                projectiles[held].Offset=players[i].Offset;
+        }
+        frameEnabled=true;
+    }
+    public static Vector2 Offset(Entity entity)
+    {
+        if(!frameEnabled)return Vector2.Zero;
+        var group=Group(entity);int index=entity.whoAmI;
+        return group is not null&&(uint)index<(uint)group.Length&&ReferenceEquals(group[index].Entity,entity)&&
+            group[index].History.MatchesIdentity(Key(entity))
+            ?group[index].Offset:Vector2.Zero;
+    }
+    public static RenderScope Enter(Entity entity,SpriteBatch batch)
+    {
+        CheckOwner();
+        if(!frameEnabled)return default;
+        var group=Group(entity);int index=entity.whoAmI;
+        if(group is null||(uint)index>=(uint)group.Length||!ReferenceEquals(group[index].Entity,entity))return default;
+        var offset=Offset(entity);
+        return new RenderScope(batch,Main.spriteBuffer,offset);
+    }
+    public readonly struct RenderScope:IDisposable
+    {
+        private readonly SpriteBatch? batch;
+        private readonly SpriteDrawBuffer? buffer;
+        private readonly SpriteViewMatrix? view;
+        private readonly Vector2 previousBatch,previousBuffer,previousMesh;
+        internal RenderScope(SpriteBatch batch,SpriteDrawBuffer buffer,Vector2 offset)
+        {
+            this.batch=batch;this.buffer=buffer;view=Main.GameViewMatrix;
+            previousBatch=getOffset!(batch);previousBuffer=buffer.DrawOffset;previousMesh=view.EntityOffset;
+            setOffset!(batch,offset);buffer.DrawOffset=offset;view.EntityOffset=offset;
+        }
+        public void Dispose()
+        {if(batch is not null){setOffset!(batch,previousBatch);buffer!.DrawOffset=previousBuffer;view!.EntityOffset=previousMesh;}}
+    }
+    public static void EndFrame()
+    {
+        frameEnabled=false;
+        if(setOffset is not null&&Main.spriteBatch is not null)setOffset(Main.spriteBatch,Vector2.Zero);
+        if(Main.spriteBuffer is not null)Main.spriteBuffer.DrawOffset=Vector2.Zero;
+        if(Main.GameViewMatrix is not null)Main.GameViewMatrix.EntityOffset=Vector2.Zero;
+    }
+    public static void PrepareCamera(Player target)
+    {
+        if(cameraValid&&ReferenceEquals(cameraTarget,target))Main.screenPosition=rawCamera;
+        Main.GameViewMatrix.RenderOffset=Vector2.Zero;
+    }
+    public static void ApplyCamera(Player target)
+    {
+        var unrounded=Main.screenPosition;
+        // Preserve the exact camera value vanilla would feed into its next pan
+        // or shake update, independently of the predicted view shown this frame.
+        Main.screenPosition=new Vector2((int)unrounded.X,(int)unrounded.Y);
+        Main.ClampScreenPositionToWorld();rawCamera=Main.screenPosition;
+        cameraTarget=target;cameraValid=frameEnabled;
+        if(!frameEnabled){Main.GameViewMatrix.RenderOffset=Vector2.Zero;return;}
+        Main.screenPosition=unrounded+Offset(target);Main.ClampScreenPositionToWorld();
+        var precise=Main.screenPosition;
+        Main.screenPosition=new Vector2((float)Math.Floor(precise.X),(float)Math.Floor(precise.Y));
+        Main.GameViewMatrix.RenderOffset=Main.screenPosition-precise;
+    }
+    public static void DetachCamera()
+    {cameraValid=false;cameraTarget=null;Main.GameViewMatrix.RenderOffset=Vector2.Zero;}
+}

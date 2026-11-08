@@ -1,0 +1,235 @@
+using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
+using ReLogic.Graphics;
+using ReLogic.Localization.IME;
+using ReLogic.OS;
+using Terraria;
+using Terraria.GameContent;
+using Terraria.GameInput;
+using Terraria.UI;
+using Terraria.UI.Chat;
+using Terraria.UI.Gamepad;
+
+namespace Aether.UI.Game;
+
+/// <summary>
+/// The open container's name (with the rename text field while renaming) and its buttons: Loot All,
+/// Deposit All, Quick Stack, Restock, Sort, Rename / Save and Cancel (ChestUI.DrawName/DrawButtons).
+/// The buttons keep their state in ChestUI.ButtonScale/ButtonHovered, as before.
+/// </summary>
+public class UIChestControls : UIGameScreen
+{
+    public static readonly UIChestControls Instance = new UIChestControls();
+
+    /// <summary>Called by ChestUI.Draw in place of DrawName and DrawButtons; false: draw the legacy ones.</summary>
+    public static bool Draw()
+    {
+        InGamePreview.Update();
+        if (!UIInventorySlots.Enabled)
+        {
+            return false;
+        }
+        GameScreens.Draw(Instance, Main.spriteBatch);
+        return true;
+    }
+
+    public override void OnInitialize()
+    {
+        for (int i = 0; i < ChestUI.ButtonID.Count; i++)
+        {
+            Append(new UIChestButton(i));
+        }
+    }
+
+    private static string ContainerName()
+    {
+        Player player = Main.LocalPlayer;
+        if (Main.editChest)
+        {
+            return Main.npcChatText;
+        }
+        switch (player.chest)
+        {
+        case -2:
+            return Lang.inter[32].Value;
+        case -3:
+            return Lang.inter[33].Value;
+        case -4:
+            return Lang.GetItemNameValue(3813);
+        case -5:
+            return Lang.GetItemNameValue(4076);
+        }
+        Chest chest = (player.chest > -1) ? Main.chest[player.chest] : null;
+        if (chest == null)
+        {
+            return string.Empty;
+        }
+        if (chest.name != "")
+        {
+            return chest.name;
+        }
+        Tile tile = Main.tile[player.chestX, player.chestY];
+        if (tile.type == 21)
+        {
+            return Lang.chestType[tile.frameX / 36].Value;
+        }
+        if (tile.type == 467)
+        {
+            return (tile.frameX / 36 == 4) ? Lang.GetItemNameValue(3988) : Lang.chestType2[tile.frameX / 36].Value;
+        }
+        if (tile.type == 88)
+        {
+            return Lang.dresserType[tile.frameX / 54].Value;
+        }
+        return string.Empty;
+    }
+
+    // The name, and while renaming the IME composition and a blinking cursor after it.
+    protected override void DrawSelf(SpriteBatch spriteBatch)
+    {
+        string text = ContainerName();
+        Color color = Color.White * (1f - (255f - (float)(int)Main.mouseTextColor) / 255f * 0.5f);
+        color.A = byte.MaxValue;
+        DynamicSpriteFont font = FontAssets.MouseText.Value;
+        Vector2 position = new Vector2(504f, Main.instance.invBottom);
+        ChatManager.DrawColorCodedStringWithShadow(spriteBatch, font, text, position, color, 0f, Vector2.Zero, Vector2.One, -1f, 1.5f);
+        if (!Main.editChest)
+        {
+            return;
+        }
+        position.X += font.MeasureString(text).X;
+        Main.instance.SetIMEPanelAnchor(position + new Vector2(0f, 56f), 0f);
+        string composition = Platform.Get<IImeService>().CompositionString;
+        if (!string.IsNullOrEmpty(composition))
+        {
+            ChatManager.DrawColorCodedStringWithShadow(spriteBatch, font, composition, position, Main.imeCompositionStringColor, 0f, Vector2.Zero, Vector2.One, -1f, 1.5f);
+            position.X += font.MeasureString(composition).X;
+        }
+        if (++Main.instance.textBlinkerCount >= 20)
+        {
+            Main.instance.textBlinkerState = (Main.instance.textBlinkerState == 0) ? 1 : 0;
+            Main.instance.textBlinkerCount = 0;
+        }
+        if (Main.instance.textBlinkerState == 1)
+        {
+            ChatManager.DrawColorCodedStringWithShadow(spriteBatch, font, "|", position, color, 0f, Vector2.Zero, Vector2.One, -1f, 1.5f);
+        }
+    }
+}
+
+/// <summary>One chest button: text centred on its spot that grows while hovered; acts on press.</summary>
+public class UIChestButton : UIElement
+{
+    private const int X = 506;
+
+    // Gamepad link point per button ID (Rename and Cancel share one).
+    private static readonly int[] LinkPoints = new int[7] { 500, 501, 502, 503, 505, 504, 504 };
+
+    private readonly int _id;
+
+    public UIChestButton(int id)
+    {
+        _id = id;
+    }
+
+    private bool IsShown
+    {
+        get
+        {
+            if (_id == 5 && Main.LocalPlayer.chest < -1)
+            {
+                return false;
+            }
+            if (_id == 6)
+            {
+                return Main.editChest;
+            }
+            return true;
+        }
+    }
+
+    private string Text => _id switch
+    {
+        0 => Lang.inter[29].Value,
+        1 => Lang.inter[30].Value,
+        2 => Lang.inter[31].Value,
+        3 => Lang.inter[82].Value,
+        4 => Lang.inter[122].Value,
+        5 => Lang.inter[Main.editChest ? 47 : 61].Value,
+        _ => Lang.inter[63].Value
+    };
+
+    private int Y => Main.instance.invBottom + 40 + _id * 26;
+
+    // The text's area at its current scale; once hovered it widens, so the button doesn't flicker.
+    public override bool ContainsPoint(Vector2 point)
+    {
+        if (!IsShown)
+        {
+            return false;
+        }
+        float scale = ChestUI.ButtonScale[_id];
+        Vector2 size = FontAssets.MouseText.Value.MeasureString(Text);
+        if (ChestUI.ButtonHovered[_id])
+        {
+            return Utils.FloatIntersect(point.X, point.Y, 0f, 0f, X - 10, Y - 12, size.X * scale + 16f, 24f);
+        }
+        return Utils.FloatIntersect(point.X, point.Y, 0f, 0f, X, Y - 12, size.X * scale, 24f);
+    }
+
+    protected override void DrawSelf(SpriteBatch spriteBatch)
+    {
+        if (!IsShown)
+        {
+            ChestUI.UpdateHover(_id, hovering: false);
+            return;
+        }
+        float scale = ChestUI.ButtonScale[_id];
+        string text = Text;
+        Vector2 size = FontAssets.MouseText.Value.MeasureString(text);
+        bool hovered = ContainsPoint(Main.MouseScreen);
+        Color color = Color.White * 0.97f * (1f - (255f - (float)(int)Main.mouseTextColor) / 255f * 0.5f);
+        color.A = byte.MaxValue;
+        if (hovered)
+        {
+            color = Main.OurFavoriteColor;
+        }
+        int x = X + (int)(size.X * scale / 2f);
+        ChatManager.DrawColorCodedStringWithShadow(spriteBatch, FontAssets.MouseText.Value, text, new Vector2(x, Y), color, 0f, size / 2f, new Vector2(scale), -1f, 1.5f);
+        Vector2 scaled = size * scale;
+        UILinkPointNavigator.SetPosition(LinkPoints[_id], (_id >= 5) ? new Vector2(x, Y) : new Vector2((float)x - scaled.X * scale / 2f * 0.8f, Y));
+        ChestUI.UpdateHover(_id, hovered);
+        if (!hovered || PlayerInput.IgnoreMouseInterface)
+        {
+            return;
+        }
+        Main.LocalPlayer.mouseInterface = true;
+        if (Main.mouseLeft && Main.mouseLeftRelease)
+        {
+            switch (_id)
+            {
+            case 0:
+                ChestUI.LootAll();
+                break;
+            case 1:
+                ChestUI.DepositAll();
+                break;
+            case 2:
+                ChestUI.QuickStack();
+                break;
+            case 3:
+                ChestUI.Restock();
+                break;
+            case 4:
+                ItemSorting.SortChest();
+                break;
+            case 5:
+                ChestUI.RenameChest();
+                break;
+            case 6:
+                ChestUI.RenameChestCancel();
+                break;
+            }
+        }
+    }
+}

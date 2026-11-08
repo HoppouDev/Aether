@@ -1,0 +1,65 @@
+using Terraria;
+using System.Threading;
+using Microsoft.Xna.Framework;
+using System;
+using System.Runtime.InteropServices;
+using Vector4 = Microsoft.Xna.Framework.Vector4;
+
+namespace Aether.Graphics.Terrain;
+
+public sealed partial class TerrainGpuContext
+{
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate int TargetQuery(nint device);
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate int BufferRegionUpload(nint device, nint buffer, uint offset, nint bytes, uint size);
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate int FnaImageCopy(nint device, nint source, nint target, uint x, uint y, uint width, uint height, uint padding, uint clear);
+    private TargetQuery? canDraw;
+    private BufferRegionUpload? uploadRegion;
+    private FnaImageCopy? copyFnaImage;
+    private void InitializeStreamingApi()
+    {
+        if ((Capabilities & TerrainGpuCapabilities.Streamed) == 0) return;
+        canDraw = Load<TargetQuery>(library, "TA_TerrainCanDrawCurrentTarget");
+        uploadRegion = Load<BufferRegionUpload>(library, "TA_TerrainUploadBufferRegion");
+        copyFnaImage = Load<FnaImageCopy>(library, "TA_TerrainCopyFnaImage");
+    }
+    public bool CanDrawCurrentTarget()
+    { CheckOwner(); return canDraw is not null && canDraw(device) != 0; }
+    public void Upload(TerrainGpuBuffer buffer, int offset, byte[] data)
+    {
+        CheckOwner(); CheckLive(buffer);
+        if (uploadRegion is null) throw new NotSupportedException("Streamed terrain upload unavailable");
+        if (offset < 0 || offset % 4 != 0 || data.Length == 0 || data.Length % 4 != 0 || data.Length > buffer.Size - offset)
+            throw new ArgumentOutOfRangeException(nameof(offset));
+        var pin = GCHandle.Alloc(data, GCHandleType.Pinned);
+        try { if (uploadRegion(device, buffer.Handle, (uint)offset, pin.AddrOfPinnedObject(), (uint)data.Length) == 0) throw new InvalidOperationException(LastError); }
+        finally { pin.Free(); }
+    }
+    public void Upload(TerrainGpuBuffer buffer, int offset, TerrainVertex[] vertices, int first, int count)
+    {
+        CheckOwner(); CheckLive(buffer);
+        if (uploadRegion is null) throw new NotSupportedException("Streamed terrain upload unavailable");
+        if (offset < 0 || offset % 4 != 0 || first < 0 || count < 1 || first > vertices.Length - count || (long)count * 32 > buffer.Size - offset)
+            throw new ArgumentOutOfRangeException(nameof(count));
+        var pin = GCHandle.Alloc(vertices, GCHandleType.Pinned);
+        try { if (uploadRegion(device, buffer.Handle, (uint)offset, pin.AddrOfPinnedObject() + checked(first * 32), (uint)(count * 32)) == 0) throw new InvalidOperationException(LastError); }
+        finally { pin.Free(); }
+    }
+    public void Upload(TerrainGpuImage image, int width, int height, Vector4[] pixels)
+    {
+        RequireDrawing(); CheckLive(image);
+        if (image.Format != TerrainImageFormat.Rgba32Float || width < 1 || height < 1 || width > image.Width || height > image.Height || (long)width * height > pixels.Length)
+            throw new ArgumentOutOfRangeException(nameof(pixels));
+        var pin = GCHandle.Alloc(pixels, GCHandleType.Pinned);
+        try { if (uploadImage!(device, image.Handle, 0, 0, (uint)width, (uint)height, pin.AddrOfPinnedObject(), (uint)(width * height * 16)) == 0) throw new InvalidOperationException(LastError); }
+        finally { pin.Free(); }
+    }
+    public bool CopyFnaImage(nint source, int width, int height, TerrainGpuImage target, int x, int y, int padding = 2, bool clear = false)
+    {
+        RequireDrawing(); CheckLive(target);
+        if (copyFnaImage is null) throw new NotSupportedException("Terrain atlas copy unavailable");
+        if (source == 0 || width < 1 || height < 1 || padding < 0 || padding > 8 || x < padding || y < padding ||
+            width > target.Width - x - padding || height > target.Height - y - padding || !target.RenderTarget || target.Format != TerrainImageFormat.Rgba8)
+            throw new ArgumentException("Invalid borrowed texture or padded atlas region");
+        return copyFnaImage(device, source, target.Handle, (uint)x, (uint)y, (uint)width, (uint)height, (uint)padding, clear ? 1u : 0u) != 0;
+    }
+}

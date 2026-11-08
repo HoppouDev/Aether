@@ -1,0 +1,162 @@
+using Terraria;
+using System.Threading;
+using Microsoft.Xna.Framework;
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using Microsoft.Xna.Framework.Graphics;
+using Terraria.Graphics;
+using Terraria.Graphics.Capture;
+using Terraria.GameContent;
+using GameColor = Microsoft.Xna.Framework.Color;
+using GameRect = Microsoft.Xna.Framework.Rectangle;
+using GameVector = Microsoft.Xna.Framework.Vector2;
+using GameMatrix = Microsoft.Xna.Framework.Matrix;
+using Vector4 = Microsoft.Xna.Framework.Vector4;
+
+namespace Aether.Graphics.Terrain;
+
+public sealed partial class ChunkedTerrainRenderer
+{
+    private readonly record struct WallRunKey(ChunkKey Chunk, int Material);
+
+    private readonly TerrainGpuPipeline wallPipeline;
+    private readonly TileBatch wallFallback;
+    private readonly Dictionary<ChunkKey,WallSlot> wallSlots = new();
+    private readonly List<WallSlot> retiredWalls = new();
+    private readonly Dictionary<WallRunKey,WallRun> wallRuns = new();
+    private TerrainGpuImage? wallLight;
+    private byte[] wallLightPixels = new byte[0];
+    private int wallLeft,wallTop,wallWidth,wallHeight;
+    private bool wallDisabled=true,wallLightReady,wallLightUploaded;
+    private static int WallAtlasKey(int wall,int paint=0) => ChunkMaterials.Count+wall+paint*PaintStride;
+
+    public void BeginWallPass(int firstX,int lastX,int firstY,int lastY)
+    {
+        wallRuns.Clear(); wallLightReady=wallLightUploaded=false;
+        wallLeft=Math.Max(0,firstX); wallTop=Math.Max(0,firstY);
+        wallWidth=(Math.Min(Main.maxTilesX,lastX)-wallLeft)*2; wallHeight=(Math.Min(Main.maxTilesY,lastY)-wallTop)*2;
+        var transform=Main.tileBatch.TerrainTransform;
+        wallDisabled=disposed || Failure.Length!=0 || Main.gameMenu || CaptureManager.Instance.Active || !gpu.CanDrawCurrentTarget() ||
+            wallWidth<1 || wallHeight<1 || (long)wallWidth*wallHeight*4>uploads.Remaining ||
+            transform.M14!=0 || transform.M24!=0 || transform.M44!=1 || transform.M11*transform.M22-transform.M12*transform.M21<=0;
+    }
+    public bool TryQueueWall(int x,int y,Tile tile,Texture2D texture,GameRect rectangle,GameVector position,VertexColors colors)
+    {
+        if(wallDisabled || tile.wall is 242 or 243) return false;
+        int material=ChunkWallGeometry.Material(tile.wall,tile.active()); if(material<0)return false;
+        int sourceKey=WallAtlasKey(tile.wall,tile.wallColor());
+        if(!materials.TryGetValue(sourceKey,out var atlas) || !ReferenceEquals(atlas.Source,texture))
+        {RequestMaterial(sourceKey,texture);return false;}
+        int frameShift=Main.wallFrame[tile.wall]*180;
+        ChunkKey key=ChunkKey.FromTile(x,y);
+        if(!TerrainSnapshotPump.TryGetValidated(key,out var result) || result?.Walls is null ||
+            !wallSlots.TryGetValue(key,out var slot) || slot.Result.Version!=result.Version || !slot.Ready(material) ||
+            !result.Walls.TryMatch(x-key.X*64,y-key.Y*64,material,rectangle.X,rectangle.Y-frameShift,out int first)) return false;
+        var extent=result.Walls.Extent(material);
+        if(extent.X>texture.Width || extent.Y+frameShift>texture.Height)return false;
+        int lx=(x-wallLeft)*2,ly=(y-wallTop)*2;
+        if(lx<0 || ly<0 || lx+1>=wallWidth || ly+1>=wallHeight || rectangle.Width!=32 || rectangle.Height!=32)return false;
+        if(!wallLightReady)
+        {
+            if(!TerrainPreparationBudget.HasTime || !uploads.TryReserve(wallWidth*wallHeight*4)) return false;
+            long start=Stopwatch.GetTimestamp();
+            try
+            {
+                int w=PowerOfTwo(wallWidth),h=PowerOfTwo(wallHeight);
+                if(wallLight is null || wallLight.Width<w || wallLight.Height<h)
+                { CheckGpuRoom((long)w*h*4); wallLight?.Dispose(); wallLight=gpu.CreateImage(w,h); }
+                if(wallLightPixels.Length!=wallWidth*wallHeight*4)wallLightPixels=new byte[wallWidth*wallHeight*4];
+                wallLightReady=true;
+            }
+            catch(Exception error) when(error is InvalidOperationException or NotSupportedException or ArgumentException or OutOfMemoryException)
+            { Failure=error.Message;wallDisabled=true;return false; }
+            finally {TerrainPreparationBudget.Charge(Stopwatch.GetTimestamp()-start);}
+        }
+        if(!TerrainPreparationBudget.HasTime)return false;
+        long prepareStart=Stopwatch.GetTimestamp();
+        void Store(int xx,int yy,GameColor color)
+        {int at=((ly+yy)*wallWidth+lx+xx)*4;wallLightPixels[at]=color.R;wallLightPixels[at+1]=color.G;wallLightPixels[at+2]=color.B;wallLightPixels[at+3]=color.A;}
+        Store(0,0,colors.TopLeftColor);Store(1,0,colors.TopRightColor);Store(1,1,colors.BottomRightColor);Store(0,1,colors.BottomLeftColor);
+        var delta=position-new GameVector(x*16-8,y*16-8);
+        if(!wallRuns.TryGetValue(new WallRunKey(key, material),out var run) || run.First+run.Cells.Count*6!=first || run.Delta!=delta || !Main.tileBatch.IsOrderedTerrainTail(texture,run.Draw))
+        {
+            var viewport=Main.instance.GraphicsDevice.Viewport; var transform=Main.tileBatch.TerrainTransform;
+            var uniforms=TerrainDrawUniforms.Identity;
+            uniforms.Transform=GameMatrix.CreateTranslation(delta.X,delta.Y,0)*transform*GameMatrix.CreateOrthographicOffCenter(0,viewport.Width,viewport.Height,0,0,1);
+            uniforms.LightRect=new Vector4(atlas.Region.X,atlas.Region.Y,0,frameShift);
+            uniforms.Options=new Vector4(key.X*64,key.Y*64,wallLeft,wallTop);
+            run=new WallRun(slot,material,first,atlas,uniforms,transform,delta);
+            var captured=run;run.Draw=()=>DrawWallRun(captured);wallRuns[new WallRunKey(key, material)]=run;
+            Main.tileBatch.QueueOrderedTerrainDraw(texture,run.Draw);
+        }
+        run.Cells.Add(new WallCell(x,y,rectangle,colors));
+        TerrainPreparationBudget.Charge(Stopwatch.GetTimestamp() - prepareStart);
+        return true;
+    }
+    private int DrawWallRun(WallRun run)
+    {
+        wallDisabled=true;
+        if(Failure.Length==0)
+        {
+            try
+            {
+                if(!wallLightUploaded)
+                {
+                    long start=Stopwatch.GetTimestamp();
+                    try {gpu.Upload(wallLight!,0,0,wallWidth,wallHeight,wallLightPixels);wallLightUploaded=true;}
+                    finally {TerrainPreparationBudget.Charge(Stopwatch.GetTimestamp()-start);}
+                }
+                if(!gpu.Draw(wallPipeline,run.Slot.Buffers[run.Material]!,run.First,run.Cells.Count*6,pages[run.Atlas.Region.Page],wallLight!,run.Uniforms))throw new InvalidOperationException("Wall target changed during flush");
+                return 1;
+            }
+            catch(Exception error) when(error is InvalidOperationException or NotSupportedException or ArgumentException or OutOfMemoryException){Failure=error.Message;}
+        }
+        wallFallback.Begin(Main.instance.GraphicsDevice.RasterizerState,run.Transform);
+        foreach(var cell in run.Cells)
+            wallFallback.Draw(run.Atlas.Source,new GameVector(cell.X*16-8,cell.Y*16-8)+run.Delta,cell.Rectangle,cell.Colors);
+        int draws=wallFallback.End();Main.tileBatch.RebindAfterTerrainFallback();return draws;
+    }
+    private void PrepareWallUploads(PreparedChunk result,long start)
+    {
+        var geometry=result.Walls;if(geometry is null || geometry.Count==0)return;
+        if(!wallSlots.TryGetValue(result.Key,out var slot) || slot.Result.Version!=result.Version)
+        {EvictWalls(result.Key);slot=new WallSlot(result);wallSlots[result.Key]=slot;}
+        if(geometry.Packed!=ComputeGeometry)throw new InvalidOperationException("Wall preparation mode mismatch");
+        bool wasReady=slot.AnyReady;
+        foreach(int material in geometry.UsedMaterials)
+        {
+            if(!HasTime(start))break;
+            int bytes=geometry.VertexCount(material)*32;
+            if(slot.Uploaded[material]==bytes || !readyWalls.Contains(ChunkWallGeometry.Wall(material)))continue;
+            if(ComputeGeometry)
+            {
+                if(PrepareComputedBuffer(geometry.UploadData(material),ref slot.Inputs[material],ref slot.Buffers[material]))slot.Uploaded[material]=bytes;
+                continue;
+            }
+            if(slot.Buffers[material] is null){CheckGpuRoom(bytes);slot.Buffers[material]=gpu.CreateBuffer(bytes,TerrainBufferUsage.Vertex);}
+            int amount=Math.Min(bytes-slot.Uploaded[material],uploads.Remaining)/32*32;if(amount==0)break;
+            uploads.TryReserve(amount);gpu.Upload(slot.Buffers[material]!,slot.Uploaded[material],geometry.UploadData(material),slot.Uploaded[material]/32,amount/32);
+            slot.Uploaded[material]+=amount;}
+        if(!wasReady && slot.AnyReady)publications++;
+    }
+    private void EvictWalls(ChunkKey key){if (wallSlots.TryGetValue(key, out var slot)) { wallSlots.Remove(key); retiredWalls.Add(slot); }}
+    private void ClearWallSlots(){foreach(var slot in wallSlots.Values)retiredWalls.Add(slot);wallSlots.Clear();}
+    private void DisposeWallRetired(){foreach(var slot in retiredWalls){foreach(var buffer in slot.Buffers)buffer?.Dispose();foreach(var input in slot.Inputs)input?.Dispose();}retiredWalls.Clear();}
+    private readonly record struct WallCell(int X,int Y,GameRect Rectangle,VertexColors Colors);
+    private sealed class WallRun(WallSlot slot,int material,int first,Material atlas,TerrainDrawUniforms uniforms,GameMatrix transform,GameVector delta)
+    {
+        public readonly WallSlot Slot=slot; public readonly int Material=material,First=first;public readonly Material Atlas=atlas;
+        public readonly TerrainDrawUniforms Uniforms=uniforms;public readonly GameMatrix Transform=transform;public readonly GameVector Delta=delta;
+        public readonly List<WallCell> Cells=new();public Func<int> Draw=null!;
+    }
+    private sealed class WallSlot(PreparedChunk result)
+    {
+        public readonly PreparedChunk Result=result;
+        public readonly TerrainGpuBuffer?[] Buffers=new TerrainGpuBuffer?[ChunkWallGeometry.MaterialCount];
+        public readonly TerrainGpuBuffer?[] Inputs=new TerrainGpuBuffer?[ChunkWallGeometry.MaterialCount];
+        public readonly int[] Uploaded=new int[ChunkWallGeometry.MaterialCount];
+        public bool Ready(int material)=>Buffers[material] is not null && Uploaded[material]==Result.Walls!.VertexCount(material)*32;
+        public bool AnyReady{get{foreach(int material in Result.Walls!.UsedMaterials)if(Ready(material))return true;return false;}}
+    }
+}

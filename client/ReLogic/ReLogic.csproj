@@ -8,11 +8,12 @@
     <LangVersion>14.0</LangVersion>
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
     <CheckForOverflowUnderflow>False</CheckForOverflowUnderflow>
-    <!-- Sources live in src/ReLogic/ (base + patches); never glob .base/ or lib/. -->
+    <!-- Compile the tracked Windows adapter alongside the generated ReLogic sources. -->
     <EnableDefaultItems>False</EnableDefaultItems>
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="FnaWindowsPlatform.cs" />
     <Compile Include="../../src/ReLogic/**/*.cs" />
   </ItemGroup>
 

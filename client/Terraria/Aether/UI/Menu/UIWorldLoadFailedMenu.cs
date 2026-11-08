@@ -1,0 +1,66 @@
+using Terraria;
+using Terraria.Audio;
+using Terraria.IO;
+using Terraria.Utilities;
+
+namespace Aether.UI.Menu;
+
+/// <summary>
+/// The world failed to load: offer its backup (menuMode 200), or say there's none (201).
+/// </summary>
+public class UIWorldLoadFailedMenu : UIMenuScreen
+{
+    private readonly bool _hasBackup;
+
+    public UIWorldLoadFailedMenu(bool hasBackup)
+    {
+        _hasBackup = hasBackup;
+        ItemsTop = 220f;
+    }
+
+    protected override void BuildItems()
+    {
+        AddLabel(() => Lang.menu[9].Value);
+        if (_hasBackup)
+        {
+            AddItem(() => Lang.menu[10].Value, LoadBackup, 1f, 70f);
+            AddItem(() => Lang.menu[6].Value, GoBack, 1f, 50f);
+        }
+        else
+        {
+            AddLabel(() => Lang.menu[11].Value, 1f, -30f);
+            AddItem(() => Lang.menu[5].Value, GoBack, 1f, 50f);
+        }
+    }
+
+    private static void LoadBackup()
+    {
+        bool isCloudSave = Main.ActiveWorldFileData.IsCloudSave;
+        if (WorldFile.CanRecoverBackup(Main.worldPathName, isCloudSave))
+        {
+            if (WorldFile.UsesPersistentBackup)
+                WorldGen.PlayPersistentBackup();
+            else
+            {
+                FileUtilities.Move(Main.worldPathName, Main.worldPathName + ".bad", isCloudSave);
+                FileUtilities.Move(Main.worldPathName + ".bak", Main.worldPathName, isCloudSave);
+                WorldGen.playWorld();
+            }
+            SoundEngine.PlaySound(10);
+            Main.menuMode = 10;
+        }
+        else
+        {
+            SoundEngine.PlaySound(11);
+            Main.menuMode = 0;
+            Main.netMode = 0;
+        }
+    }
+
+    public override void GoBack()
+    {
+        SoundEngine.PlaySound(11);
+        Main.menuMode = 0;
+        Main.netMode = 0;
+    }
+}

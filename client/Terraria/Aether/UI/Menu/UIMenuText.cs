@@ -1,0 +1,28 @@
+using System;
+using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
+using Terraria;
+using Terraria.GameContent;
+using Terraria.UI;
+
+namespace Aether.UI.Menu;
+
+/// <summary>Small outlined menu text, like the legacy slider captions and values; not interactive.</summary>
+public class UIMenuText : UIElement
+{
+    private readonly Func<string> _text;
+
+    public UIMenuText(Func<string> text)
+    {
+        _text = text;
+        IgnoresMouseInteraction = true;
+    }
+
+    protected override void DrawSelf(SpriteBatch spriteBatch)
+    {
+        byte tint = (byte)((255 + Main.tileColor.R * 2) / 3);
+        byte grey = (byte)((255 + tint) / 2);
+        CalculatedStyle dimensions = GetDimensions();
+        Utils.DrawBorderStringFourWay(spriteBatch, FontAssets.DeathText.Value, _text(), dimensions.X, dimensions.Y, new Color(grey, grey, grey, 255), Color.Black, Vector2.Zero, 0.5f);
+    }
+}

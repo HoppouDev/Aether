@@ -32,7 +32,7 @@ Use game_screenshot and the mouse_/key_/type_/gamepad_ tools for other areas.
 Coordinates are window pixels, the same as a full-size screenshot's (game_state gives the
 screen size; scale a scaled screenshot's coordinates back up). Every tool returns once its
 input has finished (a 400 ms drag returns after 400 ms). game_send runs raw control commands
-(see src/Aether/Testing/ControlServer.cs) in one call, for sequences."""
+(see client/Terraria/Aether/Testing/ControlServer.cs) in one call, for sequences."""
 
 Button = Literal["left", "right", "middle"]
 Ms = Annotated[
@@ -75,7 +75,7 @@ def build_server(port: int = DEFAULT_PORT) -> FastMCP:
             bool,
             Field(
                 description="Start with -aetherscreens: the title-menu screen gallery and the "
-                "in-game test fixture keys (see src/Aether/AGENTS.md)."
+                "in-game test fixture keys (see client/Terraria/Aether/AGENTS.md)."
             ),
         ] = False,
         save_dir: Annotated[
