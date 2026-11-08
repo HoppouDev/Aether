@@ -1,0 +1,11 @@
+--- a/Terraria/UI/GameInterfaceLayer.cs
++++ b/Terraria/UI/GameInterfaceLayer.cs
+@@ -36,7 +36,7 @@
+             transformMatrix = Matrix.Identity;
+         }
+         bool result = false;
+-        Main.spriteBatch.Begin(SpriteSortMode.Deferred, null, null, null, null, null, transformMatrix);
++        Main.spriteBatch.Begin(SpriteSortMode.Deferred, null, Aether.Graphics.PixelArt.Sampler(null), null, null, null, transformMatrix);
+         try
+         {
+             result = DrawSelf();

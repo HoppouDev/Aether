@@ -1,0 +1,11 @@
+--- a/Terraria/UI/IngameFancyUI.cs
++++ b/Terraria/UI/IngameFancyUI.cs
+@@ -219,7 +219,7 @@
+             }
+             Main.instance.DrawMouseOver();
+             Main.spriteBatch.End();
+-            Main.spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, Main.SamplerStateForCursor, DepthStencilState.None, RasterizerState.CullCounterClockwise, null, Main.UIScaleMatrix);
++            Main.spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, Aether.Graphics.PixelArt.Sampler(Main.SamplerStateForCursor), DepthStencilState.None, RasterizerState.CullCounterClockwise, null, Main.UIScaleMatrix);
+             Main.DrawCursor(Main.DrawThickCursor());
+         }
+         return result;

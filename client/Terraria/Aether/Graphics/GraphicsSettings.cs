@@ -12,6 +12,7 @@ internal static class GraphicsSettings
     internal static bool ComputeTerrain;
     internal static bool FastTerrain;
     internal static bool SmoothEntityMovement = true;
+    internal static bool SharpUI = true;
 
     internal static void Load(Preferences configuration)
     {
@@ -22,6 +23,7 @@ internal static class GraphicsSettings
         FastTerrain = configuration.Get("AetherFastTerrain", false);
         UncappedFps = configuration.Get("AetherUncappedFps", false);
         SmoothEntityMovement = configuration.Get("AetherSmoothEntityMovement", true);
+        SharpUI = configuration.Get("AetherSharpUI", true);
     }
 
     internal static void Save(Preferences configuration)
@@ -33,5 +35,6 @@ internal static class GraphicsSettings
         configuration.Put("AetherFastTerrain", FastTerrain);
         configuration.Put("AetherUncappedFps", UncappedFps);
         configuration.Put("AetherSmoothEntityMovement", SmoothEntityMovement);
+        configuration.Put("AetherSharpUI", SharpUI);
     }
 }

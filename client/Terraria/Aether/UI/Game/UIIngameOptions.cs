@@ -90,7 +90,7 @@ public class UIIngameOptions : UIGameScreen
         Main.instance.GUIBarsDraw();
         Main.instance.DrawMouseOver();
         Main.spriteBatch.End();
-        Main.spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, Main.SamplerStateForCursor, DepthStencilState.None, RasterizerState.CullCounterClockwise, null, Main.UIScaleMatrix);
+        Main.spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, Aether.Graphics.PixelArt.Sampler(Main.SamplerStateForCursor), DepthStencilState.None, RasterizerState.CullCounterClockwise, null, Main.UIScaleMatrix);
         Main.DrawCursor(Main.DrawThickCursor());
         return true;
     }

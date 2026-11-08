@@ -265,7 +265,7 @@ public class UIDresserWindow : UIGameScreen
         UILinkPointNavigator.SetPosition(2805, panel.Center.ToVector2());
         Utils.DrawInvBG(spriteBatch, panel, back);
         spriteBatch.End();
-        spriteBatch.Begin(SpriteSortMode.Immediate, null, null, null, null, null, Main.UIScaleMatrix);
+        spriteBatch.Begin(SpriteSortMode.Immediate, null, Aether.Graphics.PixelArt.Sampler(null), null, null, null, Main.UIScaleMatrix);
         Main.PlayerRenderer.DrawPlayer(Main.Camera, dummy, dummy.position, dummy.fullRotation, dummy.fullRotationOrigin);
     }
 

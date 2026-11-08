@@ -1,5 +1,14 @@
 --- a/Terraria/UI/AchievementAdvisor.cs
 +++ b/Terraria/UI/AchievementAdvisor.cs
+@@ -125,7 +125,7 @@
+         if (_hoveredCard != null)
+         {
+             Main.spriteBatch.End();
+-            Main.spriteBatch.Begin(SpriteSortMode.Deferred, null, null, null, null, null, Main.UIScaleMatrix);
++            Main.spriteBatch.Begin(SpriteSortMode.Deferred, null, Aether.Graphics.PixelArt.Sampler(null), null, null, null, Main.UIScaleMatrix);
+             PlayerInput.SetZoom_UI();
+             Item item = Main.DisplayAndGetFakeItem(ItemRarityColor.StrongRed10);
+             item.SetNameOverride(_hoveredCard.achievement.FriendlyName.Value);
 @@ -164,9 +164,12 @@
          }
      }

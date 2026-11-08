@@ -1,0 +1,11 @@
+--- a/Terraria/GameContent/UI/LegacyMultiplayerClosePlayersOverlay.cs
++++ b/Terraria/GameContent/UI/LegacyMultiplayerClosePlayersOverlay.cs
+@@ -21,7 +21,7 @@
+         }
+         SpriteBatch spriteBatch = Main.spriteBatch;
+         spriteBatch.End();
+-        spriteBatch.Begin(SpriteSortMode.Immediate, null, null, null, null, null, Main.UIScaleMatrix);
++        spriteBatch.Begin(SpriteSortMode.Immediate, null, Aether.Graphics.PixelArt.Sampler(null), null, null, null, Main.UIScaleMatrix);
+         PlayerInput.SetZoom_World();
+         int screenWidth = Main.screenWidth;
+         int screenHeight = Main.screenHeight;

@@ -1,6 +1,6 @@
 --- a/Resources/Terraria.Localization.Content.en-US.json
 +++ b/Resources/Terraria.Localization.Content.en-US.json
-@@ -1,4 +1,21 @@
+@@ -1,4 +1,22 @@
  {
 +    "AetherGraphics": {
 +        "Title": "Aether Graphics",
@@ -11,6 +11,7 @@
 +        "Lighting": "Background lighting preparation: {0}",
 +        "Motion": "Smooth entity movement: {0}",
 +        "Uncapped": "Uncapped FPS: {0}",
++        "SharpUI": "Sharp UI: {0}",
 +        "Legacy": "Legacy",
 +        "Chunked": "Chunked (Vulkan)",
 +        "Auto": "Auto (Legacy)",

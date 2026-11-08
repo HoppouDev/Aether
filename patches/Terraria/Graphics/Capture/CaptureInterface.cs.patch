@@ -1,0 +1,36 @@
+--- a/Terraria/Graphics/Capture/CaptureInterface.cs
++++ b/Terraria/Graphics/Capture/CaptureInterface.cs
+@@ -51,7 +51,7 @@
+         protected void EndDrawingSelection(SpriteBatch sb)
+         {
+             sb.End();
+-            sb.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.LinearClamp, DepthStencilState.None, RasterizerState.CullCounterClockwise, null, Main.UIScaleMatrix);
++            sb.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, Aether.Graphics.PixelArt.Sampler(SamplerState.LinearClamp), DepthStencilState.None, RasterizerState.CullCounterClockwise, null, Main.UIScaleMatrix);
+             PlayerInput.SetZoom_UI();
+         }
+     }
+@@ -1014,21 +1014,21 @@
+             return;
+         }
+         sb.End();
+-        sb.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.LinearClamp, DepthStencilState.None, RasterizerState.CullCounterClockwise, null, Main.UIScaleMatrix);
++        sb.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, Aether.Graphics.PixelArt.Sampler(SamplerState.LinearClamp), DepthStencilState.None, RasterizerState.CullCounterClockwise, null, Main.UIScaleMatrix);
+         PlayerInput.SetZoom_UI();
+         foreach (CaptureInterfaceMode value in Modes.Values)
+         {
+             value.Draw(sb);
+         }
+         sb.End();
+-        sb.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.LinearClamp, DepthStencilState.None, RasterizerState.CullCounterClockwise, null, Main.UIScaleMatrix);
++        sb.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, Aether.Graphics.PixelArt.Sampler(SamplerState.LinearClamp), DepthStencilState.None, RasterizerState.CullCounterClockwise, null, Main.UIScaleMatrix);
+         PlayerInput.SetZoom_UI();
+         Main.mouseText = false;
+         Main.instance.GUIBarsDraw();
+         DrawButtons(sb);
+         Main.instance.DrawMouseOver();
+         sb.End();
+-        sb.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.LinearClamp, DepthStencilState.None, RasterizerState.CullCounterClockwise, null, Main.UIScaleMatrix);
++        sb.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, Aether.Graphics.PixelArt.Sampler(SamplerState.LinearClamp), DepthStencilState.None, RasterizerState.CullCounterClockwise, null, Main.UIScaleMatrix);
+         Utils.DrawBorderStringBig(sb, Lang.inter[81].Value, new Vector2((float)Main.screenWidth * 0.5f, 100f), Color.White, 1f, 0.5f, 0.5f);
+         Utils.DrawCursorSingle(sb, Main.cursorColor, float.NaN, Main.cursorScale);
+         DrawCameraLock(sb);

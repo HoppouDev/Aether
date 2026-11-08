@@ -1,0 +1,27 @@
+--- a/Terraria/GameContent/UI/NewMultiplayerClosePlayersOverlay.cs
++++ b/Terraria/GameContent/UI/NewMultiplayerClosePlayersOverlay.cs
+@@ -157,7 +157,7 @@
+             }
+         }
+         spriteBatch.End();
+-        spriteBatch.Begin(SpriteSortMode.Deferred, null, null, null, null, null, Main.UIScaleMatrix);
++        spriteBatch.Begin(SpriteSortMode.Deferred, null, Aether.Graphics.PixelArt.Sampler(null), null, null, null, Main.UIScaleMatrix);
+         for (int j = 0; j < _playerOnScreenCache.Count; j++)
+         {
+             _playerOnScreenCache[j].DrawPlayerName_WhenPlayerIsOnScreen(spriteBatch);
+@@ -171,13 +171,13 @@
+             _playerOffScreenCache[l].DrawPlayerDistance(spriteBatch);
+         }
+         spriteBatch.End();
+-        spriteBatch.Begin(SpriteSortMode.Deferred, null, null, null, null, null, Main.UIScaleMatrix);
++        spriteBatch.Begin(SpriteSortMode.Deferred, null, Aether.Graphics.PixelArt.Sampler(null), null, null, null, Main.UIScaleMatrix);
+         for (int m = 0; m < _playerOffScreenCache.Count; m++)
+         {
+             _playerOffScreenCache[m].DrawLifeBar();
+         }
+         spriteBatch.End();
+-        spriteBatch.Begin(SpriteSortMode.Immediate, null, null, null, null, null, Main.UIScaleMatrix);
++        spriteBatch.Begin(SpriteSortMode.Immediate, null, Aether.Graphics.PixelArt.Sampler(null), null, null, null, Main.UIScaleMatrix);
+         for (int n = 0; n < _playerOffScreenCache.Count; n++)
+         {
+             _playerOffScreenCache[n].DrawPlayerHead();

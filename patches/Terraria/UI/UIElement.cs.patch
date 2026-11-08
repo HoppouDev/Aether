@@ -13,7 +13,18 @@
      public bool IsMouseHovering { get; private set; }
  
      public event MouseEvent OnLeftMouseDown;
-@@ -223,6 +229,7 @@
+@@ -214,22 +220,23 @@
+         if (useImmediateMode || OverrideSamplerState != null)
+         {
+             spriteBatch.End();
+-            spriteBatch.Begin(useImmediateMode ? SpriteSortMode.Immediate : SpriteSortMode.Deferred, BlendState.AlphaBlend, (OverrideSamplerState != null) ? OverrideSamplerState : anisotropicClamp, DepthStencilState.None, OverflowHiddenRasterizerState, null, Main.UIScaleMatrix);
++            spriteBatch.Begin(useImmediateMode ? SpriteSortMode.Immediate : SpriteSortMode.Deferred, BlendState.AlphaBlend, Aether.Graphics.PixelArt.Sampler((OverrideSamplerState != null) ? OverrideSamplerState : anisotropicClamp), DepthStencilState.None, OverflowHiddenRasterizerState, null, Main.UIScaleMatrix);
+             DrawSelf(spriteBatch);
+             spriteBatch.End();
+-            spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, anisotropicClamp, DepthStencilState.None, OverflowHiddenRasterizerState, null, Main.UIScaleMatrix);
++            spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, Aether.Graphics.PixelArt.Sampler(anisotropicClamp), DepthStencilState.None, OverflowHiddenRasterizerState, null, Main.UIScaleMatrix);
+         }
+         else
          {
              DrawSelf(spriteBatch);
          }
@@ -21,3 +32,20 @@
          if (overflowHidden)
          {
              spriteBatch.End();
+             Rectangle clippingRectangle = GetClippingRectangle(spriteBatch);
+             spriteBatch.GraphicsDevice.ScissorRectangle = clippingRectangle;
+             spriteBatch.GraphicsDevice.RasterizerState = OverflowHiddenRasterizerState;
+-            spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, anisotropicClamp, DepthStencilState.None, OverflowHiddenRasterizerState, null, Main.UIScaleMatrix);
++            spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, Aether.Graphics.PixelArt.Sampler(anisotropicClamp), DepthStencilState.None, OverflowHiddenRasterizerState, null, Main.UIScaleMatrix);
+         }
+         DrawChildren(spriteBatch);
+         if (overflowHidden)
+@@ -237,7 +244,7 @@
+             spriteBatch.End();
+             spriteBatch.GraphicsDevice.ScissorRectangle = scissorRectangle;
+             spriteBatch.GraphicsDevice.RasterizerState = rasterizerState;
+-            spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, anisotropicClamp, DepthStencilState.None, rasterizerState, null, Main.UIScaleMatrix);
++            spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, Aether.Graphics.PixelArt.Sampler(anisotropicClamp), DepthStencilState.None, rasterizerState, null, Main.UIScaleMatrix);
+         }
+     }
+ 

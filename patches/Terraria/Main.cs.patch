@@ -675,6 +675,33 @@
          int num2 = 56;
          Vector2 vector = npcChatTopLeft + new Vector2(-num2 - 6, num2 + 6);
          Asset<Texture2D> npcPortraitBackground = TextureAssets.NpcPortraitBackground;
+@@ -41300,7 +41352,7 @@
+             instance.DrawNPCDirect(spriteBatch, portraitDummy, behindTiles: false, Vector2.Zero);
+             spriteBatch.End();
+             spriteBatch.GraphicsDevice.ScissorRectangle = scissorRectangle;
+-            spriteBatch.Begin(SpriteSortMode.Deferred, null, null, null, null, null, UIScaleMatrix);
++            spriteBatch.Begin(SpriteSortMode.Deferred, null, Aether.Graphics.PixelArt.Sampler(null), null, null, null, UIScaleMatrix);
+         }
+         if (dialoguePortraitPreference == DialoguePortraitDrawOption.FullBodyRetro)
+         {
+@@ -41327,7 +41379,7 @@
+             spriteBatch.Begin(SpriteSortMode.Deferred, null, SamplerState.PointClamp, null, null, null, UIScaleMatrix);
+             instance.DrawNPCDirect(spriteBatch, portraitDummy2, behindTiles: false, Vector2.Zero);
+             spriteBatch.End();
+-            spriteBatch.Begin(SpriteSortMode.Deferred, null, null, null, null, null, UIScaleMatrix);
++            spriteBatch.Begin(SpriteSortMode.Deferred, null, Aether.Graphics.PixelArt.Sampler(null), null, null, null, UIScaleMatrix);
+         }
+         string givenOrTypeName = nPC.GivenOrTypeName;
+         DynamicSpriteFont value3 = FontAssets.ItemStack.Value;
+@@ -41752,7 +41804,7 @@
+             return;
+         }
+         PlayerInput.SetZoom_UI();
+-        spriteBatch.Begin(SpriteSortMode.Deferred, null, null, null, null, null, UIScaleMatrix);
++        spriteBatch.Begin(SpriteSortMode.Deferred, null, Aether.Graphics.PixelArt.Sampler(null), null, null, null, UIScaleMatrix);
+         uint? selectedCandidate = Platform.Get<IImeService>().SelectedCandidate;
+         DynamicSpriteFont value = FontAssets.MouseText.Value;
+         float num2 = 0.85f;
 @@ -41911,10 +41963,11 @@
          DrawTrashItemSlot(num, num2);
          spriteBatch.DrawString(FontAssets.MouseText.Value, Lang.inter[4].Value, new Vector2(40f, 0f) + vector, new Microsoft.Xna.Framework.Color(mouseTextColor, mouseTextColor, mouseTextColor, mouseTextColor), 0f, default, 1f, SpriteEffects.None, 0f);
@@ -1149,6 +1176,15 @@
          int num = 477;
          int num2 = 163;
          int num3 = num / 2;
+@@ -45561,7 +45700,7 @@
+         UILinkPointNavigator.SetPosition(2805, rectangle.Center.ToVector2());
+         Utils.DrawInvBG(spriteBatch, rectangle, c);
+         spriteBatch.End();
+-        spriteBatch.Begin(SpriteSortMode.Immediate, null, null, null, null, null, UIScaleMatrix);
++        spriteBatch.Begin(SpriteSortMode.Immediate, null, Aether.Graphics.PixelArt.Sampler(null), null, null, null, UIScaleMatrix);
+         PlayerRenderer.DrawPlayer(Camera, dresserInterfaceDummy, dresserInterfaceDummy.position, dresserInterfaceDummy.fullRotation, dresserInterfaceDummy.fullRotationOrigin);
+         Microsoft.Xna.Framework.Rectangle r = rectangle;
+         r.Y += r.Height + 4;
 @@ -45859,6 +45998,26 @@
                      return true;
                  }, InterfaceScaleType.UI)
@@ -1176,6 +1212,42 @@
          }
      }
  
+@@ -45877,7 +46036,7 @@
+         }
+         CoinSlot.UpdateSlotAnims();
+         PlayerInput.SetZoom_UI();
+-        spriteBatch.Begin(SpriteSortMode.Deferred, null, null, null, null, null, UIScaleMatrix);
++        spriteBatch.Begin(SpriteSortMode.Deferred, null, Aether.Graphics.PixelArt.Sampler(null), null, null, null, UIScaleMatrix);
+         DrawPendingMouseText();
+         spriteBatch.End();
+         cursorOverride = -1;
+@@ -45964,7 +46123,7 @@
+     {
+         DrawGamepadInstructions();
+         spriteBatch.End();
+-        spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.LinearClamp, DepthStencilState.None, RasterizerState.CullCounterClockwise, null, UIScaleMatrix);
++        spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, Aether.Graphics.PixelArt.Sampler(SamplerState.LinearClamp), DepthStencilState.None, RasterizerState.CullCounterClockwise, null, UIScaleMatrix);
+         if (instance._mouseTextCache.isValid)
+         {
+             instance.MouseTextInner(instance._mouseTextCache);
+@@ -46133,7 +46292,7 @@
+             inventoryScale = cursorScale;
+             DoGlowingMouseItemDraw = true;
+             spriteBatch.End();
+-            spriteBatch.Begin(SpriteSortMode.Immediate, null, null, null, null, null, UIScaleMatrix);
++            spriteBatch.Begin(SpriteSortMode.Immediate, null, Aether.Graphics.PixelArt.Sampler(null), null, null, null, UIScaleMatrix);
+             ItemSlot.Draw(spriteBatch, ref inv, 21, new Vector2(mouseX, mouseY));
+             inventoryScale = num;
+             DoGlowingMouseItemDraw = false;
+@@ -46198,7 +46357,7 @@
+     private static void DrawInterface_36_Cursor()
+     {
+         spriteBatch.End();
+-        spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerStateForCursor, DepthStencilState.None, RasterizerState.CullCounterClockwise, null, UIScaleMatrix);
++        spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, Aether.Graphics.PixelArt.Sampler(SamplerStateForCursor), DepthStencilState.None, RasterizerState.CullCounterClockwise, null, UIScaleMatrix);
+         if (PlayerInput.ControllerHousingCursorActive)
+         {
+             Vector2 housingScreenPosition = PlayerInput.HousingScreenPosition;
 @@ -46212,6 +46371,7 @@
          }
          else if (cursorOverride != -1)
@@ -1229,7 +1301,7 @@
          if (invAlpha > 240f)
          {
              invAlpha = 240f;
-@@ -47153,6 +47321,7 @@
+@@ -47153,13 +47321,14 @@
  
      private static void DrawInterface_13_AchievementCompletePopups()
      {
@@ -1237,6 +1309,23 @@
          InGameNotificationsTracker.DrawInGame(spriteBatch);
      }
  
+     private static bool DrawInterface_12_IngameFancyUI()
+     {
+         spriteBatch.End();
+-        spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerStateForCursor, DepthStencilState.None, RasterizerState.CullCounterClockwise, null, UIScaleMatrix);
++        spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, Aether.Graphics.PixelArt.Sampler(SamplerStateForCursor), DepthStencilState.None, RasterizerState.CullCounterClockwise, null, UIScaleMatrix);
+         InGameUI.Draw(spriteBatch, _drawInterfaceGameTime);
+         if (inFancyUI && !IngameFancyUI.Draw(spriteBatch, _drawInterfaceGameTime))
+         {
+@@ -47175,7 +47344,7 @@
+             DrawInterface_16_MapOrMinimap();
+             PlayerInput.SetZoom_UI();
+             spriteBatch.End();
+-            spriteBatch.Begin(SpriteSortMode.Deferred, null, null, null, null, null, UIScaleMatrix);
++            spriteBatch.Begin(SpriteSortMode.Deferred, null, Aether.Graphics.PixelArt.Sampler(null), null, null, null, UIScaleMatrix);
+             IngameOptions.Draw(this, spriteBatch);
+             DrawInterface_40_InteractItemIcon();
+             return false;
 @@ -47828,6 +47997,7 @@
              num4 += 50f;
          }
@@ -1469,7 +1558,7 @@
 +    protected void DrawMenu(GameTime gameTime)
 +    {
 +        Action action = null;
-+        spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.LinearClamp, DepthStencilState.None, Rasterizer, null, UIScaleMatrix);
++        spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, Aether.Graphics.PixelArt.Sampler(SamplerState.LinearClamp), DepthStencilState.None, Rasterizer, null, UIScaleMatrix);
 +        if (!IsEngineLoaded)
 +        {
 +            IsEngineLoaded = true;
@@ -1620,6 +1709,15 @@
              }
          }
          if (flag4)
+@@ -52991,7 +53203,7 @@
+             num112 += 20f;
+         }
+         spriteBatch.End();
+-        spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerStateForCursor, DepthStencilState.None, RasterizerState.CullCounterClockwise, null, UIScaleMatrix);
++        spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, Aether.Graphics.PixelArt.Sampler(SamplerStateForCursor), DepthStencilState.None, RasterizerState.CullCounterClockwise, null, UIScaleMatrix);
+         WorkshopPublishingIndicator.Draw(spriteBatch);
+         IssueReporterIndicator.Draw(spriteBatch);
+         DrawCursor(DrawThickCursor());
 @@ -53000,7 +53212,7 @@
          {
              Microsoft.Xna.Framework.Color white = Microsoft.Xna.Framework.Color.White;
@@ -1878,6 +1976,15 @@
          spriteBatch.End();
      }
  
+@@ -57204,7 +57425,7 @@
+                 unityMouseOver = false;
+             }
+             spriteBatch.End();
+-            spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerStateForCursor, DepthStencilState.None, RasterizerState.CullCounterClockwise, null, UIScaleMatrix);
++            spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, Aether.Graphics.PixelArt.Sampler(SamplerStateForCursor), DepthStencilState.None, RasterizerState.CullCounterClockwise, null, UIScaleMatrix);
+             PlayerInput.SetZoom_UI();
+             if (!UIWorldGenDebug.IsActive)
+             {
 @@ -58565,13 +58786,13 @@
          {
              waterTarget.UpdateContent(RenderWater);
@@ -2064,6 +2171,15 @@
          bool flag2 = Terraria.Graphics.Effects.Filters.Scene.CanCapture() || ForegroundSunlightEffects;
          bool flag3 = (!drawToScreen && !mapFullscreen && !onlyDrawFancyUI && Lighting.NotRetro) & flag2;
          if (flag3)
+@@ -63481,7 +63713,7 @@
+         if (InGameUI.CurrentState != null && onlyDrawFancyUI)
+         {
+             TimeLogger.StartTimestamp fromTimestamp9 = TimeLogger.Start();
+-            spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.LinearClamp, DepthStencilState.None, Rasterizer, null, UIScaleMatrix);
++            spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, Aether.Graphics.PixelArt.Sampler(SamplerState.LinearClamp), DepthStencilState.None, Rasterizer, null, UIScaleMatrix);
+             InGameUI.Draw(spriteBatch, gameTime);
+             DrawPendingMouseText();
+             DrawCursor(DrawThickCursor());
 @@ -63491,7 +63723,10 @@
              return;
          }
@@ -2076,6 +2192,15 @@
          spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, DefaultSamplerState, DepthStencilState.None, Rasterizer, null, Transform);
          if (mapFullscreen)
          {
+@@ -63503,7 +63738,7 @@
+             PlayerInput.SetZoom_Unscaled();
+             DrawMap(gameTime);
+             spriteBatch.End();
+-            spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerStateForCursor, null, null, null, UIScaleMatrix);
++            spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, Aether.Graphics.PixelArt.Sampler(SamplerStateForCursor), null, null, null, UIScaleMatrix);
+             PlayerInput.SetZoom_UI();
+             DrawFPS();
+             DrawPlayerChat();
 @@ -63564,16 +63799,9 @@
          }
          Overlays.Scene.Draw(spriteBatch, RenderLayers.Background);
@@ -2123,6 +2248,24 @@
          DrawRain();
          try
          {
+@@ -63683,7 +63922,7 @@
+         if (!hideUI)
+         {
+             TimeLogger.StartTimestamp fromTimestamp12 = TimeLogger.Start();
+-            spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.LinearClamp, null, null, null, UIScaleMatrix);
++            spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, Aether.Graphics.PixelArt.Sampler(SamplerState.LinearClamp), null, null, null, UIScaleMatrix);
+             DrawPlayerChatBubbles();
+             spriteBatch.End();
+             spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.LinearClamp, null, null, null, GameViewMatrix.ZoomMatrix);
+@@ -63757,7 +63996,7 @@
+             PopupText.DrawItemTextPopups(targetScale);
+             PlayerInput.SetZoom_UI();
+             spriteBatch.End();
+-            spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerStateForCursor, null, null, null, UIScaleMatrix);
++            spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, Aether.Graphics.PixelArt.Sampler(SamplerStateForCursor), null, null, null, UIScaleMatrix);
+             DrawNetplayStatusText();
+             DrawFPS();
+             RecordReplay.DrawHUD();
 @@ -63861,6 +64100,30 @@
          }
      }
