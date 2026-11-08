@@ -11,6 +11,6 @@ RecipeRegistry.Register("example:torch", new RecipeDefinition(
 
 List each ingredient once and keep item quantities within the item's maximum stack size.
 Recipes use the game's ingredient and total recipe limits.
-The API appends registered recipes after vanilla recipe setup in registration order.
+The API appends recipes in registration order after Terraria registers its recipes and before it builds the ingredient and station tables.
 Registered recipes appear in the recipe list and the Guide in single-player, and they do not participate in Shimmer decrafting.
 These recipes do not add item IDs to saved characters or worlds.

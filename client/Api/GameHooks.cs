@@ -173,7 +173,7 @@ internal static class GameHooks
 [Mixin(typeof(Recipe))]
 internal static class RecipeHooks
 {
-    [Inject("SetupRecipes()", At.RETURN, Allow = 1)]
+    [Inject("SetupRecipes()", At.INVOKE, Target = "Terraria.Recipe::CreateRequiredItemQuickLookups()", Allow = 1)]
     private static void Install(CallbackInfo callback) => GameBridge.InstallRecipes();
 
     [Inject("PlayerMeetsEnvironmentConditions", At.HEAD, Cancellable = true)]

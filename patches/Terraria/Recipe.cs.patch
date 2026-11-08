@@ -1,0 +1,11 @@
+--- a/Terraria/Recipe.cs
++++ b/Terraria/Recipe.cs
+@@ -15194,7 +15194,7 @@
+     {
+         for (int i = 0; i < numRecipes; i++)
+         {
+-            for (int j = 0; Main.recipe[i].requiredItem[j].type > 0; j++)
++            for (int j = 0; j < Main.recipe[i].requiredItem.Length && Main.recipe[i].requiredItem[j].type > 0; j++)
+             {
+                 Main.recipe[i].requiredItem[j].Refresh(onlyIfVariantChanged: false);
+             }

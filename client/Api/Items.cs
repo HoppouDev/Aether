@@ -126,8 +126,19 @@ public static class ItemRegistry
         if (GetId(item.type) == null || item.IsAir)
             throw new ArgumentException("State belongs to a custom item instance.", nameof(item));
         string? json = state?.GetRawText();
-        if (json != null && Encoding.UTF8.GetByteCount(json) > 16 * 1024)
-            throw new ArgumentException("Item state cannot exceed 16 KiB of JSON.", nameof(state));
+        if (json != null)
+        {
+            if (Encoding.UTF8.GetByteCount(json) > 16 * 1024)
+                throw new ArgumentException("Item state cannot exceed 16 KiB of JSON.", nameof(state));
+            try
+            {
+                using var document = JsonDocument.Parse(json);
+            }
+            catch (JsonException exception)
+            {
+                throw new ArgumentException("Item state must be valid JSON with at most 64 levels of nesting.", nameof(state), exception);
+            }
+        }
         item.AetherState = json;
     }
 

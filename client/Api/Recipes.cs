@@ -45,11 +45,7 @@ public static class RecipeRegistry
             var recipe = new Recipe();
             SetItem(recipe.createItem, definition.Result, id);
             for (int index = 0; index < definition.Ingredients.Count; index++)
-            {
-                ItemAmount ingredient = definition.Ingredients[index];
-                SetItem(recipe.requiredItem[index], ingredient, id);
-                recipe.requiredItemQuickLookup[index] = new Recipe.RequiredItemEntry(ingredient.ItemId, ingredient.Quantity);
-            }
+                SetItem(recipe.requiredItem[index], definition.Ingredients[index], id);
             recipe.notDecraftable = true;
             recipe.requiredTile = definition.Station ?? -1;
             recipe.alchemy = recipe.requiredTile == 13;

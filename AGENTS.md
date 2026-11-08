@@ -12,6 +12,11 @@ Remove superseded APIs, CLI options, manifest fields, and formats when replacing
 Add compatibility shims, aliases, or migrations only for an explicit requirement.
 Honor existing vanilla Terraria compatibility requirements and reject unreadable saves before overwriting them.
 
+## Exploit policy
+
+Leave exploits present in vanilla Terraria for Re-Logic to fix, on both the client and the server.
+Aether allows client and server exploits, provided Aether changes do not introduce remote code execution (RCE).
+
 ## Patch workflow
 
 ```bash

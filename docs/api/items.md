@@ -51,6 +51,8 @@ The subfolder is derived from the game version, registered IDs, and owning mod v
 Player and world saves in these profiles use a versioned Aether format.
 World files also store any [persistent NPCs](entities.md#persistent-npcs) in the same save.
 Use `ItemRegistry.SetState(item, json)` and `ItemRegistry.GetState(item)` to write and read up to 16 KiB of JSON per custom item.
+JSON can contain up to 64 nested objects or arrays.
+If validation fails, the previous state is retained.
 Passing `null` clears the state.
 Clones keep the state, and items with different state cannot stack.
 The value returned by `GetState` is a detached `JsonElement`; call `SetState` to update it.

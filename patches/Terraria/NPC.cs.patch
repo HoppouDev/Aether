@@ -287,7 +287,26 @@
          SubAI_HandleTemporaryCatchableNPCPlayerInvulnerability();
          if (Main.netMode != 2 && extraValue > 0)
          {
-@@ -91664,6 +91774,8 @@
+@@ -91639,6 +91749,9 @@
+         {
+             GetHurtByOtherNPCs(NPCID.Sets.HurtingBees);
+         }
++        bool constrainMotion = AetherIsCustom && Aether.Modding.NpcSave.IsPersistent(type);
++        if (constrainMotion)
++            Aether.Modding.NpcSave.ConstrainMotion(this);
+         if (!noTileCollide)
+         {
+             UpdateCollision();
+@@ -91653,6 +91766,8 @@
+                 TryRemovingWaterPerishableEffects(isInLava: false);
+             }
+         }
++        if (constrainMotion)
++            Aether.Modding.NpcSave.ConstrainMotion(this);
+         if (Main.netMode != 1 && !noTileCollide && lifeMax > 1 && Collision.SwitchTiles(this, position, width, height, oldPosition, 2) && (type == 46 || type == 148 || type == 149 || type == 303 || type == 361 || type == 362 || type == 364 || type == 366 || type == 367 || (type >= 442 && type <= 448) || type == 602 || type == 608 || type == 614 || type == 687))
+         {
+             ai[0] = 1f;
+@@ -91664,6 +91779,8 @@
          UpdateNPC_UpdateTrails();
          UpdateNetworkCode(i);
          CheckActive();

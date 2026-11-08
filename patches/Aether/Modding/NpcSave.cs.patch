@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/Aether/Modding/NpcSave.cs
-@@ -0,0 +1,138 @@
+@@ -0,0 +1,163 @@
 +using System;
 +using System.Collections.Generic;
 +using System.IO;
@@ -14,6 +14,7 @@
 +internal static class NpcSave
 +{
 +    internal const int MaxStateBytes = 16 * 1024;
++    private const int MaxSpeed = 4096;
 +
 +    internal readonly record struct Entry(string Id, int Schema, Vector2 Bottom, Vector2 Velocity, int Life, string State);
 +
@@ -36,11 +37,35 @@
 +                continue;
 +
 +            var definition = ClientContent.Npcs[npc.type - NPCID.VanillaCount];
-+            var entry = new Entry(definition.Id, definition.SaveSchema, npc.Bottom, npc.velocity, npc.life, npc.AetherSavedState);
++            Vector2 bottom = npc.Bottom;
++            Vector2 velocity = npc.velocity;
++            BoundMotion(ref bottom, ref velocity);
++            var entry = new Entry(definition.Id, definition.SaveSchema, bottom, velocity, npc.life, npc.AetherSavedState);
 +            Validate(entry, Main.maxTilesX * 16, Main.maxTilesY * 16);
 +            entries.Add(entry);
 +        }
 +        return entries.ToArray();
++    }
++
++    internal static void ConstrainMotion(NPC npc)
++    {
++        Vector2 bottom = npc.Bottom;
++        BoundMotion(ref bottom, ref npc.velocity);
++        if (bottom != npc.Bottom)
++            npc.Bottom = bottom;
++    }
++
++    private static void BoundMotion(ref Vector2 bottom, ref Vector2 velocity)
++    {
++        BoundAxis(ref bottom.X, ref velocity.X, Main.maxTilesX * 16 - 1, Main.spawnTileX * 16);
++        BoundAxis(ref bottom.Y, ref velocity.Y, Main.maxTilesY * 16 - 1, Main.spawnTileY * 16);
++    }
++
++    private static void BoundAxis(ref float position, ref float speed, int maximum, int spawn)
++    {
++        position = Math.Clamp(float.IsNaN(position) ? spawn : position, 0, maximum);
++        speed = float.IsNaN(speed) || position == 0 && speed < 0 || position == maximum && speed > 0
++            ? 0 : Math.Clamp(speed, -MaxSpeed, MaxSpeed);
 +    }
 +
 +    internal static Entry[] Read(BinaryReader reader)
@@ -134,7 +159,7 @@
 +    private static void Validate(Entry entry, int width, int height)
 +    {
 +        if (!(entry.Bottom.X >= 0 && entry.Bottom.X < width && entry.Bottom.Y >= 0 && entry.Bottom.Y < height) ||
-+            !(Math.Abs(entry.Velocity.X) <= 4096 && Math.Abs(entry.Velocity.Y) <= 4096) ||
++            !(Math.Abs(entry.Velocity.X) <= MaxSpeed && Math.Abs(entry.Velocity.Y) <= MaxSpeed) ||
 +            entry.Life is < 1 or > 20_000_000)
 +            throw new ContentSaveException($"Persistent NPC '{entry.Id}' has invalid saved position, velocity, or health.");
 +    }

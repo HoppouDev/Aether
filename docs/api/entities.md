@@ -118,6 +118,8 @@ Set `NpcDefinition.Persistence` to opt in.
 A persistent NPC survives inactivity and saves with the world while it is alive.
 Death and explicit despawn remove it from subsequent saves.
 Aether records its stable type ID, position, velocity, health, and optional JSON state.
+During simulation, Aether keeps a persistent NPC's bottom-center point inside the world, limits velocity to 4,096 pixels per tick on each axis, and stops outward motion at the world edge.
+Saving applies the same limits to the recorded motion without moving the live NPC.
 Projectiles and per-spawn behavior state remain transient.
 
 ```csharp
