@@ -92,7 +92,8 @@ if ($managed -and (
     }
 }
 if ($prepareOnly) {
-    exit 0
+    & dotnet msbuild $PSScriptRoot -t:PrepareAetherApi "-p:AetherClientDirectory=$clientBuild"
+    exit $LASTEXITCODE
 }
 
 & dotnet build $PSScriptRoot -t:InstallMod "-p:AetherClientDirectory=$clientBuild" "-p:AetherSaveDirectory=$saveDir"

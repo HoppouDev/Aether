@@ -4,6 +4,7 @@
     <AssemblyName>ModProjectName</AssemblyName>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <AetherUseApi>true</AetherUseApi>
     <EnableDynamicLoading>true</EnableDynamicLoading>
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
   </PropertyGroup>

@@ -28,10 +28,12 @@ The first setup clones Aether into the mod repo's Git-ignored `.aether/client` d
 It uses the normal Aether setup prerequisites, including the pinned Linux Terraria build.
 If setup cannot find that build, follow the download and setup instructions in the cloned checkout's `AGENTS.md`.
 On Windows, use `.\aether.cmd setup`.
-IDE and command-line builds use the local client automatically after setup.
+Open the generated `MyMod.slnx` in your IDE.
+IDE and command-line builds use the local client and Aether API automatically after setup.
 
 The archive appears under `bin/Debug/net10.0/`.
-Use `-t:InstallMod` to package and install into the mod repo's `.aether/saves/Mods`, or set `-p:AetherSaveDirectory=/path/to/save-profile` to install elsewhere.
+Use `-t:InstallMod` to package and install the mod and its separate Aether API archive into the mod repo's `.aether/saves/Mods`.
+Set `-p:AetherSaveDirectory=/path/to/save-profile` to install elsewhere.
 The template's optional `--game-version` and `--aether-version` arguments override the Terraria and Aether dependency constraints.
 Omit either option to have `PackMod` record the exact version from the selected client build.
 The template leaves a placeholder for each omitted option in the project manifest and resolves it in the packaged manifest.
@@ -57,8 +59,9 @@ The checkout is reused on subsequent launches.
 Set `AETHER_REPOSITORY` before the first run to clone a different Git remote.
 For an existing built checkout, set `AETHER_ROOT` or use the Git-ignored `.aether-root` file.
 
-For an existing mod repo, copy the template launchers to the project root and ignore `.aether/` and `.aether-root` in Git.
+For an existing mod repo, copy the template launchers and `build/Aether.Mod.targets` to the project root and ignore `.aether/` and `.aether-root` in Git.
 The launcher calls the project's `InstallMod` target.
+Set `AetherUseApi` to `true` in the project and add `"aether-api": "0.1.0"` to the manifest's `depends` to enable the template's API setup and installation.
 If your mod was generated before the client projects moved under `client/`, update its launchers and `build/Aether.Mod.targets` from the template.
 On Linux and macOS, run `chmod +x aether` after copying.
 
@@ -202,6 +205,10 @@ Mod dependencies also determine initialization order.
 ### Discovery and dependency loading
 
 Aether scans the top level of the active profile's `Mods` directory at startup.
+From the title screen, open **Mods** to browse the packages loaded for the current session and view their manifest details.
+Search by mod name, ID, or author.
+**Open Mods Folder** opens the active profile's directory.
+Restart Aether after changing the archives there.
 It extracts packages to temporary directories and weaves an in-memory copy of the client.
 Archives may contain at most 4,096 entries and 512 MiB of uncompressed data.
 Aether rejects unsafe paths, links, and case-colliding entries.

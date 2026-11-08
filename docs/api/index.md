@@ -5,7 +5,11 @@ The API version is `0.1.0`.
 
 ## Install and reference
 
-Build Aether, then build the API package from the same checkout.
+The standalone mod template adds the API reference and manifest dependency by default.
+Its launcher builds the API from the local Aether checkout and installs the API archive separately alongside the mod.
+To opt out, set `AetherUseApi` to `false` in the mod project and remove `aether-api` from the manifest's `depends`.
+
+For a manual setup, build Aether and the API package from the same checkout.
 
 ```sh
 ./aether build
@@ -14,8 +18,8 @@ dotnet build client/Api/Aether.Api.csproj -t:PackMod
 
 Install `client/Api/bin/Debug/net10.0/aether-api.aethermod` in the active save profile's `Mods` directory.
 Use the matching `Aether.Api.dll` from that build as a compile-only reference.
-Template projects can set `AetherApiDirectory` to the folder containing the DLL, for example with `-p:AetherApiDirectory=/path/to/client/Api/bin/Debug/net10.0`.
-Set the property in your mod's `.csproj` to make the reference available to your IDE and `./aether` launches.
+Template projects can override `AetherApiDirectory` with the folder containing the DLL and archive, for example with `-p:AetherApiDirectory=/path/to/client/Api/bin/Debug/net10.0`.
+Set the property in your mod's `.csproj` to use that build in your IDE and when launching through `./aether`.
 Keep the DLL out of dependent mod archives.
 
 Declare the dependency in the mod manifest.

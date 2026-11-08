@@ -10,24 +10,30 @@
     <AetherBootstrapPath>$(AetherRootPath)/client/Bootstrap</AetherBootstrapPath>
     <AetherBootstrapPath Condition="!Exists('$(AetherBootstrapPath)/Aether.Bootstrap.csproj') And Exists('$(AetherRootPath)/Bootstrap/Aether.Bootstrap.csproj')">$(AetherRootPath)/Bootstrap</AetherBootstrapPath>
     <AetherClientDirectory Condition="'$(AetherClientDirectory)' == ''">$(AetherBootstrapPath)/bin/$(AetherClientConfiguration)/net10.0</AetherClientDirectory>
+    <AetherApiSourceDirectory>$(AetherRootPath)/client/Api</AetherApiSourceDirectory>
+    <AetherBuildApi Condition="'$(AetherUseApi)' == 'true' And '$(AetherApiDirectory)' == ''">true</AetherBuildApi>
+    <AetherApiDirectory Condition="'$(AetherBuildApi)' == 'true'">$(AetherApiSourceDirectory)/bin/$(AetherClientConfiguration)/net10.0</AetherApiDirectory>
     <AetherSaveDirectory Condition="'$(AetherSaveDirectory)' == ''">$(MSBuildProjectDirectory)/.aether/saves</AetherSaveDirectory>
   </PropertyGroup>
 
   <ItemGroup>
     <Reference Include="Aether.Api" HintPath="$(AetherApiDirectory)/Aether.Api.dll" Private="false"
-      Condition="'$(AetherApiDirectory)' != ''" />
+      Condition="'$(AetherUseApi)' == 'true'" />
     <Reference Include="Aether.Modding" HintPath="$(AetherClientDirectory)/Aether.Modding.dll" Private="false" />
     <Reference Include="FNA" HintPath="$(AetherClientDirectory)/FNA.dll" Private="false" />
     <Reference Include="Terraria" HintPath="$(AetherClientDirectory)/Terraria.dll" Private="false" />
   </ItemGroup>
 
-  <Target Name="ValidateAetherReferences" BeforeTargets="ResolveAssemblyReferences">
+  <Target Name="ValidateAetherConfiguration">
     <Error Condition="'$(AetherClientConfiguration)' != 'Debug' And '$(AetherClientConfiguration)' != 'Release'"
       Text="Set AETHER_CONFIGURATION to Debug or Release." />
+  </Target>
+
+  <Target Name="ValidateAetherReferences" BeforeTargets="ResolveAssemblyReferences" DependsOnTargets="ValidateAetherConfiguration">
     <Error Condition="'$(AetherClientDirectory)' == '' Or !Exists('$(AetherClientDirectory)/Aether.Modding.dll') Or !Exists('$(AetherClientDirectory)/Terraria.dll') Or !Exists('$(AetherClientDirectory)/FNA.dll')"
       Text="Run the mod launcher with setup to prepare the local Aether client. For an external checkout, build that client first." />
-    <Error Condition="'$(AetherApiDirectory)' != '' And !Exists('$(AetherApiDirectory)/Aether.Api.dll')"
-      Text="AetherApiDirectory must contain Aether.Api.dll." />
+    <Error Condition="'$(AetherUseApi)' == 'true' And !Exists('$(AetherApiDirectory)/Aether.Api.dll')"
+      Text="Run the mod launcher with setup to build Aether.Api.dll, or set AetherApiDirectory to a matching API build." />
     <Error Condition="!Exists('$(ModManifestPath)')" Text="Missing aether.mod.json." />
     <PropertyGroup>
       <ModManifest>$([System.IO.File]::ReadAllText('$(ModManifestPath)'))</ModManifest>
@@ -83,7 +89,18 @@
     <ZipDirectory SourceDirectory="$(ModStaging)" DestinationFile="$(ModArchive)" Overwrite="true" />
   </Target>
 
-  <Target Name="InstallMod" DependsOnTargets="PackMod">
+  <Target Name="PrepareAetherApi" Condition="'$(AetherUseApi)' == 'true'" DependsOnTargets="ValidateAetherConfiguration">
+    <Error Condition="'$(AetherBuildApi)' == 'true' And !Exists('$(AetherApiSourceDirectory)/Aether.Api.csproj')"
+      Text="The local Aether checkout has no API project. Set AETHER_ROOT to a checkout with the API or set AetherApiDirectory to a matching API build." />
+    <Exec Condition="'$(AetherBuildApi)' == 'true'" WorkingDirectory="$(AetherApiSourceDirectory)"
+      Command="dotnet build Aether.Api.csproj -c $(AetherClientConfiguration) -t:PackMod" />
+    <Error Condition="!Exists('$(AetherApiDirectory)/Aether.Api.dll') Or !Exists('$(AetherApiDirectory)/aether-api.aethermod')"
+      Text="AetherApiDirectory must contain Aether.Api.dll and aether-api.aethermod from the matching API build." />
+  </Target>
+
+  <Target Name="InstallMod" DependsOnTargets="PrepareAetherApi;PackMod">
     <Copy SourceFiles="$(ModArchive)" DestinationFolder="$(AetherSaveDirectory)/Mods" />
+    <Copy SourceFiles="$(AetherApiDirectory)/aether-api.aethermod" DestinationFolder="$(AetherSaveDirectory)/Mods"
+      Condition="'$(AetherUseApi)' == 'true'" />
   </Target>
 </Project>

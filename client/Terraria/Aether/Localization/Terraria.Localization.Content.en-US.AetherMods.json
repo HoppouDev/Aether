@@ -1,0 +1,20 @@
+{
+  "AetherMods": {
+    "Title": "Mods",
+    "Search": "Search mods",
+    "Loaded": "Loaded mods: {0}",
+    "Filtered": "Showing {0} of {1}",
+    "Empty": "No mods are loaded.",
+    "Disabled": "Mods are disabled for this session.",
+    "NoMatches": "No mods match your search.",
+    "AddMods": "Put .aethermod files in the Mods folder, then restart Aether.",
+    "RestartWithMods": "Restart Aether without -nomods to load your mods.",
+    "OpenFolder": "Open Mods Folder",
+    "Identity": "{0}  •  v{1}",
+    "Authors": "By {0}",
+    "Contributors": "Contributors: {0}",
+    "License": "License: {0}",
+    "Homepage": "Homepage",
+    "Source": "Source"
+  }
+}

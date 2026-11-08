@@ -3,7 +3,7 @@
 	"author": "Aether",
 	"identity": "Aether.Templates.Mod",
 	"name": "Aether Mod",
-	"description": "Create a .NET 10 Aether mod with mixins, resources, and a launcher that prepares a local Aether client.",
+	"description": "Create a .NET 10 Aether mod with the Aether API, mixins, resources, and a local client launcher.",
 	"shortName": "aethermod",
 	"sourceName": "ModProjectName",
 	"preferNameDirectory": true,
@@ -12,7 +12,7 @@
 		"type": "project"
 	},
 	"sources": [{ "rename": { "gitignore.template": ".gitignore" } }],
-	"primaryOutputs": [{ "path": "ModProjectName.csproj" }],
+	"primaryOutputs": [{ "path": "ModProjectName.slnx" }, { "path": "ModProjectName.csproj" }],
 	"symbols": {
 		"mod-id": {
 			"type": "parameter",

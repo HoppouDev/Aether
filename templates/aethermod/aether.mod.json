@@ -17,6 +17,7 @@
 
 	"depends": {
 		"aether": "@aether-version@",
-		"terraria": "@terraria-version@"
+		"terraria": "@terraria-version@",
+		"aether-api": "0.1.0"
 	}
 }

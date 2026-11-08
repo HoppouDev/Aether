@@ -107,5 +107,6 @@
        Terraria.Localization.Content.de-DE.json as satellite resources. -->
   <ItemGroup>
     <EmbeddedResource Include="../../src/Resources/*" LogicalName="%(Filename)%(Extension)" WithCulture="false" />
+    <EmbeddedResource Include="Aether/Localization/*.json" LogicalName="%(Filename)%(Extension)" WithCulture="false" />
   </ItemGroup>
 </Project>

@@ -14,7 +14,7 @@ public class UIMainMenu : UIMenuScreen
     public UIMainMenu()
     {
         ItemsTop = 220f;
-        ItemSpacing = 52f;
+        ItemSpacing = 45f;
     }
 
     protected override void BuildItems()
@@ -55,6 +55,7 @@ public class UIMainMenu : UIMenuScreen
                 Main.OpenResourcePacksMenu(null);
             });
         }
+        AddItem(Language.GetTextValue("AetherMods.Title"), UIModList.Open);
         AddItem(Lang.menu[14].Value, delegate
         {
             SoundEngine.PlaySound(10);

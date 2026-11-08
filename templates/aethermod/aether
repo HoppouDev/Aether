@@ -74,7 +74,7 @@ if [ "$managed" = true ] && { [ ! -f "$client_build/Aether.Bootstrap.dll" ] ||
     )
 fi
 if [ "$prepare_only" = true ]; then
-    exit 0
+    exec dotnet msbuild "$mod_root" -t:PrepareAetherApi "-p:AetherClientDirectory=$client_build"
 fi
 
 dotnet build "$mod_root" -t:InstallMod \
