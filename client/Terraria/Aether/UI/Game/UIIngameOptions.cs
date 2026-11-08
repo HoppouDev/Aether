@@ -498,6 +498,7 @@ public class UIIngameOptions : UIGameScreen
 
     private void BuildVideo()
     {
+        // Spaced as in the legacy window, which also lists Frame Skip.
         BeginRight(14, -2f);
         // Resizing the window mid-draw isn't safe, so these wait for the next update.
         Toggle(0, () => Lang.menu[Main.graphics.IsFullScreen ? 49 : 50].Value, delegate
@@ -510,36 +511,35 @@ public class UIIngameOptions : UIGameScreen
             Main.bgScroll = (int)(v * 100f);
             Main.caveParallax = 1f - Main.bgScroll / 500f;
         }, 1);
-        Toggle(3, () => Lang.menu[(int)(247 + Main.FrameSkipMode)].Value, Main.CycleFrameSkipMode);
-        Toggle(4, () => Language.GetTextValue(CachedText.Concat("UI.LightMode_", CachedText.Name(Lighting.Mode))), Lighting.NextLightMode);
-        Toggle(5, () => Lang.menu[59 + Main.qaStyle].Value, delegate
+        Toggle(3, () => Language.GetTextValue(CachedText.Concat("UI.LightMode_", CachedText.Name(Lighting.Mode))), Lighting.NextLightMode);
+        Toggle(4, () => Lang.menu[59 + Main.qaStyle].Value, delegate
         {
             if (++Main.qaStyle > 3)
             {
                 Main.qaStyle = 0;
             }
         });
-        Toggle(6, () => Lang.menu[Main.BackgroundEnabled ? 100 : 101].Value, delegate
+        Toggle(5, () => Lang.menu[Main.BackgroundEnabled ? 100 : 101].Value, delegate
         {
             Main.BackgroundEnabled = !Main.BackgroundEnabled;
         });
-        Toggle(7, () => Lang.menu[ChildSafety.Disabled ? 132 : 133].Value, delegate
+        Toggle(6, () => Lang.menu[ChildSafety.Disabled ? 132 : 133].Value, delegate
         {
             ChildSafety.Disabled = !ChildSafety.Disabled;
         });
-        Toggle(8, () => OnOff("GameUI.ForegroundSunlightEffects", Main.ForegroundSunlightEffects), delegate
+        Toggle(7, () => OnOff("GameUI.ForegroundSunlightEffects", Main.ForegroundSunlightEffects), delegate
         {
             Main.ForegroundSunlightEffects = !Main.ForegroundSunlightEffects;
         });
-        Toggle(9, () => OnOff("GameUI.HeatDistortion", Main.UseHeatDistortion), delegate
+        Toggle(8, () => OnOff("GameUI.HeatDistortion", Main.UseHeatDistortion), delegate
         {
             Main.UseHeatDistortion = !Main.UseHeatDistortion;
         });
-        Toggle(10, () => OnOff("GameUI.StormEffects", Main.UseStormEffects), delegate
+        Toggle(9, () => OnOff("GameUI.StormEffects", Main.UseStormEffects), delegate
         {
             Main.UseStormEffects = !Main.UseStormEffects;
         });
-        Toggle(11, () => CachedText.Format("GameUI.WaveQuality", Main.WaveQuality switch
+        Toggle(10, () => CachedText.Format("GameUI.WaveQuality", Main.WaveQuality switch
         {
             1 => Language.GetTextValue("GameUI.QualityLow"),
             2 => Language.GetTextValue("GameUI.QualityMedium"),
@@ -549,16 +549,15 @@ public class UIIngameOptions : UIGameScreen
         {
             Main.WaveQuality = (Main.WaveQuality + 1) % 4;
         });
-        Toggle(12, () => Language.GetTextValue(Main.SettingsEnabled_TilesSwayInWind ? "UI.TilesSwayInWindOn" : "UI.TilesSwayInWindOff"), delegate
+        Toggle(11, () => Language.GetTextValue(Main.SettingsEnabled_TilesSwayInWind ? "UI.TilesSwayInWindOn" : "UI.TilesSwayInWindOff"), delegate
         {
             Main.SettingsEnabled_TilesSwayInWind = !Main.SettingsEnabled_TilesSwayInWind;
         });
-        Toggle(13, () => OnOff("GameUI.ScreenShake", Main.UseScreenShake), delegate
+        Toggle(12, () => OnOff("GameUI.ScreenShake", Main.UseScreenShake), delegate
         {
             Main.UseScreenShake = !Main.UseScreenShake;
         });
-        // Slot 14 is past the legacy layout's 14 slots, so (like vanilla) it has no gamepad point.
-        Toggle(14, () => Language.GetTextValue(Main.FlashyEffectsWorld ? "UI.FlashyEffectsWorldOn" : "UI.FlashyEffectsWorldOff"), delegate
+        Toggle(13, () => Language.GetTextValue(Main.FlashyEffectsWorld ? "UI.FlashyEffectsWorldOn" : "UI.FlashyEffectsWorldOff"), delegate
         {
             Main.FlashyEffectsWorld = !Main.FlashyEffectsWorld;
         });

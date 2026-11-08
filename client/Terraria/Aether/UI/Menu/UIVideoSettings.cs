@@ -21,7 +21,6 @@ public class UIVideoSettings : UIMenuScreen
     {
         AddLink(() => Lang.menu[51].Value, 111, 10, Scale);
         AddLink(() => Lang.menu[52].Value, 28, 11, Scale);
-        AddToggle(() => Lang.menu[(int)(247 + Main.FrameSkipMode)].Value, Main.CycleFrameSkipMode, Scale);
         AddToggle(() => Language.GetTextValue(CachedText.Concat("UI.LightMode_", CachedText.Name(Lighting.Mode))), Lighting.NextLightMode, Scale);
         AddToggle(() => Lang.menu[Main.qaStyle switch
         {
