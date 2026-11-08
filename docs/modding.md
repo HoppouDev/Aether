@@ -395,6 +395,13 @@ Each entry maps one complete authored selector to the exact selector in the inst
 Mappings apply to mixin targets, target methods, operand and slice selectors, shadows, overwrites, accessors, and invokers.
 They do not rewrite ordinary C# calls or type references in the mod's code.
 
+## Use Aether's FNA extensions
+
+Mixins reach only `Terraria.dll`, so Aether's patch to FNA adds a few extension points for mods.
+Set `Texture.SamplerEXT` to draw that texture with its own sampler in any `SpriteBatch`, whatever the batch's sampler.
+Aether sets it to linear filtering on font textures.
+Create a `SamplerState` with `PixelSnapEXT = true` to have `SpriteBatch` put the edges of unrotated sprites drawn with it on whole device pixels.
+
 ## Diagnose startup
 
 Run `./aether launch -- -mixindebug` to see selected instruction offsets and local slots.

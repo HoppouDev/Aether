@@ -52,10 +52,60 @@ index d816dcf..68959c4 100644
  			if ((initFlags & SDL.SDL_WindowFlags.SDL_WINDOW_VULKAN) == SDL.SDL_WindowFlags.SDL_WINDOW_VULKAN)
  			{
 diff --git a/src/Graphics/SpriteBatch.cs b/src/Graphics/SpriteBatch.cs
-index b60a0f4..d76098b 100644
+index b60a0f4..09eb007 100644
 --- a/src/Graphics/SpriteBatch.cs
 +++ b/src/Graphics/SpriteBatch.cs
-@@ -1496,6 +1496,12 @@ namespace Microsoft.Xna.Framework.Graphics
+@@ -1132,6 +1132,17 @@ namespace Microsoft.Xna.Framework.Graphics
+ 				}
+ 			}
+
++			/* Aether: see SamplerState.PixelSnapEXT */
++			if (	rotationSin == 0.0f &&
++				rotationCos == 1.0f &&
++				transformMatrix.M12 == 0.0f &&
++				transformMatrix.M21 == 0.0f &&
++				(texture.SamplerEXT ?? samplerState).PixelSnapEXT	)
++			{
++				SnapToPixels(ref destinationX, ref destinationW, originX, transformMatrix.M11, transformMatrix.M41);
++				SnapToPixels(ref destinationY, ref destinationH, originY, transformMatrix.M22, transformMatrix.M42);
++			}
++
+ 			if (sortMode == SpriteSortMode.Immediate)
+ 			{
+ 				int offset;
+@@ -1235,6 +1246,31 @@ namespace Microsoft.Xna.Framework.Graphics
+ 			}
+ 		}
+
++		/* Aether: moves a sprite's edges along one axis (destination and size,
++		 * with origin as a fraction of the size, as GenerateVertexInfo takes
++		 * them) onto whole device pixels, given the batch's scale and offset.
++		 */
++		private static void SnapToPixels(
++			ref float destination,
++			ref float size,
++			float origin,
++			float scale,
++			float offset
++		) {
++			if (scale == 0.0f)
++			{
++				return;
++			}
++			float start = ((destination - (origin * size)) * scale) + offset;
++			float length = size * scale;
++			float snappedStart = (float) Math.Round(start);
++			float snappedLength = Math.Abs(length) >= 1.0f ?
++				(float) Math.Round(length) :
++				length;
++			size = snappedLength / scale;
++			destination = ((snappedStart - offset) / scale) + (origin * size);
++		}
++
+ 		private unsafe void FlushBatch()
+ 		{
+ 			PrepRenderState();
+@@ -1496,6 +1532,12 @@ namespace Microsoft.Xna.Framework.Graphics
 
  		private void DrawPrimitives(Texture texture, int baseSprite, int batchSize)
  		{
@@ -68,6 +118,27 @@ index b60a0f4..d76098b 100644
  			if (customEffect != null)
  			{
  				foreach (EffectPass pass in customEffect.CurrentTechnique.Passes)
+diff --git a/src/Graphics/States/SamplerState.cs b/src/Graphics/States/SamplerState.cs
+index 987ff62..2f444e1 100644
+--- a/src/Graphics/States/SamplerState.cs
++++ b/src/Graphics/States/SamplerState.cs
+@@ -13,6 +13,16 @@ namespace Microsoft.Xna.Framework.Graphics
+ 	{
+ 		#region Public Properties
+
++		/* Aether: SpriteBatch puts the corners of unrotated sprites drawn with
++		 * this sampler on whole device pixels, so point-sampled pixel art is
++		 * drawn evenly.
++		 */
++		public bool PixelSnapEXT
++		{
++			get;
++			set;
++		}
++
+ 		public TextureAddressMode AddressU
+ 		{
+ 			get
 diff --git a/src/Graphics/Texture.cs b/src/Graphics/Texture.cs
 index b1d3202..248a768 100644
 --- a/src/Graphics/Texture.cs
