@@ -64,12 +64,8 @@ if (-not (Test-Path -LiteralPath $launcher -PathType Leaf) -or
 $clientBuild = Join-Path $bootstrap "bin/$configuration/net10.0"
 $saveDir = Join-Path $PSScriptRoot '.aether/saves'
 
-if ($managed -and (
-    -not (Test-Path -LiteralPath (Join-Path $clientBuild 'Aether.Bootstrap.dll') -PathType Leaf) -or
-    -not (Test-Path -LiteralPath (Join-Path $clientBuild 'Aether.version') -PathType Leaf) -or
-    -not (Test-Path -LiteralPath (Join-Path $clientBuild 'Aether.Modding.dll') -PathType Leaf) -or
-    -not (Test-Path -LiteralPath (Join-Path $clientBuild 'Terraria.dll') -PathType Leaf)
-)) {
+# Built on every run (incremental), so a pulled checkout re-applies its patches and is rebuilt.
+if ($managed) {
     Push-Location -LiteralPath $clientRoot
     try {
         if (-not (Test-Path -LiteralPath 'src/Terraria/Main.cs' -PathType Leaf)) {

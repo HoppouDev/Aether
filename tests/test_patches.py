@@ -1,3 +1,4 @@
+import json
 import shutil
 
 import pytest
@@ -179,3 +180,39 @@ def test_offset_patch_still_applies(repo, capsys):
     assert patches.rebuild_src(force=True)
     assert "int c = 30;" in (repo.src / "Terraria/Main.cs").read_text()
     assert "offset/fuzz" in capsys.readouterr().err
+
+
+def test_build_applies_patches_that_changed_since_the_last_sync(repo):
+    from aether import game
+
+    repo.make_base({"A.cs": "one\n"})
+    (repo.src / "A.cs").write_text("two\n")
+    repo.diff()
+    assert not patches.patches_changed_since_sync()
+    # A pull brings a newer patch; src/ still has the old edit.
+    pulled = (repo.patches / "A.cs.patch").read_text().replace("+two", "+three")
+    (repo.patches / "A.cs.patch").write_text(pulled)
+    assert patches.patches_changed_since_sync()
+    game.update_src()
+    assert (repo.src / "A.cs").read_text() == "three\n"
+    assert not patches.patches_changed_since_sync()
+
+
+def test_build_keeps_unsynced_src_edits(repo):
+    from aether import game
+
+    repo.make_base({"A.cs": "one\n"})
+    (repo.src / "A.cs").write_text("edited\n")
+    game.update_src()
+    assert (repo.src / "A.cs").read_text() == "edited\n"
+
+
+def test_state_without_a_patches_digest_falls_back_to_the_src_digest(repo):
+    repo.make_base({"A.cs": "one\n"})
+    (repo.src / "A.cs").write_text("two\n")
+    repo.diff()
+    digest = patches.recorded_digest()
+    patches.state_file().write_text(json.dumps({"src_patch_digest": digest}))
+    assert not patches.patches_changed_since_sync()
+    (repo.patches / "A.cs.patch").write_text("changed")
+    assert patches.patches_changed_since_sync()

@@ -31,13 +31,15 @@ from pathlib import Path
 
 from . import paths
 from .fna import build_fna, load_fna_json
-from .pinning import load_base_json
+from .patches import patches_changed_since_sync, rebuild_src
+from .pinning import load_base_json, require_base
 from .steam import platform_pin
 from .terrain import stage_linux_backend
 from .util import (
     AetherError,
     link_or_copy,
     log,
+    require_executables,
     sha256_file,
 )
 from .util import (
@@ -190,8 +192,22 @@ def update_fna() -> None:
     build_fna(load_fna_json(), paths.LIB)
 
 
+def update_src() -> None:
+    """Applies patches/ to src/ again if it changed since they were last synced (a pull)."""
+    if not patches_changed_since_sync():
+        return
+    require_executables("diff", "patch")
+    require_base()
+    log("patches/ changed since src/ was last applied; applying it…")
+    if not rebuild_src(force=False):
+        raise AetherError(
+            "Some patches didn't apply; fix the src/**/*.rej conflicts, then run `./aether diff`."
+        )
+
+
 def build_client(configuration: str, platform: str) -> Path:
     """Builds the bootstrap and game and returns the client folder."""
+    update_src()
     update_fna()
     log(f"building the client ({configuration}, {platform})…")
     run_dotnet(build_command(configuration), "build")

@@ -34,7 +34,8 @@ You need the checkout's setup prerequisites and the pinned Linux Terraria build.
 If setup cannot find that build, see the cloned checkout's `AGENTS.md` for its `download` and setup instructions.
 
 Use `AETHER_CONFIGURATION=Release` to select Release.
-The launcher reuses the checkout and builds the client when the selected configuration is missing.
+The launcher reuses the checkout and builds the client in the selected configuration on every run, which is quick when nothing changed.
+After you pull new commits into `.aether/client`, the next run re-applies its patches and rebuilds the client.
 Set `AETHER_REPOSITORY` before the first clone to use a different Git remote.
 To use an existing built checkout, set `AETHER_ROOT` or put its path in `.aether-root`.
 Relative paths are resolved from the mod repo.

@@ -59,8 +59,8 @@ client_root=$(CDPATH= cd -- "$client_root" && pwd -P)
 client_build="$client_root/$bootstrap_dir/bin/$configuration/net10.0"
 save_dir="$mod_root/.aether/saves"
 
-if [ "$managed" = true ] && { [ ! -f "$client_build/Aether.Bootstrap.dll" ] ||
-    [ ! -f "$client_build/Aether.version" ] || [ ! -f "$client_build/Aether.Modding.dll" ] || [ ! -f "$client_build/Terraria.dll" ]; }; then
+# Built on every run (incremental), so a pulled checkout re-applies its patches and is rebuilt.
+if [ "$managed" = true ]; then
     (
         cd "$client_root"
         if [ ! -f src/Terraria/Main.cs ]; then

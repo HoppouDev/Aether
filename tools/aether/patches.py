@@ -164,16 +164,30 @@ def sync_patches(new_files: dict[Path, bytes]) -> list[str]:
 
 
 def record_state(patch_digest: str) -> None:
+    """Records the patch set src/ now corresponds to, and the patches/ it was synced with."""
     paths.STATE.mkdir(exist_ok=True)
-    state_file().write_text(
-        json.dumps({"src_patch_digest": patch_digest}, indent=2) + "\n"
-    )
+    state = {
+        "src_patch_digest": patch_digest,
+        "patches_digest": digest_patch_set(patch_files(paths.PATCHES)),
+    }
+    state_file().write_text(json.dumps(state, indent=2) + "\n")
+
+
+def recorded_state() -> dict:
+    if not state_file().is_file():
+        return {}
+    return json.loads(state_file().read_text())
 
 
 def recorded_digest() -> str | None:
-    if not state_file().is_file():
-        return None
-    return json.loads(state_file().read_text()).get("src_patch_digest")
+    return recorded_state().get("src_patch_digest")
+
+
+def patches_changed_since_sync() -> bool:
+    """Whether patches/ changed (e.g. a pull) since src/ was last applied or diffed."""
+    state = recorded_state()
+    synced = state.get("patches_digest", state.get("src_patch_digest"))
+    return synced != digest_patch_set(patch_files(paths.PATCHES))
 
 
 # ---------------------------------------------------------------------------

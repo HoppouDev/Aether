@@ -25,7 +25,7 @@ Aether allows client and server exploits, provided Aether changes do not introdu
 ./aether download  # optional: fetch the pinned Linux build with SteamCMD into .aether/game/
 ./aether setup     # first time / after a clone: decompile your Terraria.exe into .base/ + lib/, build src/
 ./aether diff      # after editing src/: regenerate patches/ (the pre-commit hook also does this)
-./aether apply     # after pulling: rebuild src/ from .base/ + patches/
+./aether apply     # rebuild src/ from .base/ + patches/ (build does this itself when patches/ changed, e.g. after a pull)
 ./aether status    # what you've changed vs the base, and whether patches/ is current
 ./aether run       # build the client and play it (saves go to .aether/saves/)
 ./aether build     # just build (bin/<Debug|Release>/net10.0/); --target lin64|win64|mac64|macarm|mac|all: also package dist/<target>/
