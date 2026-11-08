@@ -8,6 +8,8 @@ public static class ClientStartup
     public static Action? InitializeMods { get; set; }
     public static Func<string, bool>? HandleLocalCommand { get; set; }
     public static Func<object, bool>? BlockCraft { get; set; }
+    public static Func<object, bool>? UpdateRetainedUi { get; set; }
+    public static Action<object>? DrawRetainedUi { get; set; }
 
     public static Dictionary<string, string> ParseArguments(string[] args, bool monoArgs)
     {

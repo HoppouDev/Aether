@@ -111,6 +111,7 @@ public static class GameBridge
             ProjectileRegistry.EndWorld();
             NpcRegistry.EndWorld();
             PlayerModifiers.ClearWorld();
+            RetainedUi.EndWorld();
             WorldEvents.Left.Raise(world);
             HudOverlays.ClearTextures();
         }

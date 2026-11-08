@@ -29,3 +29,5 @@ Canvas coordinates use the game UI scale.
 Pass the destination position and dimensions and a tint as `HudColor`.
 Textures are cached for the current world session and disposed when it ends.
 Use the canvas only during the callback that received it.
+
+Use [retained UI layers](retained-ui.md) for panels, buttons, and other widgets that keep state across frames.

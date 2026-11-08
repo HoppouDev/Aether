@@ -2,7 +2,9 @@ using Aether.Api;
 using Aether.Modding;
 using Microsoft.Xna.Framework;
 using Terraria.DataStructures;
+using Terraria.GameContent.UI.Elements;
 using Terraria.ID;
+using Terraria.UI;
 
 namespace ApiExample;
 
@@ -91,6 +93,21 @@ public sealed class Startup : IModInitializer
                     new EntitySource_Parent(player)), out _);
         });
         HudOverlays.Register("api-example:label", canvas => canvas.DrawText("API example", 16, 80, HudColor.White));
+        RetainedUiLayer counter = RetainedUi.Register("api-example:counter", CreateCounter, initiallyVisible: false);
+        Keybinds.Register("api-example:counter", "F7", () => counter.IsVisible = !counter.IsVisible);
         RecipeRegistry.Register("api-example:torch", new RecipeDefinition(new ItemAmount(8, 1), [new ItemAmount(9, 1)]));
+    }
+
+    private static UIState CreateCounter()
+    {
+        var state = new UIState();
+        var button = new UITextPanel<string>("Clicks: 0") { VAlign = 0.5f };
+        button.Left.Set(16, 0);
+        button.Width.Set(160, 0);
+        button.Height.Set(44, 0);
+        int clicks = 0;
+        button.OnLeftClick += (_, _) => button.SetText($"Clicks: {++clicks}");
+        state.Append(button);
+        return state;
     }
 }

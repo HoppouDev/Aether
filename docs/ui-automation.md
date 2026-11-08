@@ -13,6 +13,7 @@ The control socket listens on loopback, and the `aether-game` MCP server uses it
 Use `interactive_only: true` to return just the actionable components.
 The full layout includes parent IDs, the owning screen and component types, and clipped `[x, y, width, height]` bounds in back-buffer pixels.
 Rows for saved characters and worlds supply their names as context for the buttons inside them.
+Widgets in mod UI layers supply the layer's registration ID as their context.
 Inventory and hotbar slots include their slot index, item label, and stack size.
 IDs belong to the latest layout on the running client.
 Each action checks the target against a fresh drawn frame before running.

@@ -38,6 +38,7 @@ Install `examples/ApiExample/bin/Debug/net10.0/ApiExample.aethermod` alongside t
 
 - [Lifecycle events](lifecycle.md)
 - [Keybinds, commands, and HUD](client-tools.md)
+- [Retained in-game UI](retained-ui.md)
 - [Recipes](recipes.md)
 - [Custom items](items.md)
 - [Player state and vitals](players.md)

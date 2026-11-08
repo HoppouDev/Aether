@@ -1,6 +1,20 @@
 --- a/Terraria/GameInput/PlayerInput.cs
 +++ b/Terraria/GameInput/PlayerInput.cs
-@@ -510,9 +510,9 @@
+@@ -402,7 +402,12 @@
+ 
+     public static bool UsingGamepadUI => CurrentInputMode == InputMode.XBoxGamepadUI;
+ 
+-    public static bool IgnoreMouseInterface
++    internal static bool ModUiCapturesMouse => Main.RetainedUiCapturesMouse && !Main.gameMenu &&
++        !Main.ingameOptionsWindow && !Main.inFancyUI && !Main.mapFullscreen && !Main.hideUI;
++
++    public static bool IgnoreMouseInterface => ModUiCapturesMouse || IgnoreMouseInterfaceWithoutModUi;
++
++    internal static bool IgnoreMouseInterfaceWithoutModUi
+     {
+         get
+         {
+@@ -510,9 +515,9 @@
          {
              MouseInfo = default;
              MouseInfoOld = default;
@@ -13,7 +27,7 @@
              Main.keyCount = 0;
              Triggers.Reset();
              Triggers.Reset();
-@@ -541,6 +541,26 @@
+@@ -541,6 +546,26 @@
          return list;
      }
  
@@ -40,7 +54,7 @@
      private static bool IsImeStateKeycode(Keys k)
      {
          if (k >= (Keys)240)
-@@ -981,7 +1001,7 @@
+@@ -981,7 +1006,7 @@
          bool flag2 = false;
          for (int i = 0; i < 4; i++)
          {
@@ -49,7 +63,7 @@
              if (state.IsConnected)
              {
                  flag2 = true;
-@@ -1032,7 +1052,7 @@
+@@ -1032,7 +1057,7 @@
              {
                  continue;
              }
@@ -58,7 +72,7 @@
              bool flag4 = _buttonsLocked.Contains(text);
              if (gamePadState.IsButtonDown(ButtonsGamepad[j]))
              {
-@@ -1078,88 +1098,88 @@
+@@ -1078,88 +1103,88 @@
          }
          if (Vector2.Dot(-Vector2.UnitX, vector2) >= num2 && gamepadThumbstickLeft.X < 0f - CurrentProfile.LeftThumbstickDeadzoneX)
          {
@@ -166,7 +180,7 @@
              if (CheckRebindingProcessGamepad(newKey))
              {
                  return false;
-@@ -1400,10 +1420,10 @@
+@@ -1400,10 +1425,10 @@
          if (!FocusHelper.AllowInputProcessing)
          {
              MouseInfo = new MouseState(MouseInfo.X, MouseInfo.Y, 0, ButtonState.Released, ButtonState.Released, ButtonState.Released, ButtonState.Released, ButtonState.Released);
@@ -179,7 +193,7 @@
          ScrollWheelValue += MouseInfo.ScrollWheelValue;
          if (DebugOptions.ForceGamepad)
          {
-@@ -1456,11 +1476,11 @@
+@@ -1456,11 +1481,11 @@
      {
          bool flag = false;
          bool flag2 = false;
@@ -193,7 +207,7 @@
              return false;
          }
          for (int i = 0; i < pressedKeys.Count; i++)
-@@ -1475,12 +1495,12 @@
+@@ -1475,12 +1500,12 @@
              }
              Main.ChromaPainter.PressKey(pressedKeys[i]);
          }
@@ -208,7 +222,7 @@
                  {
                      pressedKeys[j] = Keys.None;
                      flag3 = true;
-@@ -1488,7 +1508,7 @@
+@@ -1488,7 +1513,7 @@
              }
              if (!flag3)
              {
@@ -217,7 +231,7 @@
              }
          }
          KeyConfiguration keyConfiguration = CurrentProfile.InputModes[InputMode.Keyboard];
-@@ -1496,10 +1516,11 @@
+@@ -1496,10 +1521,11 @@
          {
              keyConfiguration = CurrentProfile.InputModes[InputMode.KeyboardUI];
          }
@@ -231,7 +245,7 @@
          }
          if (WritingText)
          {
-@@ -1515,7 +1536,7 @@
+@@ -1515,7 +1541,7 @@
                  continue;
              }
              string newKey = list[l];
@@ -240,7 +254,7 @@
              {
                  if (CheckRebindingProcessKeyboard(newKey))
                  {
-@@ -2125,7 +2146,7 @@
+@@ -2125,7 +2151,7 @@
                  c.KeyStatus["Left"].Add("Left");
                  c.KeyStatus["Right"].Add("D");
                  c.KeyStatus["Right"].Add("Right");
@@ -249,7 +263,7 @@
                  c.KeyStatus["MenuUp"].Add(string.Concat(Buttons.DPadUp));
                  c.KeyStatus["MenuDown"].Add(string.Concat(Buttons.DPadDown));
                  c.KeyStatus["MenuLeft"].Add(string.Concat(Buttons.DPadLeft));
-@@ -2238,7 +2259,7 @@
+@@ -2238,7 +2264,7 @@
                  c.KeyStatus["Left"].Add("Left");
                  c.KeyStatus["Right"].Add("D");
                  c.KeyStatus["Right"].Add("Right");
@@ -258,7 +272,7 @@
                  c.KeyStatus["MenuUp"].Add(string.Concat(Buttons.DPadUp));
                  c.KeyStatus["MenuDown"].Add(string.Concat(Buttons.DPadDown));
                  c.KeyStatus["MenuLeft"].Add(string.Concat(Buttons.DPadLeft));
-@@ -2354,7 +2375,7 @@
+@@ -2354,7 +2380,7 @@
                  c.KeyStatus["MenuDown"].Add(string.Concat(Buttons.DPadDown));
                  c.KeyStatus["MenuLeft"].Add(string.Concat(Buttons.DPadLeft));
                  c.KeyStatus["MenuRight"].Add(string.Concat(Buttons.DPadRight));
@@ -267,7 +281,7 @@
                  break;
              case InputMode.XBoxGamepad:
                  c.KeyStatus["MouseLeft"].Add(string.Concat(Buttons.RightShoulder));
-@@ -2466,7 +2487,7 @@
+@@ -2466,7 +2492,7 @@
                  c.KeyStatus["MenuDown"].Add(string.Concat(Buttons.DPadDown));
                  c.KeyStatus["MenuLeft"].Add(string.Concat(Buttons.DPadLeft));
                  c.KeyStatus["MenuRight"].Add(string.Concat(Buttons.DPadRight));

@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/Aether/Testing/UiAutomation.cs
-@@ -0,0 +1,368 @@
+@@ -0,0 +1,377 @@
 +using System;
 +using System.Collections.Generic;
 +using System.Linq;
@@ -119,6 +119,8 @@
 +        {
 +            return;
 +        }
++        bool capturesMouse = Main.RetainedUiCapturesMouse;
++        Main.RetainedUiCapturesMouse = false;
 +        try
 +        {
 +            RecordElement(element, device);
@@ -126,6 +128,10 @@
 +        catch (Exception exception)
 +        {
 +            _capture.Error = exception;
++        }
++        finally
++        {
++            Main.RetainedUiCapturesMouse = capturesMouse;
 +        }
 +    }
 +
@@ -165,8 +171,8 @@
 +        {
 +            parent = parent.Parent;
 +        }
-+        string context = null;
-+        for (UIElement ancestor = element.Parent; ancestor != null; ancestor = ancestor.Parent)
++        string context = _owner.AutomationContext;
++        for (UIElement ancestor = element.Parent; context == null && ancestor != null; ancestor = ancestor.Parent)
 +        {
 +            if (ancestor is UICharacterListItem or UIWorldListItem)
 +            {
@@ -211,7 +217,7 @@
 +
 +    private static bool AllowsInput(UserInterface owner)
 +    {
-+        return Main.gameMenu || (!Main.mapFullscreen && !PlayerInput.IgnoreMouseInterface &&
++        return Main.gameMenu || (!Main.mapFullscreen && !PlayerInput.IgnoreMouseInterfaceWithoutModUi &&
 +            (!Main.ingameOptionsWindow || owner.CurrentState is UIIngameOptions) &&
 +            (!Main.InGameUI.IsVisible || owner == Main.InGameUI));
 +    }
@@ -319,6 +325,8 @@
 +            return false;
 +        }
 +        UserInterface previousOwner = UserInterface.ActiveInstance;
++        bool capturesMouse = Main.RetainedUiCapturesMouse;
++        Main.RetainedUiCapturesMouse = false;
 +        UserInterface.ActiveInstance = target.Owner;
 +        try
 +        {
@@ -364,6 +372,7 @@
 +        finally
 +        {
 +            UserInterface.ActiveInstance = previousOwner;
++            Main.RetainedUiCapturesMouse = capturesMouse;
 +        }
 +        error = null;
 +        return true;
