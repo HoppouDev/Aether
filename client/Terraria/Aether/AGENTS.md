@@ -89,7 +89,7 @@ Pieces move to retained mode one at a time, each through a small hook at the top
   To compare a migrated piece with the legacy code, take the same screenshot before and after Ctrl+Shift+L (in the title-menu gallery, Tab) and diff them with `magick compare -metric AE -fuzz 20% retained.png legacy.png diff.png`; the pieces migrated so far match pixel for pixel.
   Agents can do this with the `aether-game` MCP server: `game_launch` with `screens: true`, then `key_press` `ctrl+shift+l` between two `game_screenshot`s at `scale: 1`.
 - Still legacy: the full-screen map, tooltips and mouse text, and the rest of the interface layers (entity health bars, the boss bar, chat, the cursor and others).
-- **Sharp UI** (always on): the UI is pixel art drawn scaled (UI scale, slot and icon scales), which linear filtering blurs, so every sprite batch that draws it (the title menu, the interface layers, the cursor and mouse text, vanilla's options and fancy UI, camera mode) takes its sampler from `PixelArt.Sampler`, which is point sampling.
+- **UI sampler hook** (`PixelArt.Sampler`): every sprite batch that draws the UI (the title menu, the interface layers, the cursor and mouse text, vanilla's options and fancy UI, camera mode) takes its sampler from it, and it answers with the batch's own (vanilla's linear filtering), so mods can redirect it; FreshUI makes the UI point-sampled and pixel-snapped there.
   A new UI sprite batch should do the same.
   Text isn't pixel art (the fonts are smooth, and usually drawn scaled down), so font textures keep linear filtering in any batch: FNA's `Texture.SamplerEXT` (Aether's patch to FNA) gives a texture its own sampler, and `DynamicSpriteFontReader` sets it on every font page.
 

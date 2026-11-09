@@ -5,7 +5,7 @@
          {
              Texture2D texture = input.ReadObject<Texture2D>();
 +            // Aether: the fonts are smooth, not pixel art, so they keep linear filtering in sprite
-+            // batches that use point sampling (Aether's sharp UI).
++            // batches that use point sampling (a mod's sharp UI).
 +            texture.SamplerEXT = SamplerState.LinearClamp;
              List<Rectangle> glyphs = input.ReadObject<List<Rectangle>>();
              List<Rectangle> padding = input.ReadObject<List<Rectangle>>();

@@ -3,15 +3,15 @@ using Microsoft.Xna.Framework.Graphics;
 namespace Aether.Graphics;
 
 /// <summary>
-/// Terraria's UI is pixel art that it draws scaled (the UI scale, slot and icon scales) with
-/// linear filtering, which blurs it. The sprite batches that draw the UI sample the nearest texel
-/// instead (fonts keep linear filtering: <c>Texture.SamplerEXT</c>).
+/// The sampler of every sprite batch that draws the UI (Terraria's UI is pixel art it draws scaled,
+/// with linear filtering): the batch's own, as in vanilla. Mods redirect it, for example to sample
+/// the nearest texel (fonts keep linear filtering: <c>Texture.SamplerEXT</c>).
 /// </summary>
 internal static class PixelArt
 {
     /// <summary>The sampler a UI sprite batch uses in place of <paramref name="requested" /> (null: the default, linear).</summary>
     internal static SamplerState Sampler(SamplerState requested)
     {
-        return SamplerState.PointClamp;
+        return requested;
     }
 }
