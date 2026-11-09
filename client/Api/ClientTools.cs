@@ -77,31 +77,6 @@ public static class Keybinds
     }
 }
 
-public static class LocalCommands
-{
-    private static readonly Dictionary<string, Listener<string>> entries = [];
-
-    public static void Register(string id, Action<string> execute)
-    {
-        ArgumentNullException.ThrowIfNull(execute);
-        string owner = Registration.Owner();
-        Registration.Add(entries, id, new Listener<string>(owner, execute), owner);
-    }
-
-    internal static bool TryExecute(string text)
-    {
-        if (!text.StartsWith('/'))
-            return false;
-        int end = 1;
-        while (end < text.Length && !char.IsWhiteSpace(text[end]))
-            end++;
-        if (!entries.TryGetValue(text[1..end], out var command))
-            return false;
-        command.Invoke(text[end..].TrimStart());
-        return true;
-    }
-}
-
 public readonly record struct HudColor(byte Red, byte Green, byte Blue, byte Alpha = 255)
 {
     public static HudColor White { get; } = new(255, 255, 255);

@@ -4,7 +4,8 @@ using Aether.Modding;
 
 public sealed class ApiConsumer : IModInitializer
 {
-    public void Initialize() => Console.WriteLine(ApiMarker.Next());
+    // Counts on the library the API package ships, though the consumer bundles its own copy.
+    public void Initialize() => Console.WriteLine(Aether.Tests.Counter.Next());
 }
 
 [Mixin(typeof(Target))]

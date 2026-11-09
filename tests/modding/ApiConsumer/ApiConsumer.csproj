@@ -6,5 +6,6 @@
   <ItemGroup>
     <ProjectReference Include="../Game/Game.csproj" Private="false" />
     <ProjectReference Include="../Api/Api.csproj" Private="false" />
+    <ProjectReference Include="../ApiLibrary/ApiLibrary.csproj" />
   </ItemGroup>
 </Project>

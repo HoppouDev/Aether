@@ -28,25 +28,27 @@ public sealed class Startup : IModInitializer
             Tooltip = "+1 defense while equipped.",
             OnEquippedTick = context => context.Player.statDefense += 1
         });
-        LocalCommands.Register("custom-items:give", _ =>
+        ClientCommands.Register("custom-items:give", command => command.Executes(context =>
         {
             var source = new EntitySource_DebugCommand();
-            Main.LocalPlayer.QuickSpawnItem(source, ItemRegistry.Create(ItemKey.Custom(Blade)));
-            Main.LocalPlayer.QuickSpawnItem(source, ItemRegistry.Create(ItemKey.Custom(Charm)));
-        });
-        LocalCommands.Register("custom-items:inspect", _ =>
+            context.Source.Player.QuickSpawnItem(source, ItemRegistry.Create(ItemKey.Custom(Blade)));
+            context.Source.Player.QuickSpawnItem(source, ItemRegistry.Create(ItemKey.Custom(Charm)));
+            return 1;
+        }));
+        ClientCommands.Register("custom-items:inspect", command => command.Executes(context =>
         {
-            Item item = Main.LocalPlayer.HeldItem;
+            Item item = context.Source.Player.HeldItem;
             if (ItemRegistry.GetId(item.type) != Blade)
             {
-                Main.NewText("Hold a Counter Blade first.");
-                return;
+                context.Source.ReplyError("Hold a Counter Blade first.");
+                return 0;
             }
             var (swings, hits) = Read(item);
             string text = $"Counter Blade has {swings} swings and {hits} hits.";
-            Main.NewText(text);
+            context.Source.Reply(text);
             Console.WriteLine(text);
-        });
+            return 1;
+        }));
     }
 
     private static (int Swings, int Hits) Read(Item item)

@@ -18,6 +18,7 @@ CONFIG = Path("bin/Debug/net10.0")
 MOD = "Aether.Tests.Mod.dll"
 DEPENDENCY = "Aether.Tests.Dependency.dll"
 PRIVATE = "Aether.Tests.Private.dll"
+API_LIBRARY = "Aether.Tests.ApiLibrary.dll"
 MIXINS = ["TargetMixin", "ITargetAccess", "ITargetFactory"]
 
 
@@ -142,6 +143,7 @@ def api_assemblies(game_fixture, tmp_path_factory):
         assert result.returncode == 0, result.stdout + result.stderr
         shutil.copy2(build / f"{name}.dll", output)
     shutil.copy2(build / "Aether.Api.dll", output)
+    shutil.copy2(build / API_LIBRARY, output)
     return output
 
 
@@ -149,13 +151,13 @@ def api_archive(save, assemblies):
     archive(
         save,
         "aether-api",
-        files=[assemblies / "Aether.Api.dll"],
+        files=[assemblies / "Aether.Api.dll", assemblies / API_LIBRARY],
         assembly="Aether.Api.dll",
         version="0.1.0",
     )
 
 
-def test_api_assembly_is_shared_with_consumers_and_woven_game(
+def test_api_and_its_libraries_are_shared_with_consumers_and_woven_game(
     game_fixture, api_assemblies, tmp_path
 ):
     api_archive(tmp_path, api_assemblies)
@@ -163,7 +165,7 @@ def test_api_assembly_is_shared_with_consumers_and_woven_game(
         archive(
             tmp_path,
             name.lower(),
-            files=[api_assemblies / f"{name}.dll"],
+            files=[api_assemblies / f"{name}.dll", api_assemblies / API_LIBRARY],
             assembly=f"{name}.dll",
             entrypoint="ApiConsumer",
             mixins=mixins,

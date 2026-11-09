@@ -19,6 +19,8 @@
   <ItemGroup>
     <Reference Include="Aether.Api" HintPath="$(AetherApiDirectory)/Aether.Api.dll" Private="false"
       Condition="'$(AetherUseApi)' == 'true'" />
+    <Reference Include="Brigadier.NET" HintPath="$(AetherApiDirectory)/Brigadier.NET.dll" Private="false"
+      Condition="'$(AetherUseApi)' == 'true'" />
     <Reference Include="Aether.Modding" HintPath="$(AetherClientDirectory)/Aether.Modding.dll" Private="false" />
     <Reference Include="FNA" HintPath="$(AetherClientDirectory)/FNA.dll" Private="false" />
     <Reference Include="Terraria" HintPath="$(AetherClientDirectory)/Terraria.dll" Private="false" />
@@ -32,7 +34,7 @@
   <Target Name="ValidateAetherReferences" BeforeTargets="ResolveAssemblyReferences" DependsOnTargets="ValidateAetherConfiguration">
     <Error Condition="'$(AetherClientDirectory)' == '' Or !Exists('$(AetherClientDirectory)/Aether.Modding.dll') Or !Exists('$(AetherClientDirectory)/Terraria.dll') Or !Exists('$(AetherClientDirectory)/FNA.dll')"
       Text="Run the mod launcher with setup to prepare the local Aether client. For an external checkout, build that client first." />
-    <Error Condition="'$(AetherUseApi)' == 'true' And !Exists('$(AetherApiDirectory)/Aether.Api.dll')"
+    <Error Condition="'$(AetherUseApi)' == 'true' And (!Exists('$(AetherApiDirectory)/Aether.Api.dll') Or !Exists('$(AetherApiDirectory)/Brigadier.NET.dll'))"
       Text="Run the mod launcher with setup to build Aether.Api.dll, or set AetherApiDirectory to a matching API build." />
     <Error Condition="!Exists('$(ModManifestPath)')" Text="Missing aether.mod.json." />
     <PropertyGroup>

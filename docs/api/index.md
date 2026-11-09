@@ -17,10 +17,10 @@ dotnet build client/Api/Aether.Api.csproj -t:PackMod
 ```
 
 Install `client/Api/bin/Debug/net10.0/aether-api.aethermod` in the active save profile's `Mods` directory.
-Use the matching `Aether.Api.dll` from that build as a compile-only reference.
+Use the matching `Aether.Api.dll` and `Brigadier.NET.dll` from that build as compile-only references.
 Template projects can override `AetherApiDirectory` with the folder containing the DLL and archive, for example with `-p:AetherApiDirectory=/path/to/client/Api/bin/Debug/net10.0`.
 Set the property in your mod's `.csproj` to use that build in your IDE and when launching through `./aether`.
-Keep the DLL out of dependent mod archives.
+Keep both DLLs out of dependent mod archives.
 
 Declare the dependency in the mod manifest.
 
@@ -30,7 +30,7 @@ Declare the dependency in the mod manifest.
 }
 ```
 
-Aether validates the dependency before running initializers and gives dependent mods the same API assembly.
+Aether validates the dependency before running initializers and gives dependent mods the same API assembly, and the libraries the API package ships (`Brigadier.NET.dll`).
 Aether starts without the API when no installed mod requires it and the API archive is absent.
 `-nomods` bypasses the API and dependent mods together.
 The API package pins the Aether and Terraria builds it was compiled against.
@@ -41,7 +41,8 @@ Build it with `dotnet build examples/ApiExample/ApiExample.csproj -t:PackMod`.
 Install `examples/ApiExample/bin/Debug/net10.0/ApiExample.aethermod` alongside the API.
 
 - [Lifecycle events](lifecycle.md)
-- [Keybinds, commands, and HUD](client-tools.md)
+- [Keybinds and HUD](client-tools.md)
+- [Commands](commands.md)
 - [Retained in-game UI](retained-ui.md)
 - [Recipes](recipes.md)
 - [Custom items](items.md)

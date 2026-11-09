@@ -76,7 +76,7 @@ internal static class Program
                 bool usesApi = package.Manifest.Id == "aether-api" || package.Dependencies.Any(dependency => dependency.Id == "aether-api");
                 ValidateApiReferences(package, usesApi);
                 if (usesApi && api.Context != null)
-                    context.LoadApi = () => api.Context.LoadManaged(api.Package.EntryPath);
+                    context.Api = api.Context;
             }
 
             phase = "assembly weaving";

@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using Aether.Modding;
 using Terraria;
+using Terraria.Chat;
 using Terraria.IO;
 using Terraria.Testing;
 
@@ -12,13 +13,15 @@ public sealed class ApiStartup : IModInitializer
     public void Initialize()
     {
         Registration.SetGameThread();
-        ClientStartup.HandleLocalCommand = LocalCommands.TryExecute;
+        ClientStartup.HandleLocalCommand = ClientCommands.TryExecute;
         ClientStartup.BlockCraft = recipe => RecipeRegistry.IsBlocked((Recipe)recipe);
         ClientContent.FinalizeRegistration = () =>
         {
             ItemRegistry.Freeze();
             NpcRegistry.Freeze();
             ProjectileRegistry.Freeze();
+            ClientCommands.Registry.Freeze();
+            ServerCommands.Registry.Freeze();
         };
         ClientContent.ApplyPlayerModifiers = player => PlayerModifiers.Apply((Player)player);
         ClientContent.ServerReady = GameBridge.ReadyServer;
@@ -136,6 +139,8 @@ public static class GameBridge
 
     public static void NpcTickEnded(NPC npc) => NpcRegistry.OnTickEnd(npc);
 
+    public static bool TryServerCommand(ChatMessage message, int clientId) => ServerCommands.TryExecute(message, clientId);
+
     public static void ProjectileTickEnded(Projectile projectile) => ProjectileRegistry.OnTickEnd(projectile);
 
     public static void FilterGuideRecipes()
@@ -187,6 +192,17 @@ internal static class ProjectileHooks
 {
     [Inject("Update(System.Int32)", At.RETURN)]
     private static void TickEnd(Projectile self, int i, CallbackInfo callback) => GameBridge.ProjectileTickEnded(self);
+}
+
+[Mixin(typeof(ChatCommandProcessor))]
+internal static class ChatHooks
+{
+    [Inject("ProcessIncomingMessage(Terraria.Chat.ChatMessage,System.Int32)", At.HEAD, Cancellable = true)]
+    private static void ServerCommand(ChatCommandProcessor self, ChatMessage message, int clientId, CallbackInfo callback)
+    {
+        if (GameBridge.TryServerCommand(message, clientId))
+            callback.Cancel();
+    }
 }
 
 [Mixin(typeof(Recipe))]

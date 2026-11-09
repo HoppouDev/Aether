@@ -50,7 +50,7 @@ Relative paths are resolved from the mod repo.
 
 For manual builds, `-p:AetherClientDirectory=/path/to/client-output` can point directly to the folder containing `Aether.Modding.dll` and `Terraria.dll`.
 Set `AetherApiDirectory` to use an API build from another directory.
-For installation, that directory must contain both `Aether.Api.dll` and `aether-api.aethermod` from the matching build.
+That directory must contain `Aether.Api.dll` and `Brigadier.NET.dll` (compile-only references), and for installation `aether-api.aethermod`, from the matching build.
 
 The template references Aether API `0.1.0` by default.
 Distribute the mod archive and tell users to install a matching Aether API archive separately.

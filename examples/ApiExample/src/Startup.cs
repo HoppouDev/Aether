@@ -1,5 +1,7 @@
 using Aether.Api;
 using Aether.Modding;
+using Brigadier.NET;
+using Brigadier.NET.Builder;
 using Microsoft.Xna.Framework;
 using Terraria.DataStructures;
 using Terraria.GameContent.UI.Elements;
@@ -17,41 +19,48 @@ public sealed class Startup : IModInitializer
         WorldEvents.Entered.Register(world => Console.WriteLine($"[api-example] Entered {world.Name}"));
         WorldEvents.Left.Register(world => Console.WriteLine($"[api-example] Left {world.Name}"));
         Keybinds.Register("api-example:hello", "F6", () => Console.WriteLine("[api-example] Hello"));
-        LocalCommands.Register("api-example:echo", text => Console.WriteLine($"[api-example] {text}"));
-        LocalCommands.Register("api-example:player", _ =>
+        ClientCommands.Register("api-example:echo", command => command
+            .Then(c => c.Argument("text", Arguments.GreedyString())
+                .Executes(context =>
+                {
+                    context.Source.Reply(Arguments.GetString(context, "text"));
+                    return 1;
+                })));
+        ClientCommands.Register("api-example:player", command => command.Executes(context =>
         {
-            if (!Players.TryGetLocal(out var player))
-                return;
-            PlayerStats stats = Players.GetStats(player);
-            Console.WriteLine($"[api-example] {stats.Name} ({stats.GameMode}) has {stats.Health}/{stats.MaxHealth} health and {stats.Mana}/{stats.MaxMana} mana");
-        });
-        LocalCommands.Register("api-example:swiftness", _ =>
-        {
-            if (Players.TryGetLocal(out var player) && Terraria.Main.netMode == 0 && Players.GetStats(player).IsAlive)
-                Players.TryApplyEffect(player, BuffID.Swiftness, 600);
-        });
-        LocalCommands.Register("api-example:training", option =>
-        {
-            if (!Players.TryGetLocal(out var player) || Terraria.Main.netMode != 0 || !Players.GetStats(player).IsAlive)
-                return;
-            if (option == "off")
-                training.Clear(player);
-            else
-                training.Set(player, new PlayerStatModifier { DefenseBonus = 5, MeleeDamageMultiplier = 1.25f });
-        });
-        LocalCommands.Register("api-example:inventory", _ =>
-        {
-            if (Players.TryGetLocal(out var player))
+            PlayerStats stats = Players.GetStats(context.Source.Player);
+            context.Source.Reply($"{stats.Name} ({stats.GameMode}) has {stats.Health}/{stats.MaxHealth} health and {stats.Mana}/{stats.MaxMana} mana");
+            return 1;
+        }));
+        ClientCommands.Register("api-example:swiftness", command => command
+            .Requires(source => Terraria.Main.netMode == 0)
+            .Executes(context => Players.GetStats(context.Source.Player).IsAlive &&
+                Players.TryApplyEffect(context.Source.Player, BuffID.Swiftness, 600) ? 1 : 0));
+        ClientCommands.Register("api-example:training", command => command
+            .Requires(source => Terraria.Main.netMode == 0)
+            .Then(c => c.Literal("on").Executes(context =>
             {
-                int occupied = Players.GetInventory(player).Slots.Count(slot => slot.CanRead && slot.GetItem() != null);
-                Console.WriteLine($"[api-example] {occupied} occupied player slots");
-            }
-        });
-        LocalCommands.Register("api-example:spawn", _ =>
+                training.Set(context.Source.Player, new PlayerStatModifier { DefenseBonus = 5, MeleeDamageMultiplier = 1.25f });
+                return 1;
+            }))
+            .Then(c => c.Literal("off").Executes(context =>
+            {
+                training.Clear(context.Source.Player);
+                return 1;
+            })));
+        ClientCommands.Register("api-example:inventory", command => command.Executes(context =>
         {
-            if (Worlds.TryGetCurrent(out var world))
-                Console.WriteLine($"[api-example] {world.Name} spawn {world.Spawn}, tile {Tiles.Query(world.Spawn).Status}");
-        });
+            int occupied = Players.GetInventory(context.Source.Player).Slots.Count(slot => slot.CanRead && slot.GetItem() != null);
+            context.Source.Reply($"{occupied} occupied player slots");
+            return occupied;
+        }));
+        ClientCommands.Register("api-example:spawn", command => command.Executes(context =>
+        {
+            if (!Worlds.TryGetCurrent(out var world))
+                return 0;
+            context.Source.Reply($"{world.Name} spawn {world.Spawn}, tile {Tiles.Query(world.Spawn).Status}");
+            return 1;
+        }));
         var pulse = ProjectileTypeKey.Custom("api-example:pulse");
         ProjectileRegistry.Register("api-example:pulse", new ProjectileDefinition("Scout Pulse",
             EntitySprite.Vanilla(ProjectileID.PurpleLaser))
@@ -86,12 +95,18 @@ public sealed class Startup : IModInitializer
             },
             OnRemoved = context => Console.WriteLine($"[api-example] Scout removed ({context.Reason})")
         });
-        LocalCommands.Register("api-example:spawn-npc", arguments =>
+        ServerCommands.Register("api-example:spawn-npc", command => command.Executes(context =>
         {
-            if (Players.TryGetLocal(out var player))
-                Entities.TrySpawnNpc(scout, new NpcSpawn(player.Bottom + new Vector2(64, -48),
-                    new EntitySource_Parent(player)), out _);
-        });
+            Terraria.Player player = context.Source.Player;
+            if (!Entities.TrySpawnNpc(scout, new NpcSpawn(player.Bottom + new Vector2(64, -48),
+                new EntitySource_Parent(player)), out _))
+            {
+                context.Source.ReplyError("Could not spawn a Scout here.");
+                return 0;
+            }
+            context.Source.Reply("Spawned a Scout.");
+            return 1;
+        }));
         HudOverlays.Register("api-example:label", canvas => canvas.DrawText("API example", 16, 80, HudColor.White));
         RetainedUiLayer counter = RetainedUi.Register("api-example:counter", CreateCounter, initiallyVisible: false);
         Keybinds.Register("api-example:counter", "F7", () => counter.IsVisible = !counter.IsVisible);

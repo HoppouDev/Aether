@@ -4,6 +4,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <AetherClientDirectory>../../client/Bootstrap/bin/$(Configuration)/net10.0</AetherClientDirectory>
+    <AetherUseApi>true</AetherUseApi>
     <AetherApiDirectory>../../client/Api/bin/$(Configuration)/net10.0</AetherApiDirectory>
   </PropertyGroup>
   <Import Project="../../templates/aethermod/build/Aether.Mod.targets" />

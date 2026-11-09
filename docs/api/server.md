@@ -2,7 +2,7 @@
 
 Aether runs dedicated servers on Linux with the same bootstrap, mod loader, and dependency ordering as the client.
 The server uses TCP and can run without a desktop session or Steam login.
-The optional Aether API adds server lifecycle events, custom item registration, and direct block breaking.
+The optional Aether API adds server lifecycle events, server commands, custom item registration, and direct block breaking.
 
 ## Start and join
 
@@ -94,6 +94,12 @@ Items assigned to a player for the session are kept out of that player's local c
 World chests and displays retain their contents in the server's world save.
 Dropped items follow Terraria's normal world-save behavior.
 Item use, hit, and equipment callbacks run in single-player.
+
+## Commands
+
+`ServerCommands` run on the dedicated server for any player's chat and reply to the sender over the network.
+`ClientCommands` stay on each client.
+See [Commands](commands.md).
 
 ## Block breaking
 

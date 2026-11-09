@@ -175,7 +175,10 @@ internal sealed record ModPackage(string Archive, string Root, ModManifest Manif
 internal sealed class ModContext(ModPackage package) : AssemblyLoadContext(package.Manifest.Id)
 {
     internal Assembly? Game { get; set; }
-    internal Func<Assembly>? LoadApi { get; set; }
+    // The aether-api package's context, for mods that depend on it (and the API itself).
+    internal ModContext? Api { get; set; }
+
+    internal string EntryPath => package.EntryPath;
 
     private readonly AssemblyDependencyResolver resolver = new(package.EntryPath);
     private readonly Dictionary<string, Assembly> images = new(StringComparer.Ordinal);
@@ -211,7 +214,12 @@ internal sealed class ModContext(ModPackage package) : AssemblyLoadContext(packa
             return Default.LoadFromAssemblyName(name);
 
         if (string.Equals(name.Name, "Aether.Api", StringComparison.OrdinalIgnoreCase))
-            return LoadApi?.Invoke() ?? throw new InvalidDataException($"Mod '{package.Manifest.Id}' must declare a dependency on aether-api.");
+            return Api?.LoadManaged(Api.EntryPath) ?? throw new InvalidDataException($"Mod '{package.Manifest.Id}' must declare a dependency on aether-api.");
+
+        // Libraries the API package ships (Brigadier.NET) are shared with its dependents, ahead of their own
+        // copies, so the types in the API's signatures are the API's.
+        if (Api != null && Api != this && Api.ResolveManagedPath(name) is { } shared)
+            return Api.LoadManaged(shared);
 
         if (wovenDependencies.TryGetValue(name.FullName, out var dependency))
             return dependency.Context.LoadManaged(dependency.Path);
