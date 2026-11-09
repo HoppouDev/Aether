@@ -401,6 +401,8 @@ Mixins reach only `Terraria.dll`, so Aether's patch to FNA adds a few extension 
 Set `Texture.SamplerEXT` to draw that texture with its own sampler in any `SpriteBatch`, whatever the batch's sampler.
 Aether sets it to linear filtering on font textures.
 Create a `SamplerState` with `PixelSnapEXT = true` to have `SpriteBatch` put the edges of unrotated sprites drawn with it on whole device pixels.
+While a `SpriteBatch`'s `PixelScaleEXT` is above 0, it also draws evenly scaled sprites drawn with such a sampler at a whole multiple of that many device pixels per texel, scaled about their origin.
+Set it to 0.5 while drawing Terraria's art (2×2 texels per pixel of the art) at a fractional scale to give it even pixels, and back to 0 afterwards.
 
 ## Diagnose startup
 
