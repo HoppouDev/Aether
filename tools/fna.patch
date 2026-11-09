@@ -52,7 +52,7 @@ index d816dcf..68959c4 100644
  			if ((initFlags & SDL.SDL_WindowFlags.SDL_WINDOW_VULKAN) == SDL.SDL_WindowFlags.SDL_WINDOW_VULKAN)
  			{
 diff --git a/src/Graphics/SpriteBatch.cs b/src/Graphics/SpriteBatch.cs
-index b60a0f4..039ae32 100644
+index b60a0f4..3ea8679 100644
 --- a/src/Graphics/SpriteBatch.cs
 +++ b/src/Graphics/SpriteBatch.cs
 @@ -1132,6 +1132,26 @@ namespace Microsoft.Xna.Framework.Graphics
@@ -82,7 +82,7 @@ index b60a0f4..039ae32 100644
  			if (sortMode == SpriteSortMode.Immediate)
  			{
  				int offset;
-@@ -1235,6 +1255,65 @@ namespace Microsoft.Xna.Framework.Graphics
+@@ -1235,6 +1255,69 @@ namespace Microsoft.Xna.Framework.Graphics
  			}
  		}
 
@@ -137,9 +137,13 @@ index b60a0f4..039ae32 100644
 +			}
 +			float start = ((destination - (origin * size)) * scale) + offset;
 +			float length = size * scale;
-+			float snappedStart = (float) Math.Round(start);
++			/* Both edges rounded the same way (half up), so sprites that
++			 * meet (a nine-patch's pieces) still meet, and whole lengths
++			 * stay whole. Sprites under a pixel keep their length.
++			 */
++			float snappedStart = (float) Math.Floor(start + 0.5f);
 +			float snappedLength = Math.Abs(length) >= 1.0f ?
-+				(float) Math.Round(length) :
++				(float) Math.Floor(start + length + 0.5f) - snappedStart :
 +				length;
 +			size = snappedLength / scale;
 +			destination = ((snappedStart - offset) / scale) + (origin * size);
@@ -148,7 +152,7 @@ index b60a0f4..039ae32 100644
  		private unsafe void FlushBatch()
  		{
  			PrepRenderState();
-@@ -1492,13 +1571,48 @@ namespace Microsoft.Xna.Framework.Graphics
+@@ -1492,13 +1575,48 @@ namespace Microsoft.Xna.Framework.Graphics
 
  			// FIXME: When is this actually applied? -flibit
  			spriteEffectPass.Apply();
