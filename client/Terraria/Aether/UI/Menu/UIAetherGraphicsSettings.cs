@@ -29,7 +29,6 @@ internal sealed class UIAetherGraphicsSettings : UIMenuScreen
         AddGraphicsToggle("Lighting", () => GraphicsSettings.BackgroundLighting, () => GraphicsSettings.BackgroundLighting = !GraphicsSettings.BackgroundLighting);
         AddGraphicsToggle("Motion", () => GraphicsSettings.SmoothEntityMovement, () => GraphicsSettings.SmoothEntityMovement = !GraphicsSettings.SmoothEntityMovement);
         AddGraphicsToggle("Uncapped", () => GraphicsSettings.UncappedFps, ToggleUncapped);
-        AddGraphicsToggle("SharpUI", () => GraphicsSettings.SharpUI, () => GraphicsSettings.SharpUI = !GraphicsSettings.SharpUI);
         AddItem(() => Lang.menu[5].Value, GoBack, 1f, 8f);
     }
 
