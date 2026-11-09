@@ -10,6 +10,8 @@ Changes are applied in memory for the current run.
 
 Build the client with `./aether build`.
 Reference `Aether.Modding.dll` and, if you use Terraria types, `Terraria.dll` from the bootstrap output.
+Reference the client's `Mono.Cecil.dll` for [startup IL editing](mixin-wrappers.md#edit-il-at-startup).
+The template includes it automatically.
 The default Debug client output is `client/Bootstrap/bin/Debug/net10.0/`.
 Keep those references out of the mod archive.
 Use an assembly name unique to your mod.
@@ -256,12 +258,14 @@ public static class PauseMixin
 ### Targets and merged members
 
 Declare `[Mixin(typeof(Target))]` or `[Mixin("Namespace.Target")]`.
-The target must be a non-generic game class.
+Merged mixins target non-generic game classes.
+Dedicated startup IL editors can also target generic types, structs, and interface methods with IL bodies.
 A mixin class's fields and methods are merged into the target, so an instance handler's `this` is the game object.
 Helper methods declared on the mixin are merged too.
 Keep types and members referenced outside the mixin accessible from the game assembly, for example by making a helper type and its method public.
 Declare fields and methods directly in the mixin class.
-Properties, events, nested types, generic mixin methods, P/Invoke declarations, and non-final virtual methods are unsupported there.
+Properties, events, nested types, P/Invoke declarations, and non-final virtual methods are unsupported in merged mixin classes.
+Generic handlers are supported for [method and operation wrappers](mixin-wrappers.md).
 Use a constructor injection to initialize merged state because mixin constructors and field initializers are unsupported.
 Merged fields with custom layout, marshaling, RVA data, or readonly storage are unsupported.
 
@@ -273,7 +277,8 @@ Merged fields with custom layout, marshaling, RVA data, or readonly storage are 
 - `[Overwrite]` replaces an existing non-constructor method body.
   Pass a selector when the declaration has a different name.
   Match staticness, return type, and parameter types.
-  A method can have one overwrite, and an overwrite conflicts with any injector targeting the same method.
+  A method can have one overwrite.
+  An overwrite conflicts with injectors, wrappers, and IL editors targeting the same method.
 
 ### Select methods and instructions
 
@@ -284,7 +289,9 @@ Qualify operand selectors with the declaring type, for example `Terraria.Main::C
 The field type is optional.
 Use `.ctor(...)` for instance constructors and `.cctor()` for static constructors.
 Instance constructor sites start after the weaver verifies the base or sibling constructor call.
-Injection targets must have an IL body and cannot be generic methods or return by reference.
+Injection targets must have an IL body.
+Callback injections require non-generic methods with void or by-value returns.
+See [wrapper and IL editor signatures](mixin-wrappers.md) for generic methods and ref returns.
 
 | Injection point | Match |
 | --- | --- |
@@ -358,8 +365,11 @@ Use `-mixindebug` to inspect local slots for the exact build.
   For `null`, the immediately following consumer must establish the reference type, such as a return, store, or final call argument.
 
 Redirects and value modifiers use unshifted sites.
-Generic calls are unsupported for redirects and argument modifiers.
+Redirects and argument modifiers can match closed generic calls using their concrete operand types.
 When several argument modifiers target a call, later modifiers see the arguments already updated by earlier ones.
+
+Use [`WrapOperation`](mixin-wrappers.md#wrap-an-operation) when several mods need to wrap the same instruction or when your handler needs to invoke the original operation.
+See [whole-method wrappers and startup IL editing](mixin-wrappers.md) for the other startup patching APIs.
 
 ### Access private members
 

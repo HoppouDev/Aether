@@ -15,6 +15,9 @@ This is a standalone .NET 10 mod for Aether.
 
 - Keep the mod ID, entry assembly, and type names in sync with the manifest.
 - Keep C# sources under `src/` and use exact mixin signatures for the Terraria versions in `depends`.
+- Use `WrapMethod` to wrap an entire call and `WrapOperation` to wrap a single instruction.
+  Use a dedicated mixin class for `EditIL`.
+  See `docs/mixin-wrappers.md` in the Aether checkout for signatures, ordering, and examples.
 - Add required mods to `depends` by manifest ID with a version constraint, such as `"shared-library": ">=1.2 <2"`.
   Aether checks these constraints on launch.
 - Leave the generated Aether and Terraria version placeholders in place to use exact versions from the local client when packaging.
