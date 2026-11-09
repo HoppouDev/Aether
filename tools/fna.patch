@@ -52,7 +52,7 @@ index d816dcf..68959c4 100644
  			if ((initFlags & SDL.SDL_WindowFlags.SDL_WINDOW_VULKAN) == SDL.SDL_WindowFlags.SDL_WINDOW_VULKAN)
  			{
 diff --git a/src/Graphics/SpriteBatch.cs b/src/Graphics/SpriteBatch.cs
-index b60a0f4..bc7fc89 100644
+index b60a0f4..039ae32 100644
 --- a/src/Graphics/SpriteBatch.cs
 +++ b/src/Graphics/SpriteBatch.cs
 @@ -1132,6 +1132,26 @@ namespace Microsoft.Xna.Framework.Graphics
@@ -148,19 +148,57 @@ index b60a0f4..bc7fc89 100644
  		private unsafe void FlushBatch()
  		{
  			PrepRenderState();
-@@ -1496,6 +1575,12 @@ namespace Microsoft.Xna.Framework.Graphics
+@@ -1492,13 +1571,48 @@ namespace Microsoft.Xna.Framework.Graphics
 
+ 			// FIXME: When is this actually applied? -flibit
+ 			spriteEffectPass.Apply();
++			textureEffectApplied = false;
+ 		}
+
++		/* Aether: whether a Texture.EffectEXT replaced the sprite shaders */
++		private bool textureEffectApplied;
++
  		private void DrawPrimitives(Texture texture, int baseSprite, int batchSize)
  		{
+-			if (customEffect != null)
 +			/* Aether: see Texture.SamplerEXT */
 +			SamplerState sampler = texture.SamplerEXT ?? samplerState;
 +			if (GraphicsDevice.SamplerStates[0] != sampler)
 +			{
 +				GraphicsDevice.SamplerStates[0] = sampler;
 +			}
- 			if (customEffect != null)
++			/* Aether: see Texture.EffectEXT */
++			Effect effect = customEffect;
++			if (texture.EffectEXT != null)
++			{
++				effect = texture.EffectEXT;
++				EffectParameter matrix = effect.Parameters["MatrixTransform"];
++				if (matrix != null)
++				{
++					unsafe
++					{
++						Buffer.MemoryCopy(
++							(void*) spriteMatrixTransform,
++							(void*) matrix.values,
++							sizeof(float) * 16,
++							sizeof(float) * 16
++						);
++					}
++				}
++				textureEffectApplied = true;
++			}
++			else if (textureEffectApplied)
++			{
++				spriteEffectPass.Apply();
++				textureEffectApplied = false;
++			}
++			if (effect != null)
  			{
- 				foreach (EffectPass pass in customEffect.CurrentTechnique.Passes)
+-				foreach (EffectPass pass in customEffect.CurrentTechnique.Passes)
++				foreach (EffectPass pass in effect.CurrentTechnique.Passes)
+ 				{
+ 					pass.Apply();
+ 					// Set this _after_ Apply, otherwise EffectParameters override it!
 diff --git a/src/Graphics/States/SamplerState.cs b/src/Graphics/States/SamplerState.cs
 index 987ff62..2f444e1 100644
 --- a/src/Graphics/States/SamplerState.cs
@@ -183,10 +221,10 @@ index 987ff62..2f444e1 100644
  		{
  			get
 diff --git a/src/Graphics/Texture.cs b/src/Graphics/Texture.cs
-index b1d3202..248a768 100644
+index b1d3202..2fe8e3a 100644
 --- a/src/Graphics/Texture.cs
 +++ b/src/Graphics/Texture.cs
-@@ -31,6 +31,16 @@ namespace Microsoft.Xna.Framework.Graphics
+@@ -31,6 +31,27 @@ namespace Microsoft.Xna.Framework.Graphics
  			protected set;
  		}
 
@@ -195,6 +233,17 @@ index b1d3202..248a768 100644
 +		 * stay linear in a UI drawn with point sampling.
 +		 */
 +		public SamplerState SamplerEXT
++		{
++			get;
++			set;
++		}
++
++		/* Aether: the effect SpriteBatch draws this texture with, in place of
++		 * the batch's (null: the batch's), for textures that need their own
++		 * shader among other sprites, such as signed distance field text. A
++		 * "MatrixTransform" parameter gets the batch's transform.
++		 */
++		public Effect EffectEXT
 +		{
 +			get;
 +			set;

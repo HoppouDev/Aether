@@ -403,6 +403,13 @@ Aether sets it to linear filtering on font textures.
 Create a `SamplerState` with `PixelSnapEXT = true` to have `SpriteBatch` put the edges of unrotated sprites drawn with it on whole device pixels.
 While a `SpriteBatch`'s `PixelScaleEXT` is above 0, it also draws evenly scaled sprites drawn with such a sampler at a whole multiple of that many device pixels per texel, scaled about their origin.
 Set it to 0.5 while drawing Terraria's art (2×2 texels per pixel of the art) at a fractional scale to give it even pixels, and back to 0 afterwards.
+Set `Texture.EffectEXT` to draw that texture with its own `Effect` among a batch's other sprites, for example signed distance field text.
+`SpriteBatch` sets the effect's `MatrixTransform` parameter, if it has one, to the batch's transform, and restores its own shaders for the next texture.
+Give the effect its own vertex shader when its pixel shader needs shader model 3, such as for `ddx` and `ddy`.
+
+Aether's ReLogic adds `DynamicSpriteFont.SetCharacterImage` to draw one of a font's characters from another texture, such as a finer rendering or a distance field.
+Pass the texels per font unit and the image's offset from where the font draws the character, in font units.
+The character's spacing is unchanged, so text measures and wraps as before.
 
 ## Diagnose startup
 

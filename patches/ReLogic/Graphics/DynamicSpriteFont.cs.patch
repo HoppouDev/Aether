@@ -1,0 +1,122 @@
+--- a/ReLogic/Graphics/DynamicSpriteFont.cs
++++ b/ReLogic/Graphics/DynamicSpriteFont.cs
+@@ -20,12 +20,25 @@
+ 
+         public readonly Vector3 Kerning;
+ 
++        // Aether: where the glyph is drawn (Padding's position, which a replaced image can place
++        // between pixels), and the font units in a texel of Glyph (less than 1 for a finer image).
++        public readonly Vector2 Offset;
++
++        public readonly float Scale;
++
+         public SpriteCharacterData(Texture2D texture, Rectangle glyph, Rectangle padding, Vector3 kerning)
++            : this(texture, glyph, padding, kerning, new Vector2(padding.X, padding.Y), 1f)
++        {
++        }
++
++        public SpriteCharacterData(Texture2D texture, Rectangle glyph, Rectangle padding, Vector3 kerning, Vector2 offset, float scale)
+         {
+             Texture = texture;
+             Glyph = glyph;
+             Padding = padding;
+             Kerning = kerning;
++            Offset = offset;
++            Scale = scale;
+         }
+ 
+         public GlyphMetrics ToGlyphMetric()
+@@ -147,13 +160,14 @@
+             SpriteCharacterData characterData = GetCharacterData(c);
+             Vector3 kerning = characterData.Kerning;
+             Rectangle padding = characterData.Padding;
++            Vector2 offset = characterData.Offset;
+             if ((spriteEffects & SpriteEffects.FlipHorizontally) != 0)
+             {
+-                padding.X -= padding.Width;
++                offset.X -= padding.Width;
+             }
+             if ((spriteEffects & SpriteEffects.FlipVertically) != 0)
+             {
+-                padding.Y = LineSpacing - characterData.Glyph.Height - padding.Y;
++                offset.Y = (float)LineSpacing - (float)characterData.Glyph.Height * characterData.Scale - offset.Y;
+             }
+             if (flag)
+             {
+@@ -175,15 +189,15 @@
+                 num += charRotations[i];
+             }
+             Vector2 position = zero;
+-            position.X += (float)padding.X * scale.X;
+-            position.Y += (float)padding.Y * scale.Y;
++            position.X += offset.X * scale.X;
++            position.Y += offset.Y * scale.Y;
+             if (charOffsets != null)
+             {
+                 position += charOffsets[i];
+             }
+             Vector2.Transform(ref position, ref matrix, out position);
+             position += startPosition;
+-            spriteBatch.Draw(characterData.Texture, position, characterData.Glyph, color2, num, Vector2.Zero, scale, spriteEffects, depth);
++            spriteBatch.Draw(characterData.Texture, position, characterData.Glyph, color2, num, Vector2.Zero, scale * characterData.Scale, spriteEffects, depth);
+             zero.X += (kerning.Y + kerning.Z) * scale.X * one.X;
+             flag = false;
+         }
+@@ -219,9 +233,9 @@
+             }
+             position.X += kerning.X * scale.X;
+             Vector2 position2 = position;
+-            position2.X += (float)padding.X * scale.X;
+-            position2.Y += (float)padding.Y * scale.Y;
+-            spriteBatch.Draw(characterData.Texture, position2, characterData.Glyph, color, 0f, Vector2.Zero, scale, SpriteEffects.None, depth);
++            position2.X += characterData.Offset.X * scale.X;
++            position2.Y += characterData.Offset.Y * scale.Y;
++            spriteBatch.Draw(characterData.Texture, position2, characterData.Glyph, color, 0f, Vector2.Zero, scale * characterData.Scale, SpriteEffects.None, depth);
+             position.X += (kerning.Y + kerning.Z) * scale.X;
+             flag = false;
+         }
+@@ -256,14 +270,41 @@
+             }
+             position.X += kerning.X * scale.X;
+             Vector2 position2 = position;
+-            position2.X += (float)padding.X * scale.X;
+-            position2.Y += (float)padding.Y * scale.Y;
+-            draw(characterData.Texture, position2, characterData.Glyph, scale);
++            position2.X += characterData.Offset.X * scale.X;
++            position2.Y += characterData.Offset.Y * scale.Y;
++            draw(characterData.Texture, position2, characterData.Glyph, scale * characterData.Scale);
+             position.X += (kerning.Y + kerning.Z) * scale.X;
+             flag = false;
+         }
+     }
+ 
++    /// <summary>
++    /// Aether: draws <paramref name="character" /> from <paramref name="glyph" /> in <paramref name="texture" />
++    /// instead, with <paramref name="texelsPerUnit" /> of its texels to one of the font's units (4 for an image
++    /// rendered at four times the font's size), its top left corner <paramref name="offset" /> units from where
++    /// the font draws the character's own image (its padding). The character's spacing is unchanged.
++    /// </summary>
++    public void SetCharacterImage(char character, Texture2D texture, Rectangle glyph, Vector2 offset, float texelsPerUnit)
++    {
++        if (texture == null)
++        {
++            throw new ArgumentNullException(nameof(texture));
++        }
++        if (!(texelsPerUnit > 0f) || !IsCharacterSupported(character))
++        {
++            throw new ArgumentException("The character must be one the font has, drawn at a positive texel scale.");
++        }
++        SpriteCharacterData characterData = _spriteCharacters[(uint)character];
++        float scale = 1f / texelsPerUnit;
++        Rectangle padding = new Rectangle((int)Math.Floor(offset.X), (int)Math.Floor(offset.Y), (int)Math.Ceiling((float)glyph.Width * scale), (int)Math.Ceiling((float)glyph.Height * scale));
++        SpriteCharacterData replaced = new SpriteCharacterData(texture, glyph, padding, characterData.Kerning, offset, scale);
++        _spriteCharacters[(uint)character] = replaced;
++        if (_defaultCharacterData == characterData)
++        {
++            _defaultCharacterData = replaced;
++        }
++    }
++
+     private SpriteCharacterData GetCharacterData(char character)
+     {
+         return ((character < _spriteCharacters.Length) ? _spriteCharacters[(uint)character] : null) ?? _defaultCharacterData;
