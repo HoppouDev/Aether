@@ -264,6 +264,56 @@ def test_woven_code_executes_with_dependencies(
     assert hashlib.sha256(pristine.read_bytes()).digest() == before
 
 
+def test_startup_wrappers_and_il_editors_compose(game_fixture, tmp_path):
+    archive(
+        tmp_path,
+        files=[FIXTURES / "Mod" / CONFIG / MOD],
+        mixins=["WrapperPatches", "StartupEditor"],
+        entrypoint="WrapperTest",
+    )
+    result = run(game_fixture, tmp_path)
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.splitlines() == [
+        "WRAPPED FINALLY",
+        "BODY 26",
+        "OPEN CALL",
+        "WRAPPERS OK",
+        "GAME",
+    ]
+
+
+def test_field_receivers_embedded_fields_and_throw_paths(game_fixture, tmp_path):
+    assert not (game_fixture.parent / "Aether.Tests.Embedded.dll").exists()
+    archive(
+        tmp_path,
+        files=[FIXTURES / "Mod" / CONFIG / MOD],
+        mixins=["FieldReceiverPatches", "StartupEditor"],
+        entrypoint="ReceiverRegressionTest",
+    )
+    result = run(game_fixture, tmp_path)
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.splitlines() == ["REGRESSIONS OK", "GAME"]
+
+
+@pytest.mark.parametrize(
+    ("mixin", "diagnostic"),
+    [
+        ("InvalidEditor", "An IL branch points outside the edited body"),
+        ("InvalidWrapper", "must match the wrapped signature"),
+        ("InvalidOperationWrapper", "Invalid wrapper signature"),
+    ],
+)
+def test_invalid_startup_edits_fail_before_game_load(
+    game_fixture, tmp_path, mixin, diagnostic
+):
+    archive(tmp_path, files=[FIXTURES / "Mod" / CONFIG / MOD], mixins=[mixin])
+    result = run(game_fixture, tmp_path)
+    assert result.returncode != 0
+    assert diagnostic in result.stderr
+    assert mixin in result.stderr
+    assert not result.stdout
+
+
 @pytest.mark.skipif(sys.platform != "linux", reason="Linux client native lookup")
 def test_woven_game_loads_native_library_from_client_directory(game_fixture, tmp_path):
     compiler = shutil.which("cc")

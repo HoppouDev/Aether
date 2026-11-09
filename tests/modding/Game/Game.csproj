@@ -8,5 +8,12 @@
   <ItemGroup>
     <Compile Include="../../../client/Terraria/Aether/NativeLibraries.cs" Link="NativeLibraries.cs" />
     <ProjectReference Include="../../../client/Modding/Aether.Modding.csproj" />
+    <ProjectReference Include="../Embedded/Embedded.csproj" Private="false" />
   </ItemGroup>
+  <Target Name="EmbedFixtureLibrary" AfterTargets="ResolveProjectReferences">
+    <ItemGroup>
+      <EmbeddedResource Include="@(_ResolvedProjectReferencePaths)" Condition="'%(Filename)' == 'Aether.Tests.Embedded'"
+        LogicalName="Terraria.Libraries.Aether.Tests.Embedded.dll" />
+    </ItemGroup>
+  </Target>
 </Project>

@@ -12,9 +12,9 @@ internal sealed partial class AssemblyWeaver
         MethodDefinition handler = site.Injection.Handler;
         MethodDefinition target = site.Injection.Target;
         var called = (MethodReference)anchor.Operand;
-        if (called is GenericInstanceMethod || called.HasGenericParameters || called.DeclaringType is GenericInstanceType)
-            throw new InvalidDataException($"Generic call '{called.FullName}' cannot be modified.");
-        TypeReference[] types = called.Parameters.Select(parameter => ImportType(parameter.ParameterType)).ToArray();
+        if (called.CallingConvention == MethodCallingConvention.VarArg)
+            throw new InvalidDataException($"Vararg call '{called.FullName}' cannot be modified.");
+        TypeReference[] types = called.Parameters.Select(parameter => ImportType(Specialize(parameter.ParameterType, called.DeclaringType, called))).ToArray();
         int selected = Option(site.Injection.Attribute, "Index", -1);
         if (selected == -1)
         {
@@ -95,9 +95,8 @@ internal sealed partial class AssemblyWeaver
             Code.Stloc_3 => target.Body.Variables[3].VariableType,
             Code.Stloc or Code.Stloc_S => ((VariableDefinition)next.Operand).VariableType,
             Code.Stfld or Code.Stsfld => ((FieldReference)next.Operand).FieldType,
-            Code.Call or Code.Callvirt or Code.Newobj when next.Operand is MethodReference method
-                && method.HasParameters && method is not GenericInstanceMethod && method.DeclaringType is not GenericInstanceType
-                => method.Parameters[^1].ParameterType,
+            Code.Call or Code.Callvirt or Code.Newobj when next.Operand is MethodReference method && method.HasParameters
+                => Specialize(method.Parameters[^1].ParameterType, method.DeclaringType, method),
             _ => null
         };
         return expected != null && Same(candidate, expected);
@@ -107,28 +106,7 @@ internal sealed partial class AssemblyWeaver
     {
         MethodDefinition handler = site.Injection.Handler;
         MethodDefinition target = site.Injection.Target;
-        var operands = new List<TypeReference>();
-        TypeReference result;
-        if (anchor.Operand is MethodReference method)
-        {
-            if (method.HasGenericParameters || method is GenericInstanceMethod || method.DeclaringType is GenericInstanceType)
-                throw new InvalidDataException($"Generic call '{method.FullName}' cannot be redirected.");
-            bool creates = anchor.OpCode.Code == Code.Newobj;
-            if (method.HasThis && !creates)
-                operands.Add(Receiver(method.DeclaringType));
-            operands.AddRange(method.Parameters.Select(parameter => ImportType(parameter.ParameterType)));
-            result = ImportType(creates ? method.DeclaringType : method.ReturnType);
-        }
-        else
-        {
-            var field = (FieldReference)anchor.Operand;
-            bool reads = anchor.OpCode.Code is Code.Ldfld or Code.Ldsfld;
-            if (anchor.OpCode.Code is Code.Ldfld or Code.Stfld)
-                operands.Add(Receiver(field.DeclaringType));
-            if (!reads)
-                operands.Add(ImportType(field.FieldType));
-            result = reads ? ImportType(field.FieldType) : game.TypeSystem.Void;
-        }
+        var (operands, result) = OperationSignature(target, anchor);
 
         if (!Same(handler.ReturnType, result) ||
             !handler.Parameters.Select(parameter => parameter.ParameterType.FullName)
@@ -147,23 +125,56 @@ internal sealed partial class AssemblyWeaver
         }
 
         Add(code, OpCodes.Call, handler);
-        anchor.OpCode = OpCodes.Nop;
-        anchor.Operand = null;
-
-        TypeReference Receiver(TypeReference declaringType)
-        {
-            TypeReference type = ImportType(declaringType);
-            return type.IsValueType ? new ByReferenceType(type) : type;
-        }
     }
 
-    private static int?[] AnalyzeDepths(MethodDefinition method, Instruction[] instructions)
+    private (TypeReference[] Operands, TypeReference Result) OperationSignature(MethodDefinition target, Instruction anchor)
+    {
+        var operands = new List<TypeReference>();
+        TypeReference result;
+        if (anchor.Operand is MethodReference method)
+        {
+            if (method.CallingConvention == MethodCallingConvention.VarArg)
+                throw new InvalidDataException($"Cannot replace vararg call '{method.FullName}'.");
+            bool creates = anchor.OpCode.Code == Code.Newobj;
+            if (method.HasThis && !creates)
+            {
+                TypeReference receiver = ImportType(method.DeclaringType);
+                operands.Add(receiver.IsValueType ? new ByReferenceType(receiver) : receiver);
+            }
+            operands.AddRange(method.Parameters.Select(parameter => ImportType(Specialize(parameter.ParameterType, method.DeclaringType, method))));
+            result = ImportType(creates ? method.DeclaringType : Specialize(method.ReturnType, method.DeclaringType, method));
+        }
+        else
+        {
+            var field = (FieldReference)anchor.Operand;
+            bool reads = anchor.OpCode.Code is Code.Ldfld or Code.Ldsfld;
+            if (anchor.OpCode.Code is Code.Ldfld or Code.Stfld)
+            {
+                TypeReference receiver = ImportType(field.DeclaringType);
+                operands.Add(receiver.IsValueType ? StructFieldReceiver(target, anchor, receiver, reads) : receiver);
+            }
+            TypeReference type = ImportType(Specialize(field.FieldType, field.DeclaringType));
+            if (!reads)
+                operands.Add(type);
+            result = reads ? type : game.TypeSystem.Void;
+        }
+        return (operands.ToArray(), result);
+    }
+
+    private static int?[] AnalyzeDepths(MethodDefinition method, Instruction[] instructions, bool verifyBody = false)
     {
         var indexes = instructions.Select((instruction, index) => (instruction, index))
             .ToDictionary(item => item.instruction, item => item.index);
         var depths = new int?[instructions.Length];
         var queue = new Queue<(int Index, int Depth)>();
         queue.Enqueue((0, 0));
+        if (verifyBody)
+            foreach (ExceptionHandler handler in method.Body.ExceptionHandlers)
+            {
+                queue.Enqueue((indexes[handler.HandlerStart], handler.HandlerType is ExceptionHandlerType.Catch or ExceptionHandlerType.Filter ? 1 : 0));
+                if (handler.FilterStart != null)
+                    queue.Enqueue((indexes[handler.FilterStart], 1));
+            }
         while (queue.TryDequeue(out var current))
         {
             var (index, depth) = current;
@@ -190,13 +201,18 @@ internal sealed partial class AssemblyWeaver
                         foreach (Instruction candidate in branches)
                             queue.Enqueue((indexes[candidate], next));
                     break;
-                case FlowControl.Return:
                 case FlowControl.Throw:
+                    continue;
+                case FlowControl.Return:
+                    if (verifyBody && next != 0)
+                        throw new InvalidDataException($"'{instruction.OpCode}' leaves values on the stack in '{method.FullName}'.");
                     continue;
             }
 
             if (index + 1 < instructions.Length)
                 queue.Enqueue((index + 1, next));
+            else if (verifyBody)
+                throw new InvalidDataException($"Execution can fall off the end of '{method.FullName}'.");
         }
         return depths;
     }
@@ -224,6 +240,7 @@ internal sealed partial class AssemblyWeaver
         StackBehaviour.Varpop when instruction.OpCode.Code == Code.Ret => method.ReturnType.MetadataType == MetadataType.Void ? 0 : 1,
         StackBehaviour.Varpop when instruction.Operand is MethodReference called =>
             called.Parameters.Count + (called.HasThis && instruction.OpCode.Code != Code.Newobj ? 1 : 0),
+        StackBehaviour.Varpop when instruction.Operand is CallSite site => site.Parameters.Count + (site.HasThis ? 2 : 1),
         _ => throw new InvalidDataException($"Cannot analyze stack operation '{instruction.OpCode}' in '{method.FullName}'.")
     };
 
@@ -235,6 +252,7 @@ internal sealed partial class AssemblyWeaver
         StackBehaviour.Push1_push1 => 2,
         StackBehaviour.Varpush when instruction.Operand is MethodReference called =>
             called.ReturnType.MetadataType == MetadataType.Void ? 0 : 1,
+        StackBehaviour.Varpush when instruction.Operand is CallSite site => site.ReturnType.MetadataType == MetadataType.Void ? 0 : 1,
         _ => throw new InvalidDataException($"Cannot analyze stack operation '{instruction.OpCode}'.")
     };
 }

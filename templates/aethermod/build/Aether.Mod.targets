@@ -22,6 +22,8 @@
     <Reference Include="Brigadier.NET" HintPath="$(AetherApiDirectory)/Brigadier.NET.dll" Private="false"
       Condition="'$(AetherUseApi)' == 'true'" />
     <Reference Include="Aether.Modding" HintPath="$(AetherClientDirectory)/Aether.Modding.dll" Private="false" />
+    <Reference Include="Mono.Cecil" HintPath="$(AetherClientDirectory)/Mono.Cecil.dll" Private="false"
+      Condition="Exists('$(AetherClientDirectory)/Mono.Cecil.dll')" />
     <Reference Include="FNA" HintPath="$(AetherClientDirectory)/FNA.dll" Private="false" />
     <Reference Include="Terraria" HintPath="$(AetherClientDirectory)/Terraria.dll" Private="false" />
   </ItemGroup>
@@ -82,7 +84,7 @@
     <ItemGroup>
       <ModResource Include="$(MSBuildProjectDirectory)/resources/**/*" />
       <ModDependency Include="@(ReferenceCopyLocalPaths)"
-        Condition="'%(ReferenceCopyLocalPaths.Filename)' != 'Terraria' And '%(ReferenceCopyLocalPaths.Filename)' != 'Aether.Modding' And '%(ReferenceCopyLocalPaths.Filename)' != 'Aether.Api' And '%(ReferenceCopyLocalPaths.Filename)' != 'FNA' And '%(ReferenceCopyLocalPaths.Filename)' != 'ReLogic'" />
+        Condition="'%(ReferenceCopyLocalPaths.Filename)' != 'Terraria' And '%(ReferenceCopyLocalPaths.Filename)' != 'Aether.Modding' And '%(ReferenceCopyLocalPaths.Filename)' != 'Aether.Api' And '%(ReferenceCopyLocalPaths.Filename)' != 'FNA' And '%(ReferenceCopyLocalPaths.Filename)' != 'ReLogic' And '%(ReferenceCopyLocalPaths.Filename)' != 'Mono.Cecil'" />
     </ItemGroup>
     <Copy SourceFiles="@(ModResource)"
       DestinationFiles="@(ModResource->'$(ModStaging)resources/%(RecursiveDir)%(Filename)%(Extension)')" />

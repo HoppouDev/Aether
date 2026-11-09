@@ -204,7 +204,7 @@ internal static class Program
 
     internal static readonly HashSet<string> SharedNames = new(StringComparer.OrdinalIgnoreCase)
     {
-        "Terraria", "Aether.Modding", "FNA", "ReLogic"
+        "Terraria", "Aether.Modding", "FNA", "ReLogic", "Mono.Cecil"
     };
 
     private static Dictionary<string, (string Path, ModContext Context)> ResolveWovenDependencies(

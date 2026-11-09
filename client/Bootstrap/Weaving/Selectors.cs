@@ -28,10 +28,19 @@ internal sealed class Selectors
 
     internal string Describe(string name) => name == Map(name) ? $"'{name}'" : $"'{name}' (mapped to '{Map(name)}')";
 
-    internal static string Signature(MethodReference method) =>
-        $"{method.Name}({string.Join(",", method.Parameters.Select(parameter => parameter.ParameterType.FullName))}):{method.ReturnType.FullName}";
+    internal static string Signature(MethodReference method)
+    {
+        string name = method switch
+        {
+            GenericInstanceMethod instance => $"{method.Name}<{string.Join(",", instance.GenericArguments.Select(type => type.FullName))}>",
+            { HasGenericParameters: true } => $"{method.Name}`{method.GenericParameters.Count}",
+            _ => method.Name
+        };
+        string TypeName(TypeReference type) => Specialize(type, method.DeclaringType, method).FullName;
+        return $"{name}({string.Join(",", method.Parameters.Select(parameter => TypeName(parameter.ParameterType)))}):{TypeName(method.ReturnType)}";
+    }
 
-    internal static string Signature(FieldReference field) => $"{field.Name}:{field.FieldType.FullName}";
+    internal static string Signature(FieldReference field) => $"{field.Name}:{Specialize(field.FieldType, field.DeclaringType).FullName}";
 
     internal static bool MemberMatches(MethodReference method, string selector)
     {
@@ -42,6 +51,48 @@ internal sealed class Selectors
     }
 
     internal static bool MemberMatches(FieldReference field, string selector) => selector == field.Name || selector == Signature(field);
+
+    internal static TypeReference Specialize(TypeReference type, TypeReference declaring, MethodReference? method = null) =>
+        ReplaceGenericParameters(type, parameter => parameter.Type switch
+        {
+            GenericParameterType.Type when declaring is GenericInstanceType instance => instance.GenericArguments[parameter.Position],
+            GenericParameterType.Method when method is GenericInstanceMethod instance => instance.GenericArguments[parameter.Position],
+            _ => parameter
+        });
+
+    internal static TypeReference ReplaceGenericParameters(TypeReference type, Func<GenericParameter, TypeReference> replace)
+    {
+        TypeReference Map(TypeReference source) => ReplaceGenericParameters(source, replace);
+        switch (type)
+        {
+            case GenericParameter parameter:
+                return replace(parameter);
+            case GenericInstanceType instance:
+                var closed = new GenericInstanceType(instance.ElementType);
+                foreach (TypeReference argument in instance.GenericArguments)
+                    closed.GenericArguments.Add(Map(argument));
+                return closed;
+            case ArrayType array:
+                if (array.IsVector)
+                    return new ArrayType(Map(array.ElementType));
+                var mapped = new ArrayType(Map(array.ElementType), array.Rank);
+                for (int i = 0; i < array.Rank; i++)
+                    mapped.Dimensions[i] = array.Dimensions[i];
+                return mapped;
+            case ByReferenceType reference:
+                return new ByReferenceType(Map(reference.ElementType));
+            case PointerType pointer:
+                return new PointerType(Map(pointer.ElementType));
+            case PinnedType pinned:
+                return new PinnedType(Map(pinned.ElementType));
+            case RequiredModifierType required:
+                return new RequiredModifierType(Map(required.ModifierType), Map(required.ElementType));
+            case OptionalModifierType optional:
+                return new OptionalModifierType(Map(optional.ModifierType), Map(optional.ElementType));
+            default:
+                return type;
+        }
+    }
 
     private static bool QualifiedMatches(MemberReference member, string selector)
     {

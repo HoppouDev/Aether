@@ -12,7 +12,6 @@
   <ItemGroup>
     <ProjectReference Include="../Terraria/Terraria.csproj" />
     <ProjectReference Include="../Modding/Aether.Modding.csproj" />
-    <PackageReference Include="Mono.Cecil" Version="0.11.6" />
   </ItemGroup>
   <Target Name="WriteAetherVersion" BeforeTargets="AssignTargetPaths">
     <WriteLinesToFile File="$(IntermediateOutputPath)Aether.version" Lines="$(Version)" Overwrite="true" WriteOnlyWhenDifferent="true" />

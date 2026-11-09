@@ -18,9 +18,7 @@ internal sealed partial class AssemblyWeaver
             Instruction[] instructions = method.Body.Instructions.ToArray();
             originalLocalCounts[method] = method.Body.Variables.Count;
             var sites = new List<Site>();
-            foreach (Injection injection in group.OrderBy(item => item.Order)
-                .ThenByDescending(item => item.Declaration.Priority).ThenBy(item => item.Declaration.ModOrder)
-                .ThenBy(item => item.Handler.FullName, StringComparer.Ordinal).ThenBy(item => item.Sequence))
+            foreach (Injection injection in Ordered(group))
                 WithContext(injection.Declaration, () => sites.AddRange(FindSites(injection, instructions)));
 
             if (sites.Count == 0)
@@ -31,6 +29,7 @@ internal sealed partial class AssemblyWeaver
             int?[]? depths = sites.Any(site => Option(site.Injection.Attribute, "Cancellable", false))
                 && !method.Body.HasExceptionHandlers ? AnalyzeDepths(method, instructions) : null;
             var edits = new List<(Instruction Anchor, List<Instruction> Code, bool After, bool Entry)>();
+            var replaced = new List<Instruction>();
             foreach (var siteGroup in sites.GroupBy(site => site.Index))
             {
                 int index = siteGroup.Key;
@@ -39,6 +38,7 @@ internal sealed partial class AssemblyWeaver
                 var after = new List<Instruction>();
                 var entry = new List<Instruction>();
                 Site? redirect = null;
+                var wrappers = new List<Injection>();
                 foreach (Site site in siteGroup)
                 {
                     WithContext(site.Injection.Declaration, () =>
@@ -57,6 +57,9 @@ internal sealed partial class AssemblyWeaver
                                     throw new InvalidDataException($"Redirect in {method.FullName} conflicts with {redirect.Injection.Declaration.Name}.");
                                 redirect = site;
                                 break;
+                            case "WrapOperationAttribute":
+                                wrappers.Add(site.Injection);
+                                break;
                             case "ModifyArgAttribute":
                                 EmitModifyArg(site, anchor, before);
                                 break;
@@ -66,16 +69,32 @@ internal sealed partial class AssemblyWeaver
                         }
                     });
                 }
+                if (wrappers.Count != 0)
+                {
+                    WithContext(wrappers[0].Declaration, () =>
+                    {
+                        if (redirect != null)
+                            throw new InvalidDataException($"Operation wrapper in '{method.FullName}' conflicts with a redirect from {redirect.Injection.Declaration.Name}.");
+                        EmitOperationWrappers(method, anchor, index, wrappers, before);
+                    });
+                    replaced.Add(anchor);
+                }
                 if (redirect != null)
                 {
                     Site chosen = redirect;
                     WithContext(chosen.Injection.Declaration, () => EmitRedirect(chosen, anchor, before));
+                    replaced.Add(anchor);
                 }
                 edits.Add((anchor, entry, false, true));
                 edits.Add((anchor, before, false, false));
                 edits.Add((anchor, after, true, false));
             }
 
+            foreach (Instruction anchor in replaced)
+            {
+                anchor.OpCode = OpCodes.Nop;
+                anchor.Operand = null;
+            }
             foreach (var (anchor, code, after, entry) in edits)
                 Insert(method.Body, anchor, code, after, entry);
         }
@@ -122,8 +141,8 @@ internal sealed partial class AssemblyWeaver
         AtShift shift = Option(attribute, "Shift", AtShift.NONE);
         if (kind != "InjectAttribute" && shift != AtShift.NONE)
             throw new InvalidDataException($"{kind} requires an unshifted instruction.");
-        if (kind == "RedirectAttribute" && point is not (At.INVOKE or At.FIELD or At.NEW))
-            throw new InvalidDataException("Redirect requires INVOKE, FIELD or NEW.");
+        if (kind is "RedirectAttribute" or "WrapOperationAttribute" && point is not (At.INVOKE or At.FIELD or At.NEW))
+            throw new InvalidDataException($"{kind} requires INVOKE, FIELD or NEW.");
         if (!Enum.IsDefined(shift))
             throw new InvalidDataException($"Unknown shift {shift}.");
 

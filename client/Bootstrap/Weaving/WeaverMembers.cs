@@ -8,12 +8,18 @@ internal sealed partial class AssemblyWeaver
 {
     private TypeReference ImportType(TypeReference source)
     {
+        if (source is GenericParameter)
+            return source;
         if (source is ArrayType array)
             return array.IsVector ? new ArrayType(ImportType(array.ElementType)) : new ArrayType(ImportType(array.ElementType), array.Rank);
         if (source is ByReferenceType reference)
             return new ByReferenceType(ImportType(reference.ElementType));
         if (source is PointerType pointer)
             return new PointerType(ImportType(pointer.ElementType));
+        if (source is RequiredModifierType required)
+            return new RequiredModifierType(ImportType(required.ModifierType), ImportType(required.ElementType));
+        if (source is OptionalModifierType optional)
+            return new OptionalModifierType(ImportType(optional.ModifierType), ImportType(optional.ElementType));
         if (source is GenericInstanceType generic)
         {
             var instance = new GenericInstanceType(ImportType(generic.ElementType));
@@ -43,6 +49,24 @@ internal sealed partial class AssemblyWeaver
         if (source.DeclaringType is TypeDefinition mixin && mixinTypes.ContainsKey(mixin) && !mixin.IsInterface)
             throw new InvalidDataException($"Cannot reference unmerged mixin method '{source.FullName}'.");
 
+        if (source.DeclaringType is GenericInstanceType declaring)
+        {
+            var reference = new MethodReference(source.Name, game.TypeSystem.Void, ImportType(declaring))
+            {
+                HasThis = source.HasThis,
+                ExplicitThis = source.ExplicitThis,
+                CallingConvention = source.CallingConvention
+            };
+            foreach (GenericParameter parameter in source.GenericParameters)
+                reference.GenericParameters.Add(new GenericParameter(parameter.Name, reference));
+            TypeReference ImportSignature(TypeReference type) => ImportType(ReplaceGenericParameters(type, parameter =>
+                parameter.Type == GenericParameterType.Method && parameter.Owner == source ? reference.GenericParameters[parameter.Position] : parameter));
+            reference.ReturnType = ImportSignature(source.ReturnType);
+            foreach (ParameterDefinition parameter in source.Parameters)
+                reference.Parameters.Add(new ParameterDefinition(ImportSignature(parameter.ParameterType)));
+            return reference;
+        }
+
         if (source.DeclaringType.Scope.Name == game.Assembly.Name.Name && game.GetType(source.DeclaringType.FullName) is { } type)
             return type.Methods.SingleOrDefault(method => method.FullName == source.FullName)
                 ?? throw new InvalidDataException($"Cannot resolve game method '{source.FullName}'.");
@@ -55,6 +79,9 @@ internal sealed partial class AssemblyWeaver
             return merged;
         if (source.DeclaringType is TypeDefinition mixin && mixinTypes.ContainsKey(mixin))
             throw new InvalidDataException($"Cannot reference unmerged mixin field '{source.FullName}'.");
+
+        if (source.DeclaringType is GenericInstanceType declaring)
+            return new FieldReference(source.Name, ImportType(source.FieldType), ImportType(declaring));
         if (source.DeclaringType.Scope.Name == game.Assembly.Name.Name && game.GetType(source.DeclaringType.FullName) is { } type)
             return type.Fields.SingleOrDefault(field => field.FullName == source.FullName)
                 ?? throw new InvalidDataException($"Cannot resolve game field '{source.FullName}'.");
@@ -73,6 +100,9 @@ internal sealed partial class AssemblyWeaver
                 TrackType(method.ReturnType);
                 foreach (ParameterDefinition parameter in method.Parameters)
                     TrackType(parameter.ParameterType);
+                if (method is GenericInstanceMethod instance)
+                    foreach (TypeReference argument in instance.GenericArguments)
+                        TrackType(argument);
                 break;
             case FieldReference field:
                 TrackType(field.DeclaringType);
@@ -103,11 +133,16 @@ internal sealed partial class AssemblyWeaver
             TrackType(specification.ElementType);
         }
         else if (type.Scope is AssemblyNameReference reference)
-        {
-            if (!referenceOwners.TryGetValue(reference.FullName, out var owners))
-                referenceOwners.Add(reference.FullName, owners = []);
-            owners.Add(importingPackage);
-        }
+            TrackAssembly(reference);
+    }
+
+    private void TrackAssembly(AssemblyNameReference reference)
+    {
+        if (importingPackage == null)
+            return;
+        if (!referenceOwners.TryGetValue(reference.FullName, out var owners))
+            referenceOwners.Add(reference.FullName, owners = []);
+        owners.Add(importingPackage);
     }
 
     private void CloneBody(MethodDefinition source, MethodDefinition target)
@@ -115,14 +150,18 @@ internal sealed partial class AssemblyWeaver
         if (!source.HasBody)
             throw new InvalidDataException($"Missing body for '{source.FullName}'.");
         MethodBody original = source.Body;
+        bool sameModule = source.Module == game;
+        TypeReference CopyType(TypeReference type)
+        {
+            type = RebindMethodParameters(type, source, target);
+            if (sameModule)
+                return type;
+            return type is PinnedType pinned ? new PinnedType(ImportType(pinned.ElementType)) : ImportType(type);
+        }
         var body = new MethodBody(target) { InitLocals = original.InitLocals, MaxStackSize = original.MaxStackSize };
         target.Body = body;
         foreach (VariableDefinition local in original.Variables)
-        {
-            var type = local.VariableType is PinnedType pinned
-                ? new PinnedType(ImportType(pinned.ElementType)) : ImportType(local.VariableType);
-            body.Variables.Add(new VariableDefinition(type));
-        }
+            body.Variables.Add(new VariableDefinition(CopyType(local.VariableType)));
 
         var instructions = new Dictionary<Instruction, Instruction>();
         foreach (Instruction instruction in original.Instructions)
@@ -140,10 +179,10 @@ internal sealed partial class AssemblyWeaver
                 Instruction[] branches => branches.Select(branch => instructions[branch]).ToArray(),
                 ParameterDefinition parameter => parameter.Index == -1 ? body.ThisParameter : target.Parameters[parameter.Index],
                 VariableDefinition local => body.Variables[local.Index],
-                MethodReference method => ImportMethod(method),
-                FieldReference field => ImportField(field),
-                TypeReference type => ImportType(type),
-                CallSite => throw new InvalidDataException("Indirect calls in mixin bodies are unsupported."),
+                MethodReference method => sameModule ? method : ImportMethod(method),
+                FieldReference field => sameModule ? field : ImportField(field),
+                TypeReference type => CopyType(type),
+                CallSite when !sameModule => throw new InvalidDataException("Indirect calls in mixin bodies are unsupported."),
                 _ => instruction.Operand
             };
 
@@ -156,8 +195,22 @@ internal sealed partial class AssemblyWeaver
                 HandlerStart = Map(handler.HandlerStart),
                 HandlerEnd = Map(handler.HandlerEnd),
                 FilterStart = Map(handler.FilterStart),
-                CatchType = handler.CatchType == null ? null : ImportType(handler.CatchType)
+                CatchType = handler.CatchType == null ? null : CopyType(handler.CatchType)
             });
+    }
+
+    private static TypeReference RebindMethodParameters(TypeReference type, MethodDefinition from, MethodDefinition to) =>
+        !from.HasGenericParameters ? type : ReplaceGenericParameters(type, parameter =>
+            parameter.Type == GenericParameterType.Method && parameter.Owner == from ? to.GenericParameters[parameter.Position] : parameter);
+
+    private static void CopyGenericParameters(MethodDefinition source, MethodDefinition target, Func<TypeReference, TypeReference> import)
+    {
+        foreach (GenericParameter parameter in source.GenericParameters)
+            target.GenericParameters.Add(new GenericParameter(parameter.Name, target) { Attributes = parameter.Attributes });
+        for (int i = 0; i < source.GenericParameters.Count; i++)
+            foreach (GenericParameterConstraint constraint in source.GenericParameters[i].Constraints)
+                target.GenericParameters[i].Constraints.Add(new GenericParameterConstraint(
+                    import(RebindMethodParameters(constraint.ConstraintType, source, target))));
     }
 
     private void AddAccessors(Declaration declaration)

@@ -26,6 +26,13 @@ public sealed class OverwriteAttribute(string? target = null) : Attribute
     public string? Target { get; } = target;
 }
 
+[AttributeUsage(AttributeTargets.Method, AllowMultiple = true)]
+public sealed class WrapMethodAttribute(string method) : Attribute
+{
+    public string Method { get; } = method;
+    public int Order { get; set; } = 1000;
+}
+
 [AttributeUsage(AttributeTargets.Method)]
 public sealed class AccessorAttribute(string target) : Attribute
 {
@@ -83,6 +90,8 @@ public sealed class RedirectAttribute : InjectorAttribute
 {
     public RedirectAttribute(string method, At at) : base(method, at) => Order = 10000;
 }
+
+public sealed class WrapOperationAttribute(string method, At at) : InjectorAttribute(method, at);
 
 public sealed class ModifyArgAttribute(string method) : InjectorAttribute(method, At.INVOKE)
 {

@@ -20,19 +20,32 @@ internal sealed partial class AssemblyWeaver(ModuleDefinition game, bool debug)
     private readonly Dictionary<FieldDefinition, FieldDefinition> fields = new();
     private readonly Dictionary<MethodDefinition, Declaration> overwrites = new();
     private readonly List<Injection> injections = new();
+    private readonly List<Injection> methodWrappers = new();
+    private readonly List<Injection> ilEditors = new();
 
     private readonly Dictionary<string, HashSet<ModPackage>> referenceOwners = new(StringComparer.OrdinalIgnoreCase);
     private ModPackage? importingPackage;
 
     internal static Dictionary<string, HashSet<ModPackage>> Write(string path, IReadOnlyList<ModPackage> packages, Stream output, bool debug)
     {
-        using var resolver = new DefaultAssemblyResolver();
-        resolver.AddSearchDirectory(Path.GetDirectoryName(path)!);
-        resolver.AddSearchDirectory(Path.GetDirectoryName(typeof(object).Assembly.Location)!);
-        var modules = new List<ModuleDefinition>();
+        GameAssemblyResolver CreateResolver(ModuleDefinition? game = null, string? modDirectory = null)
+        {
+            var resolver = new GameAssemblyResolver { Game = game };
+            resolver.RemoveSearchDirectory(".");
+            resolver.RemoveSearchDirectory("bin");
+            if (modDirectory != null)
+                resolver.AddSearchDirectory(modDirectory);
+            resolver.AddSearchDirectory(Path.GetDirectoryName(path)!);
+            resolver.AddSearchDirectory(Path.GetDirectoryName(typeof(object).Assembly.Location)!);
+            return resolver;
+        }
+
+        using var gameResolver = CreateResolver();
+        var modules = new List<(ModuleDefinition Module, DefaultAssemblyResolver Resolver)>();
         try
         {
-            using var game = ModuleDefinition.ReadModule(path, new ReaderParameters { AssemblyResolver = resolver, InMemory = true });
+            using var game = ModuleDefinition.ReadModule(path, new ReaderParameters { AssemblyResolver = gameResolver, InMemory = true });
+            gameResolver.Game = game;
             var weaver = new AssemblyWeaver(game, debug);
             var originalReferences = game.AssemblyReferences.Select(item => item.FullName).ToHashSet(StringComparer.Ordinal);
             for (int index = 0; index < packages.Count; index++)
@@ -44,8 +57,11 @@ internal sealed partial class AssemblyWeaver(ModuleDefinition game, bool debug)
                     if (names.Length == 0)
                         continue;
 
-                    var module = ModuleDefinition.ReadModule(package.EntryPath, new ReaderParameters { AssemblyResolver = resolver, InMemory = true });
-                    modules.Add(module);
+                    var resolver = CreateResolver(game, Path.GetDirectoryName(package.EntryPath));
+                    ModuleDefinition module;
+                    try { module = ModuleDefinition.ReadModule(package.EntryPath, new ReaderParameters { AssemblyResolver = resolver, InMemory = true }); }
+                    catch { resolver.Dispose(); throw; }
+                    modules.Add((module, resolver));
                     var selectors = new Selectors(package.Manifest.Mappings is { } mappingsPath ? Path.Combine(package.Root, mappingsPath) : null);
                     foreach (string name in names)
                     {
@@ -55,7 +71,7 @@ internal sealed partial class AssemblyWeaver(ModuleDefinition game, bool debug)
                         string selector = authored is TypeReference type ? type.FullName : (string)authored;
                         var target = game.GetType(selectors.Map(selector).Replace('+', '/'))
                             ?? throw new InvalidDataException($"Unknown target type {selectors.Describe(selector)}.");
-                        if (source.HasGenericParameters || target.HasGenericParameters || target.IsValueType || target.IsInterface)
+                        if (source.HasGenericParameters || !IsEditorMixin(source) && (target.HasGenericParameters || target.IsValueType || target.IsInterface))
                             throw new InvalidDataException($"Unsupported mixin type or target '{target.FullName}'.");
                         var declaration = new Declaration(package, selectors, source, target, Option(attribute, "Priority", 1000), index);
                         if (!weaver.mixinTypes.TryAdd(source, declaration))
@@ -76,14 +92,19 @@ internal sealed partial class AssemblyWeaver(ModuleDefinition game, bool debug)
                 weaver.WithContext(declaration, () => weaver.CopyMembers(declaration));
 
             weaver.ApplyInjections();
+            weaver.ApplyILEditors();
+            weaver.ApplyMethodWrappers();
             game.Write(output);
             return weaver.referenceOwners.Where(reference => !originalReferences.Contains(reference.Key))
                 .ToDictionary(reference => reference.Key, reference => reference.Value, StringComparer.OrdinalIgnoreCase);
         }
         finally
         {
-            foreach (ModuleDefinition module in modules)
+            foreach (var (module, resolver) in modules)
+            {
                 module.Dispose();
+                resolver.Dispose();
+            }
         }
     }
 
@@ -102,6 +123,20 @@ internal sealed partial class AssemblyWeaver(ModuleDefinition game, bool debug)
     private void DeclareMembers(Declaration declaration)
     {
         var (package, selectors, source, target, _, _) = declaration;
+        if (IsEditorMixin(source))
+        {
+            if (source.IsInterface || source.Methods.Any(method => InjectorAttributes(method).Any() ||
+                Attribute(method, "Shadow") != null || Attribute(method, "Overwrite") != null || Attribute(method, "Unique") != null) ||
+                source.Fields.Any(field => Attribute(field, "Shadow") != null || Attribute(field, "Unique") != null))
+                throw new InvalidDataException("Declare startup IL editors in a separate mixin class.");
+            foreach (MethodDefinition method in source.Methods.Where(method => method.CustomAttributes.Any(IsILEditor)))
+                if (!method.IsStatic || !method.HasBody || method.HasGenericParameters || method.IsConstructor ||
+                    method.CallingConvention == MethodCallingConvention.VarArg ||
+                    method.ReturnType.MetadataType != MetadataType.Void || method.Parameters.Count != 1 ||
+                    method.Parameters[0].ParameterType.FullName != typeof(ILPatchContext).FullName)
+                    throw new InvalidDataException($"IL editor '{method.FullName}' must be a static void method taking ILPatchContext.");
+            return;
+        }
         if (source.IsInterface)
             return;
 
@@ -148,7 +183,9 @@ internal sealed partial class AssemblyWeaver(ModuleDefinition game, bool debug)
                     throw new InvalidDataException("Initialize merged fields using an injection into the target constructor.");
                 continue;
             }
-            if (method.HasGenericParameters || method.IsPInvokeImpl || (method.IsVirtual && !method.IsFinal))
+            bool wrapper = InjectorAttributes(method).Any(attribute => attribute.AttributeType.Name is "WrapMethodAttribute" or "WrapOperationAttribute");
+            if (method.HasGenericParameters && !wrapper || wrapper && method.CallingConvention == MethodCallingConvention.VarArg ||
+                method.IsPInvokeImpl || method.IsVirtual && !method.IsFinal)
                 throw new InvalidDataException($"Unsupported mixin method '{method.FullName}'.");
 
             CustomAttribute? shadow = Attribute(method, "Shadow");
@@ -157,6 +194,8 @@ internal sealed partial class AssemblyWeaver(ModuleDefinition game, bool debug)
                 throw new InvalidDataException($"'{method.Name}' cannot be both a shadow and an overwrite.");
             if (shadow != null || overwrite != null)
             {
+                if (InjectorAttributes(method).Any())
+                    throw new InvalidDataException($"'{method.Name}' cannot combine a shadow or overwrite with an injector or wrapper.");
                 string selector = Text(shadow ?? overwrite!, 0) ?? method.Name;
                 var existing = target.Methods.SingleOrDefault(item => MemberMatches(item, selectors.Map(selector)) && Matches(method, item))
                     ?? throw new InvalidDataException($"Cannot bind '{method.Name}' to {selectors.Describe(selector)}.");
@@ -183,9 +222,12 @@ internal sealed partial class AssemblyWeaver(ModuleDefinition game, bool debug)
             MethodAttributes flags = method.Attributes;
             if (handler)
                 flags = (flags & ~MethodAttributes.MemberAccessMask) | MethodAttributes.Private;
-            var copy = new MethodDefinition(name, flags, ImportType(method.ReturnType));
+            var copy = new MethodDefinition(name, flags, game.TypeSystem.Void);
+            CopyGenericParameters(method, copy, ImportType);
+            TypeReference ImportSignature(TypeReference type) => ImportType(RebindMethodParameters(type, method, copy));
+            copy.ReturnType = ImportSignature(method.ReturnType);
             foreach (ParameterDefinition parameter in method.Parameters)
-                copy.Parameters.Add(new ParameterDefinition(parameter.Name, parameter.Attributes, ImportType(parameter.ParameterType)));
+                copy.Parameters.Add(new ParameterDefinition(parameter.Name, parameter.Attributes, ImportSignature(parameter.ParameterType)));
             methods.Add(method, copy);
             target.Methods.Add(copy);
         }
@@ -224,10 +266,29 @@ internal sealed partial class AssemblyWeaver(ModuleDefinition game, bool debug)
     private static IEnumerable<CustomAttribute> InjectorAttributes(MethodDefinition method) =>
         method.CustomAttributes.Where(item => item.AttributeType.FullName is
             "Aether.Modding.InjectAttribute" or "Aether.Modding.RedirectAttribute" or
-            "Aether.Modding.ModifyArgAttribute" or "Aether.Modding.ModifyConstantAttribute");
+            "Aether.Modding.ModifyArgAttribute" or "Aether.Modding.ModifyConstantAttribute" or
+            "Aether.Modding.WrapMethodAttribute" or "Aether.Modding.WrapOperationAttribute");
+
+    private static bool IsILEditor(CustomAttribute attribute) => attribute.AttributeType.FullName == "Aether.Modding.EditILAttribute";
+
+    private static bool IsEditorMixin(TypeDefinition type) => type.Methods.Any(method => method.CustomAttributes.Any(IsILEditor));
+
+    private static IOrderedEnumerable<Injection> Ordered(IEnumerable<Injection> edits) => edits.OrderBy(item => item.Order)
+        .ThenByDescending(item => item.Declaration.Priority).ThenBy(item => item.Declaration.ModOrder)
+        .ThenBy(item => item.Handler.FullName, StringComparer.Ordinal).ThenBy(item => item.Sequence);
 
     private void CopyMembers(Declaration declaration)
     {
+        if (IsEditorMixin(declaration.Source))
+        {
+            foreach (MethodDefinition source in declaration.Source.Methods)
+                foreach (CustomAttribute attribute in source.CustomAttributes.Where(IsILEditor))
+                {
+                    MethodDefinition target = ResolveBodyEdit(declaration, attribute);
+                    ilEditors.Add(new Injection(declaration, source, target, attribute, Option(attribute, "Order", 1000), ilEditors.Count));
+                }
+            return;
+        }
         if (declaration.Source.IsInterface)
         {
             AddAccessors(declaration);
@@ -244,12 +305,23 @@ internal sealed partial class AssemblyWeaver(ModuleDefinition game, bool debug)
                 handler.Overrides.Add(ImportMethod(implementation));
             foreach (CustomAttribute attribute in InjectorAttributes(source))
             {
+                if (attribute.AttributeType.Name == "WrapMethodAttribute")
+                {
+                    MethodDefinition wrapped = ResolveBodyEdit(declaration, attribute);
+                    if (wrapped.IsConstructor || wrapped.CallingConvention == MethodCallingConvention.VarArg)
+                        throw new InvalidDataException($"Unsupported wrapper target '{wrapped.FullName}'.");
+                    methodWrappers.Add(new Injection(declaration, handler, wrapped, attribute, Option(attribute, "Order", 1000), methodWrappers.Count));
+                    continue;
+                }
                 string selector = Text(attribute, 0)!;
                 MethodDefinition? target = declaration.Selectors.Method(declaration.Target, selector);
                 if (target == null && Option(attribute, "Require", 1) == 0 &&
                     (!debug || Option(attribute, "Expect", 1) == 0))
                     continue;
-                if (target == null || !target.HasBody || target.HasGenericParameters || target.ReturnType.IsByReference)
+                bool wrapsOperation = attribute.AttributeType.Name == "WrapOperationAttribute";
+                bool callback = attribute.AttributeType.Name == "InjectAttribute";
+                if (target == null || !target.HasBody || !wrapsOperation && handler.HasGenericParameters ||
+                    callback && (target.HasGenericParameters || target.ReturnType.IsByReference))
                     throw new InvalidDataException($"Unsupported or missing injection target {declaration.Selectors.Describe(selector)}.");
                 if (overwrites.ContainsKey(target))
                     throw new InvalidDataException($"Cannot inject into overwritten method '{target.FullName}'.");
@@ -259,4 +331,14 @@ internal sealed partial class AssemblyWeaver(ModuleDefinition game, bool debug)
         }
     }
 
+    private MethodDefinition ResolveBodyEdit(Declaration declaration, CustomAttribute attribute)
+    {
+        string selector = Text(attribute, 0)!;
+        MethodDefinition? target = declaration.Selectors.Method(declaration.Target, selector);
+        if (target == null || !target.HasBody)
+            throw new InvalidDataException($"Unsupported or missing target {declaration.Selectors.Describe(selector)}.");
+        if (overwrites.TryGetValue(target, out Declaration? owner))
+            throw new InvalidDataException($"Cannot edit '{target.FullName}' because it is overwritten by {owner.Name}.");
+        return target;
+    }
 }
