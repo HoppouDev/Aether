@@ -17,12 +17,14 @@ WorldEvents.Left.Register(world => Console.WriteLine($"Left {world.Name}"));
 | `ClientEvents.Ready` | Once after the engine has loaded and the title menu has drawn. |
 | `WorldEvents.Entered` | Once when the client reaches playable state or the dedicated server starts the world. |
 | `WorldEvents.Left` | Once when the world session ends, including normal client exit or dedicated server shutdown. |
-| `WorldEvents.Tick` | After a gameplay update in the active world. Paused gameplay, debugger world steps, and replay updates are skipped. |
+| `WorldEvents.TickStart` | Before a gameplay update in the active world, ahead of players, NPCs, and projectiles. Paused gameplay, debugger world steps, and replay updates are skipped. |
+| `WorldEvents.TickEnd` | After a gameplay update in the active world. Skipped in the same cases as `TickStart`. |
 | `ServerEvents.Ready` | Once after a dedicated server loads the world and opens its listener. |
 | `ServerEvents.PlayerJoined` | After an accepted player finishes joining the world. The listener receives the server's live `Terraria.Player` instance. |
 
 World listeners receive a `WorldInfo` value with the display name, world ID, and multiplayer flag.
 The `Entered` and `Left` events delimit a session.
+`TickStart` begins on the first update after `Entered`, so the entering update raises only `TickEnd`.
 Use `Left` to release resources you acquired in `Entered`.
 
 `ServerEvents.IsDedicatedServer` is available during initialization so a mod can register side-specific listeners.

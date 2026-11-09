@@ -76,16 +76,20 @@ public static class GameBridge
     public static void Tick()
     {
         UpdateWorld();
-        if (activeWorld != null && RecordReplay.Mode != RecordReplay.ReplayMode.Replaying &&
-            !WorldUpdateStepper.Paused)
-            WorldEvents.Tick.Raise(world);
+        if (RaisesTicks)
+            WorldEvents.TickEnd.Raise(world);
     }
 
     public static void BeforeWorldTick()
     {
         if (ClientContent.HasPersistentNpcs)
             UpdateWorld();
+        if (RaisesTicks)
+            WorldEvents.TickStart.Raise(world);
     }
+
+    private static bool RaisesTicks => activeWorld != null && RecordReplay.Mode != RecordReplay.ReplayMode.Replaying &&
+        !WorldUpdateStepper.Paused;
 
     private static void UpdateWorld()
     {

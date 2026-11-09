@@ -40,7 +40,8 @@ public static class WorldEvents
 {
     public static ApiEvent<WorldInfo> Entered { get; } = new();
     public static ApiEvent<WorldInfo> Left { get; } = new();
-    public static ApiEvent<WorldInfo> Tick { get; } = new();
+    public static ApiEvent<WorldInfo> TickStart { get; } = new();
+    public static ApiEvent<WorldInfo> TickEnd { get; } = new();
 }
 
 internal static class Registration

@@ -103,7 +103,7 @@ The example Scout fires a short-lived pulse using its tick start callback.
 ## Dedicated-server authority
 
 Install the same archives and register the same entity definitions on the server and clients.
-Spawn custom entities on the server from a game-thread callback such as `ServerEvents.Ready`, `ServerEvents.PlayerJoined`, or `WorldEvents.Tick`.
+Spawn custom entities on the server from a game-thread callback such as `ServerEvents.Ready`, `ServerEvents.PlayerJoined`, or `WorldEvents.TickEnd`.
 Set the projectile owner to `255` for server ownership.
 The server runs gameplay callbacks, moves entities, handles collisions and damage, and sends snapshots to clients.
 Clients animate and extrapolate those snapshots between updates.
