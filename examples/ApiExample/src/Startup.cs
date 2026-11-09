@@ -65,7 +65,7 @@ public sealed class Startup : IModInitializer
             HasGravity = false,
             Damage = 6,
             MaxHealth = 40,
-            OnTick = context =>
+            OnTickStart = context =>
             {
                 if (Players.TryGetLocal(out var player))
                 {

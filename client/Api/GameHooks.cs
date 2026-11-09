@@ -134,6 +134,10 @@ public static class GameBridge
 
     public static bool IsRecipeBlocked(Recipe recipe) => RecipeRegistry.IsBlocked(recipe);
 
+    public static void NpcTickEnded(NPC npc) => NpcRegistry.OnTickEnd(npc);
+
+    public static void ProjectileTickEnded(Projectile projectile) => ProjectileRegistry.OnTickEnd(projectile);
+
     public static void FilterGuideRecipes()
     {
         if (Main.netMode == 0)
@@ -169,6 +173,20 @@ internal static class GameHooks
 
     [Inject("Main_Exiting(System.Object,System.EventArgs)", At.HEAD)]
     private static void Exit(CallbackInfo callback) => GameBridge.EndWorld();
+}
+
+[Mixin(typeof(NPC))]
+internal static class NpcHooks
+{
+    [Inject("UpdateNPC(System.Int32)", At.RETURN)]
+    private static void TickEnd(NPC self, int i, CallbackInfo callback) => GameBridge.NpcTickEnded(self);
+}
+
+[Mixin(typeof(Projectile))]
+internal static class ProjectileHooks
+{
+    [Inject("Update(System.Int32)", At.RETURN)]
+    private static void TickEnd(Projectile self, int i, CallbackInfo callback) => GameBridge.ProjectileTickEnded(self);
 }
 
 [Mixin(typeof(Recipe))]

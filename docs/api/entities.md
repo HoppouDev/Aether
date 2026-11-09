@@ -54,7 +54,8 @@ The client decodes the image and checks its dimensions before drawing.
 | Callback | When it runs |
 | --- | --- |
 | `OnSpawn` | Once after the native spawn is live, with the `IEntitySource`. |
-| `OnTick` | During the NPC's AI phase, before its native movement and collision. |
+| `OnTickStart` | During the NPC's AI phase, before its native movement and collision. |
+| `OnTickEnd` | After the NPC's native update, including movement and collision, while it's still live. |
 | `OnHit` | After a strike applies damage and before the native death check. Includes the attacker slot when known. |
 | `OnHitPlayer` | After NPC contact damages a player. |
 | `OnRemoved` | Once after the handle is invalidated, with the final snapshot and removal reason. |
@@ -64,7 +65,7 @@ Set its `Value` to hold data for the behavior.
 Use `Entities.TrySetNpcVelocity` to steer a custom NPC and `Entities.TryDespawnNpc` to remove it.
 Check for `Defeated` in the removal callback when granting defeat rewards.
 A failing callback is logged with the mod and NPC ID and is disabled.
-A failed spawn or tick callback also retires the NPC with `BehaviorFailed`.
+A failed spawn, tick start, or tick end callback also retires the NPC with `BehaviorFailed`.
 A successful spawn call means the engine created the entity.
 A spawn callback can immediately remove it.
 
@@ -88,7 +89,8 @@ Sprites use the same resource format as NPCs, or a compatible vanilla projectile
 | Callback | When it runs |
 | --- | --- |
 | `OnSpawn` | Once after the projectile is live, with its spawn source. |
-| `OnTick` | Once in the native projectile update before movement. |
+| `OnTickStart` | Once in the native projectile update before movement. |
+| `OnTickEnd` | After the native projectile update, including movement and collision, while it's still live. |
 | `OnHitNpc` | After the projectile deals damage to an NPC. Includes the target snapshot and critical-hit flag. |
 | `OnHitPlayer` | After a hostile projectile deals damage to a player. |
 | `OnRemoved` | Once after the handle expires, with the final snapshot and reason. |
@@ -96,7 +98,7 @@ Sprites use the same resource format as NPCs, or a compatible vanilla projectile
 Use `Entities.TrySetProjectileVelocity` and `Entities.TryDespawnProjectile` with a live custom projectile handle.
 The callbacks share per-spawn `EntityBehaviorState`, and use the same callback failure policy as NPCs.
 A projectile can expire, run out of penetration, hit a solid tile, be replaced by a native spawn, or leave with its world.
-The example Scout fires a short-lived pulse using its tick callback.
+The example Scout fires a short-lived pulse using its tick start callback.
 
 ## Dedicated-server authority
 

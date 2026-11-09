@@ -31,7 +31,8 @@ public sealed record NpcDefinition(string Name, EntitySprite Sprite)
     public bool CollidesWithTiles { get; init; } = true;
     public NpcPersistence? Persistence { get; init; }
     public Action<NpcSpawnContext>? OnSpawn { get; init; }
-    public Action<NpcBehaviorContext>? OnTick { get; init; }
+    public Action<NpcBehaviorContext>? OnTickStart { get; init; }
+    public Action<NpcBehaviorContext>? OnTickEnd { get; init; }
     public Action<NpcHitContext>? OnHit { get; init; }
     public Action<NpcPlayerHitContext>? OnHitPlayer { get; init; }
     public Action<NpcRemovalContext>? OnRemoved { get; init; }
@@ -41,8 +42,8 @@ public static class NpcRegistry
 {
     private sealed record RegistrationEntry(NpcDefinition Definition, string Owner);
     private sealed record NpcCallbacks(string Subject, Listener<NpcSpawnContext>? Spawn,
-        Listener<NpcBehaviorContext>? Tick, Listener<NpcHitContext>? Hit,
-        Listener<NpcPlayerHitContext>? HitPlayer, Listener<NpcRemovalContext>? Removed,
+        Listener<NpcBehaviorContext>? TickStart, Listener<NpcBehaviorContext>? TickEnd,
+        Listener<NpcHitContext>? Hit, Listener<NpcPlayerHitContext>? HitPlayer, Listener<NpcRemovalContext>? Removed,
         Listener<NpcRestoredContext>? Restored);
     private sealed record Instance(NpcHandle Handle, NpcTypeKey Type, NpcCallbacks Callbacks, EntityBehaviorState State);
 
@@ -146,13 +147,14 @@ public static class NpcRegistry
             types.Add(id, NPCID.VanillaCount + index);
             metadata[index] = new(id, definition.Name, definition.Sprite.Resolve(id, entry.Owner, NPCID.VanillaCount),
                 definition.Persistence?.SchemaVersion ?? 0);
-            callbacks[index] = new($"NPC '{id}'", Listen(definition.OnSpawn, entry.Owner), Listen(definition.OnTick, entry.Owner),
+            callbacks[index] = new($"NPC '{id}'", Listen(definition.OnSpawn, entry.Owner),
+                Listen(definition.OnTickStart, entry.Owner), Listen(definition.OnTickEnd, entry.Owner),
                 Listen(definition.OnHit, entry.Owner), Listen(definition.OnHitPlayer, entry.Owner),
                 Listen(definition.OnRemoved, entry.Owner), Listen(definition.Persistence?.OnRestored, entry.Owner));
         }
         ClientContent.ConfigureNpcs(metadata, (type, npc) => ApplyDefaults(type, (NPC)npc));
         ClientContent.NpcSpawned = (npc, source) => OnSpawn((NPC)npc, (IEntitySource)source);
-        ClientContent.NpcUpdated = npc => OnTick((NPC)npc);
+        ClientContent.NpcUpdated = npc => OnTickStart((NPC)npc);
         ClientContent.NpcHit = (npc, owner, damage, critical) => OnHit((NPC)npc, owner, damage, critical);
         ClientContent.NpcHitPlayer = (npc, player, damage) => OnHitPlayer((NPC)npc, (Player)player, damage);
         ClientContent.NpcRemoved = (npc, reason) =>
@@ -231,10 +233,18 @@ public static class NpcRegistry
         return instance;
     }
 
-    private static void OnTick(NPC npc)
+    private static void OnTickStart(NPC npc)
     {
-        if (live.TryGetValue(npc, out var instance) && instance.Callbacks.Tick is { } tick &&
+        if (live.TryGetValue(npc, out var instance) && instance.Callbacks.TickStart is { } tick &&
             !tick.TryInvoke(Context(npc, instance), instance.Callbacks.Subject))
+            npc.AetherRetire(EntityRemovalReason.BehaviorFailed);
+    }
+
+    // After NPC.UpdateNPC, for an NPC still live after its update.
+    internal static void OnTickEnd(NPC npc)
+    {
+        if (live.Count != 0 && npc.active && live.TryGetValue(npc, out var instance) &&
+            instance.Callbacks.TickEnd is { } tick && !tick.TryInvoke(Context(npc, instance), instance.Callbacks.Subject))
             npc.AetherRetire(EntityRemovalReason.BehaviorFailed);
     }
 

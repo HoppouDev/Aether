@@ -27,7 +27,8 @@ public sealed record ProjectileDefinition(string Name, EntitySprite Sprite)
     public bool CollidesWithTiles { get; init; } = true;
     public ProjectileTargets Targets { get; init; }
     public Action<ProjectileSpawnContext>? OnSpawn { get; init; }
-    public Action<ProjectileBehaviorContext>? OnTick { get; init; }
+    public Action<ProjectileBehaviorContext>? OnTickStart { get; init; }
+    public Action<ProjectileBehaviorContext>? OnTickEnd { get; init; }
     public Action<ProjectileNpcHitContext>? OnHitNpc { get; init; }
     public Action<ProjectilePlayerHitContext>? OnHitPlayer { get; init; }
     public Action<ProjectileRemovalContext>? OnRemoved { get; init; }
@@ -37,7 +38,8 @@ public static class ProjectileRegistry
 {
     private sealed record RegistrationEntry(ProjectileDefinition Definition, string Owner);
     private sealed record ProjectileCallbacks(string Subject, Listener<ProjectileSpawnContext>? Spawn,
-        Listener<ProjectileBehaviorContext>? Tick, Listener<ProjectileNpcHitContext>? HitNpc,
+        Listener<ProjectileBehaviorContext>? TickStart, Listener<ProjectileBehaviorContext>? TickEnd,
+        Listener<ProjectileNpcHitContext>? HitNpc,
         Listener<ProjectilePlayerHitContext>? HitPlayer, Listener<ProjectileRemovalContext>? Removed);
     private sealed record Instance(ProjectileHandle Handle, ProjectileTypeKey Type, ProjectileCallbacks Callbacks,
         EntityBehaviorState State);
@@ -107,12 +109,13 @@ public static class ProjectileRegistry
             types.Add(id, ProjectileID.VanillaCount + index);
             metadata[index] = new(id, definition.Name, definition.Sprite.Resolve(id, entry.Owner, ProjectileID.VanillaCount));
             callbacks[index] = new($"projectile '{id}'", Listen(definition.OnSpawn, entry.Owner),
-                Listen(definition.OnTick, entry.Owner), Listen(definition.OnHitNpc, entry.Owner),
+                Listen(definition.OnTickStart, entry.Owner), Listen(definition.OnTickEnd, entry.Owner),
+                Listen(definition.OnHitNpc, entry.Owner),
                 Listen(definition.OnHitPlayer, entry.Owner), Listen(definition.OnRemoved, entry.Owner));
         }
         ClientContent.ConfigureProjectiles(metadata, (type, projectile) => ApplyDefaults(type, (Projectile)projectile));
         ClientContent.ProjectileSpawned = (projectile, source) => OnSpawn((Projectile)projectile, (IEntitySource)source);
-        ClientContent.ProjectileUpdated = projectile => OnTick((Projectile)projectile);
+        ClientContent.ProjectileUpdated = projectile => OnTickStart((Projectile)projectile);
         ClientContent.ProjectileHitNpc = (projectile, npc, damage, critical) =>
             OnHitNpc((Projectile)projectile, (NPC)npc, damage, critical);
         ClientContent.ProjectileHitPlayer = (projectile, player, damage) =>
@@ -166,10 +169,18 @@ public static class ProjectileRegistry
             projectile.AetherKill(EntityRemovalReason.BehaviorFailed);
     }
 
-    private static void OnTick(Projectile projectile)
+    private static void OnTickStart(Projectile projectile)
     {
-        if (live.TryGetValue(projectile, out var instance) && instance.Callbacks.Tick is { } tick &&
+        if (live.TryGetValue(projectile, out var instance) && instance.Callbacks.TickStart is { } tick &&
             !tick.TryInvoke(Context(projectile, instance), instance.Callbacks.Subject))
+            projectile.AetherKill(EntityRemovalReason.BehaviorFailed);
+    }
+
+    // After Projectile.Update, for a projectile still live after its update.
+    internal static void OnTickEnd(Projectile projectile)
+    {
+        if (live.Count != 0 && projectile.active && live.TryGetValue(projectile, out var instance) &&
+            instance.Callbacks.TickEnd is { } tick && !tick.TryInvoke(Context(projectile, instance), instance.Callbacks.Subject))
             projectile.AetherKill(EntityRemovalReason.BehaviorFailed);
     }
 
