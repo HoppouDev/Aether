@@ -1,0 +1,48 @@
+--- a/Terraria/Utilities/CrashWatcher.cs
++++ b/Terraria/Utilities/CrashWatcher.cs
+@@ -9,6 +9,9 @@
+ 
+ public static class CrashWatcher
+ {
++    [ThreadStatic]
++    private static bool _logging;
++
+     public static bool LogAllExceptions { get; set; }
+ 
+     public static bool DumpOnException { get; set; }
+@@ -21,20 +24,32 @@
+ 
+     public static void Inititialize()
+     {
+-        Console.WriteLine("Error Logging Enabled.");
++        Aether.GameLog.Terraria.Information("Error Logging Enabled.");
+         AppDomain.CurrentDomain.FirstChanceException += (object sender, FirstChanceExceptionEventArgs exceptionArgs) =>
+         {
+             if (LogAllExceptions && 0 == 0)
+             {
+                 string customStackTrace = new StackTrace(1, fNeedFileInfo: true).ToString();
+                 string text = PrintException(exceptionArgs.Exception, customStackTrace);
+-                Console.Write(string.Concat("================\r\n" + $"{DateTime.Now}: First-Chance Exception\r\nThread: {Thread.CurrentThread.ManagedThreadId} [{Thread.CurrentThread.Name}]\r\nCulture: {Thread.CurrentThread.CurrentCulture.Name}\r\nException: {text}\r\n", "================\r\n\r\n"));
++                // Aether: logged, but not the exceptions logging itself throws (and catches), which would recurse.
++                if (!_logging)
++                {
++                    _logging = true;
++                    try
++                    {
++                        Aether.GameLog.Terraria.Warning("First-chance exception on thread {Thread} [{ThreadName}], culture {Culture}: {Exception:l}", Thread.CurrentThread.ManagedThreadId, Thread.CurrentThread.Name, Thread.CurrentThread.CurrentCulture.Name, text);
++                    }
++                    finally
++                    {
++                        _logging = false;
++                    }
++                }
+             }
+         };
+         AppDomain.CurrentDomain.UnhandledException += (object sender, UnhandledExceptionEventArgs exceptionArgs) =>
+         {
+             string text = PrintException((Exception)exceptionArgs.ExceptionObject);
+-            Console.Write(string.Concat("================\r\n" + $"{DateTime.Now}: Unhandled Exception\r\nThread: {Thread.CurrentThread.ManagedThreadId} [{Thread.CurrentThread.Name}]\r\nCulture: {Thread.CurrentThread.CurrentCulture.Name}\r\nException: {text}\r\n", "================\r\n"));
++            Aether.GameLog.Terraria.Fatal("Unhandled exception on thread {Thread} [{ThreadName}], culture {Culture}: {Exception:l}", Thread.CurrentThread.ManagedThreadId, Thread.CurrentThread.Name, Thread.CurrentThread.CurrentCulture.Name, text);
+             if (DumpOnCrash)
+             {
+                 CrashDump.WriteException(CrashDumpOptions, DumpPath);

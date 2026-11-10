@@ -1,0 +1,11 @@
+--- a/Terraria/DataStructures/TitleLinkButton.cs
++++ b/Terraria/DataStructures/TitleLinkButton.cs
+@@ -83,7 +83,7 @@
+         }
+         catch
+         {
+-            Console.WriteLine("Failed to open link?!");
++            Aether.GameLog.Terraria.Warning("Failed to open link?!");
+         }
+     }
+ }

@@ -1,0 +1,12 @@
+--- a/Terraria/Testing/Invariant.cs
++++ b/Terraria/Testing/Invariant.cs
+@@ -37,8 +37,7 @@
+                 return;
+             }
+         }
+-        Console.Write("Invariant Failed: ");
+-        Console.WriteLine(message);
++        Aether.GameLog.Terraria.Warning("Invariant Failed: {Text:l}", message);
+     }
+ 
+     public static void Assert<T>(bool condition, string format, T arg1)

@@ -18,7 +18,7 @@
          switch (msgType)
          {
          case 21:
-@@ -130,7 +135,7 @@
+@@ -130,14 +135,14 @@
              switch (msgType)
              {
              case 1:
@@ -27,6 +27,14 @@
                  break;
              case 2:
                  text.Serialize(writer);
+                 Netplay.Clients[num].Kicked = true;
+                 if (Main.dedServ)
+                 {
+-                    Console.WriteLine(Language.GetTextValue("CLI.ClientWasBooted", Netplay.Clients[num].Socket.GetRemoteAddress().ToString(), text));
++                    Aether.GameLog.Terraria.Information("{Text:l}", Language.GetTextValue("CLI.ClientWasBooted", Netplay.Clients[num].Socket.GetRemoteAddress().ToString(), text));
+                 }
+                 break;
+             case 3:
 @@ -219,6 +224,7 @@
                      [0] = item5.favorited,
                      [1] = number3 != 0f
@@ -87,3 +95,30 @@
              }
              if (Main.verboseNetplay)
              {
+@@ -2893,7 +2908,7 @@
+         }
+         if (!flag)
+         {
+-            Console.WriteLine(Language.GetTextValue("Net.ServerAutoShutdown"));
++            Aether.GameLog.Terraria.Information("{Text:l}", Language.GetTextValue("Net.ServerAutoShutdown"));
+             Netplay.Disconnect = true;
+         }
+     }
+@@ -2957,7 +2972,7 @@
+                 ChatHelper.BroadcastChatMessage(NetworkText.FromKey(Lang.mp[19].Key, Main.player[plr].name), new Color(255, 240, 20), plr);
+                 if (Main.dedServ)
+                 {
+-                    Console.WriteLine(Lang.mp[19].Format(Main.player[plr].name));
++                    Aether.GameLog.Terraria.Information("{Text:l}", Lang.mp[19].Format(Main.player[plr].name));
+                 }
+             }
+             for (int l = 0; l < 1000; l++)
+@@ -2979,7 +2994,7 @@
+             ChatHelper.BroadcastChatMessage(NetworkText.FromKey(Lang.mp[20].Key, Netplay.Clients[plr].Name), new Color(255, 240, 20), plr);
+             if (Main.dedServ)
+             {
+-                Console.WriteLine(Lang.mp[20].Format(Netplay.Clients[plr].Name));
++                Aether.GameLog.Terraria.Information("{Text:l}", Lang.mp[20].Format(Netplay.Clients[plr].Name));
+             }
+             Netplay.Clients[plr].Name = "Anonymous";
+         }

@@ -54,7 +54,12 @@
              }
          }
      }
-@@ -142,7 +168,12 @@
+@@ -138,18 +164,24 @@
+ 
+     private static void SetupLogging()
+     {
++        Aether.GameLog.CaptureLibraries();
+         if (LaunchParameters.ContainsKey("-logfile"))
          {
              string text = LaunchParameters["-logfile"];
              text = ((text != null && !(text.Trim() == "")) ? Path.Combine(text, $"Log_{DateTime.Now:yyyyMMddHHmmssfff}.log") : Path.Combine(SavePath, "Logs", $"Log_{DateTime.Now:yyyyMMddHHmmssfff}.log"));
@@ -68,7 +73,15 @@
          }
          CrashWatcher.Inititialize();
          CrashWatcher.DumpOnException = LaunchParameters.ContainsKey("-minidump");
-@@ -180,20 +211,45 @@
+         CrashWatcher.LogAllExceptions = LaunchParameters.ContainsKey("-logerrors");
+         if (LaunchParameters.ContainsKey("-fulldump"))
+         {
+-            Console.WriteLine("Full Dump logs enabled.");
++            Aether.GameLog.Terraria.Information("Full Dump logs enabled.");
+             CrashWatcher.EnableCrashDumps(CrashDump.Options.WithFullMemory);
+         }
+     }
+@@ -180,20 +212,45 @@
      public static void LaunchGame(string[] args, bool monoArgs = false)
      {
          Thread.CurrentThread.Name = "Main Thread";
@@ -119,13 +132,29 @@
      public static void RunGame()
      {
          LanguageManager.Instance.SetLanguage(GameCulture.DefaultCulture);
-@@ -240,7 +296,8 @@
+@@ -239,11 +296,12 @@
+ 
      private static void LogFNANativeLibVersions()
      {
-         Console.WriteLine(("SDL v" + SDL.SDL_GetVersion() + "." + SDL.SDL_GetRevision()) ?? "");
+-        Console.WriteLine(("SDL v" + SDL.SDL_GetVersion() + "." + SDL.SDL_GetRevision()) ?? "");
 -        uint num = FNA3D.FNA3D_LinkedVersion();
+-        Console.WriteLine(("FNA3D v" + num / 10000 + "." + num / 100 % 100 + "." + num % 100) ?? "");
++        Aether.GameLog.Terraria.Information("{Text:l}", ("SDL v" + SDL.SDL_GetVersion() + "." + SDL.SDL_GetRevision()) ?? "");
 +        // Aether: FNA 26.11 made its FNA3D bindings internal, so call them through FNA itself.
 +        uint num = (uint)typeof(GraphicsDevice).Assembly.GetType("Microsoft.Xna.Framework.Graphics.FNA3D", throwOnError: true).GetMethod("FNA3D_LinkedVersion").Invoke(null, null);
-         Console.WriteLine(("FNA3D v" + num / 10000 + "." + num / 100 % 100 + "." + num % 100) ?? "");
++        Aether.GameLog.Terraria.Information("{Text:l}", ("FNA3D v" + num / 10000 + "." + num / 100 % 100 + "." + num % 100) ?? "");
          uint num2 = FAudio.FAudioLinkedVersion();
-         Console.WriteLine(("FAudio v" + num2 / 10000 + "." + num2 / 100 % 100 + "." + num2 % 100) ?? "");
+-        Console.WriteLine(("FAudio v" + num2 / 10000 + "." + num2 / 100 % 100 + "." + num2 % 100) ?? "");
++        Aether.GameLog.Terraria.Information("{Text:l}", ("FAudio v" + num2 / 10000 + "." + num2 / 100 % 100 + "." + num2 % 100) ?? "");
+     }
+ 
+     private static void DisplayException(Exception e)
+@@ -269,7 +327,7 @@
+             }
+             if (Main.dedServ)
+             {
+-                Console.WriteLine(Language.GetTextValue("Error.ServerCrash"), DateTime.Now, text);
++                Aether.GameLog.Terraria.Warning("{Text:l}", string.Format(Language.GetTextValue("Error.ServerCrash"), DateTime.Now, text));
+             }
+             MessageBox.Show(text, "Terraria: Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+         }

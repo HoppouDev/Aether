@@ -54,7 +54,7 @@
 +            catch (Exception exception)
 +            {
 +                _backgroundBlurFailed = true;
-+                Console.Error.WriteLine($"Background lighting failed; using synchronous lighting: {exception}");
++                Aether.GameLog.Terraria.Error("{Text:l}", $"Background lighting failed; using synchronous lighting: {exception}");
 +                if (current)
 +                    _workingLightMap.Blur();
 +            }

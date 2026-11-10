@@ -416,7 +416,7 @@
          }
 +        catch (ContentSaveException exception)
 +        {
-+            Console.Error.WriteLine($"{playerPath}: {exception.Message}");
++            Aether.GameLog.Terraria.Error("{Text:l}", $"{playerPath}: {exception.Message}");
 +            playerFileData.ContentLoadError = exception.Message;
 +            player.loadStatus = StatusID.LaterVersion;
 +            player.name = Path.GetFileNameWithoutExtension(playerPath);

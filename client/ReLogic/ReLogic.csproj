@@ -14,9 +14,13 @@
 
   <ItemGroup>
     <Compile Include="FnaWindowsPlatform.cs" />
+    <Compile Include="ReLogicLog.cs" />
     <Compile Include="../../src/ReLogic/**/*.cs" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="Serilog" Version="4.4.0" />
+  </ItemGroup>
   <ItemGroup>
     <Reference Include="FNA">
       <HintPath>../../lib/FNA.dll</HintPath>

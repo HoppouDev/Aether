@@ -1,0 +1,13 @@
+--- a/Terraria/IO/Preferences.cs
++++ b/Terraria/IO/Preferences.cs
+@@ -131,8 +131,8 @@
+             }
+             catch (Exception ex)
+             {
+-                Console.WriteLine(Language.GetTextValue("Error.UnableToWritePreferences", _path));
+-                Console.WriteLine(ex.ToString());
++                Aether.GameLog.Terraria.Warning("{Text:l}", Language.GetTextValue("Error.UnableToWritePreferences", _path));
++                Aether.GameLog.Terraria.Information("{Text:l}", ex.ToString());
+                 return false;
+             }
+             return true;

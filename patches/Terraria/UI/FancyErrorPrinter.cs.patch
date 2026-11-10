@@ -1,0 +1,29 @@
+--- a/Terraria/UI/FancyErrorPrinter.cs
++++ b/Terraria/UI/FancyErrorPrinter.cs
+@@ -39,7 +39,7 @@
+             stringBuilder.AppendLine();
+             IncludeOriginalMessage(stringBuilder, exception);
+             ShowTheBox(stringBuilder.ToString());
+-            Console.WriteLine(stringBuilder.ToString());
++            Aether.GameLog.Terraria.Information("{Text:l}", stringBuilder.ToString());
+         }
+     }
+ 
+@@ -73,7 +73,7 @@
+             stringBuilder.AppendLine();
+             IncludeOriginalMessage(stringBuilder, exception);
+             ShowTheBox(stringBuilder.ToString());
+-            Console.WriteLine(stringBuilder.ToString());
++            Aether.GameLog.Terraria.Information("{Text:l}", stringBuilder.ToString());
+         }
+     }
+ 
+@@ -107,7 +107,7 @@
+             stringBuilder.AppendLine();
+             IncludeOriginalMessage(stringBuilder, exception);
+             ShowTheBox(stringBuilder.ToString());
+-            Console.WriteLine(exception);
++            Aether.GameLog.Terraria.Warning("{Text:l}", exception);
+         }
+     }
+ 

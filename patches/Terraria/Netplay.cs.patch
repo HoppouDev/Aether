@@ -1,5 +1,32 @@
 --- a/Terraria/Netplay.cs
 +++ b/Terraria/Netplay.cs
+@@ -181,7 +181,7 @@
+         {
+             Clients[num].Reset();
+             Clients[num].Socket = client;
+-            Console.WriteLine(Language.GetTextValue("Net.ClientConnecting", client.GetRemoteAddress()));
++            Aether.GameLog.Terraria.Information("{Text:l}", Language.GetTextValue("Net.ClientConnecting", client.GetRemoteAddress()));
+             return;
+         }
+         lock (fullBuffer)
+@@ -205,7 +205,7 @@
+         kickMessage.Serialize(writer);
+         if (Main.dedServ)
+         {
+-            Console.WriteLine(Language.GetTextValue("CLI.ClientWasBooted", client.GetRemoteAddress().ToString(), kickMessage));
++            Aether.GameLog.Terraria.Information("{Text:l}", Language.GetTextValue("CLI.ClientWasBooted", client.GetRemoteAddress().ToString(), kickMessage));
+         }
+         int num = (int)writer.BaseStream.Position;
+         writer.BaseStream.Position = position;
+@@ -308,7 +308,7 @@
+                 {
+                     if (!Clients[i].Kicked && !Clients[i].IsAnnouncementCompleted)
+                     {
+-                        Console.WriteLine(Language.GetTextValue("Net.ClientLostConnection", Clients[i].Socket.GetRemoteAddress()));
++                        Aether.GameLog.Terraria.Information("{Text:l}", Language.GetTextValue("Net.ClientLostConnection", Clients[i].Socket.GetRemoteAddress()));
+                     }
+                     Clients[i].Reset();
+                     NetMessage.SyncDisconnectedPlayer(i);
 @@ -424,6 +424,7 @@
  
      private static void ClientLoopSetup(RemoteAddress address)

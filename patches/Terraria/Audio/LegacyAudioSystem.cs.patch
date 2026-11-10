@@ -1,0 +1,11 @@
+--- a/Terraria/Audio/LegacyAudioSystem.cs
++++ b/Terraria/Audio/LegacyAudioSystem.cs
+@@ -138,7 +138,7 @@
+     public void Init(string renderer = "")
+     {
+         Engine = new AudioEngine("Content\\TerrariaMusic.xgs", TimeSpan.FromMilliseconds(250.0), renderer);
+-        Console.WriteLine("SDL Audio Driver: " + SDL.SDL_GetCurrentAudioDriver());
++        Aether.GameLog.Terraria.Information("{Text:l}", "SDL Audio Driver: " + SDL.SDL_GetCurrentAudioDriver());
+         SoundBank = new SoundBank(Engine, "Content\\Sound Bank.xsb");
+         Engine.Update();
+         WaveBank = new WaveBank(Engine, "Content\\Wave Bank.xwb", 0, 512);

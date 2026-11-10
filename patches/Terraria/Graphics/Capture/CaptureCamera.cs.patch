@@ -1,0 +1,33 @@
+--- a/Terraria/Graphics/Capture/CaptureCamera.cs
++++ b/Terraria/Graphics/Capture/CaptureCamera.cs
+@@ -125,7 +125,7 @@
+         }
+         catch (OutOfMemoryException value)
+         {
+-            Console.WriteLine(value);
++            Aether.GameLog.Terraria.Information("{Text:l}", value);
+             _renderQueue.Clear();
+             _outputData = null;
+             FinishCapture();
+@@ -308,7 +308,7 @@
+         }
+         catch (Exception value)
+         {
+-            Console.WriteLine(value);
++            Aether.GameLog.Terraria.Information("{Text:l}", value);
+             return false;
+         }
+     }
+@@ -380,10 +380,10 @@
+                 GC.Collect();
+                 Thread.Sleep(5);
+                 num++;
+-                Console.WriteLine(Language.GetTextValue("Error.CaptureError"));
++                Aether.GameLog.Terraria.Warning("{Text:l}", Language.GetTextValue("Error.CaptureError"));
+                 if (num > 5)
+                 {
+-                    Console.WriteLine(Language.GetTextValue("Error.UnableToCapture"));
++                    Aether.GameLog.Terraria.Warning("{Text:l}", Language.GetTextValue("Error.UnableToCapture"));
+                     break;
+                 }
+             }

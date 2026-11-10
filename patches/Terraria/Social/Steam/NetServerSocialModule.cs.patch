@@ -1,0 +1,11 @@
+--- a/Terraria/Social/Steam/NetServerSocialModule.cs
++++ b/Terraria/Social/Steam/NetServerSocialModule.cs
+@@ -67,7 +67,7 @@
+                 }
+                 else
+                 {
+-                    Console.WriteLine(Language.GetTextValue("Error.InvalidLobbyFlag", "private", "friends"));
++                    Aether.GameLog.Terraria.Warning("{Text:l}", Language.GetTextValue("Error.InvalidLobbyFlag", "private", "friends"));
+                 }
+             }
+             else

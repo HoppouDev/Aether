@@ -1,0 +1,11 @@
+--- a/Terraria/GameContent/Liquid/LiquidRenderer.cs
++++ b/Terraria/GameContent/Liquid/LiquidRenderer.cs
+@@ -868,7 +868,7 @@
+         {
+             if (texture == null || texture.Width < _drawArea.Height || texture.Height < _drawArea.Width)
+             {
+-                Console.WriteLine("WaveMaskData texture recreated. {0}x{1}", _drawArea.Height, _drawArea.Width);
++                Aether.GameLog.Terraria.Information("WaveMaskData texture recreated. {0}x{1}", _drawArea.Height, _drawArea.Width);
+                 if (texture != null)
+                 {
+                     try

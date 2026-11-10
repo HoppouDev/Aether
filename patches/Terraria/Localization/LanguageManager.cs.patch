@@ -1,0 +1,11 @@
+--- a/Terraria/Localization/LanguageManager.cs
++++ b/Terraria/Localization/LanguageManager.cs
+@@ -150,7 +150,7 @@
+                 {
+                     Debugger.Break();
+                 }
+-                Console.WriteLine("Failed to load language file: " + text);
++                Aether.GameLog.Terraria.Warning("{Text:l}", "Failed to load language file: " + text);
+                 break;
+             }
+         }

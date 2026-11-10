@@ -1,0 +1,39 @@
+--- a/ReLogic/Peripherals/RGB/Logitech/LogitechDeviceGroup.cs
++++ b/ReLogic/Peripherals/RGB/Logitech/LogitechDeviceGroup.cs
+@@ -35,16 +35,16 @@
+             }
+             _devices.Add(new LogitechKeyboard(_colorProfiles.Keyboard));
+             _devices.Add(new LogitechSingleLightDevice(_colorProfiles.Generic));
+-            Console.WriteLine("Logitech RGB initialized.");
++            ReLogic.ReLogicLog.Log.Information("Logitech RGB initialized.");
+         }
+         catch (DeviceInitializationException)
+         {
+-            Console.WriteLine("Logitech RGB not supported. (Can be disabled via Config.json)");
++            ReLogic.ReLogicLog.Log.Information("Logitech RGB not supported. (Can be disabled via Config.json)");
+             Uninitialize();
+         }
+         catch (Exception ex2)
+         {
+-            Console.WriteLine("Logitech RGB not supported: " + ex2);
++            ReLogic.ReLogicLog.Log.Information("{Text:l}", "Logitech RGB not supported: " + ex2);
+         }
+     }
+ 
+@@ -55,14 +55,14 @@
+             try
+             {
+                 NativeMethods.LogiLedShutdown();
+-                Console.WriteLine("Logitech RGB uninitialized.");
++                ReLogic.ReLogicLog.Log.Information("Logitech RGB uninitialized.");
+             }
+             catch (ObjectDisposedException)
+             {
+             }
+             catch (Exception ex2)
+             {
+-                Console.WriteLine("Logitech RGB failed to uninitialize: " + ex2);
++                ReLogic.ReLogicLog.Log.Warning("{Text:l}", "Logitech RGB failed to uninitialize: " + ex2);
+             }
+             _isInitialized = false;
+         }

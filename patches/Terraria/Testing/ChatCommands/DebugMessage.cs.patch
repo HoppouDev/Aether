@@ -1,0 +1,11 @@
+--- a/Terraria/Testing/ChatCommands/DebugMessage.cs
++++ b/Terraria/Testing/ChatCommands/DebugMessage.cs
+@@ -69,7 +69,7 @@
+     {
+         if (Main.dedServ && Author == byte.MaxValue)
+         {
+-            Console.WriteLine(message);
++            Aether.GameLog.Terraria.Information("{Text:l}", message);
+         }
+         else
+         {

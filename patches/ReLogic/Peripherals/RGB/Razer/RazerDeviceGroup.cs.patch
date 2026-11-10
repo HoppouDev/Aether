@@ -1,0 +1,38 @@
+--- a/ReLogic/Peripherals/RGB/Razer/RazerDeviceGroup.cs
++++ b/ReLogic/Peripherals/RGB/Razer/RazerDeviceGroup.cs
+@@ -36,16 +36,16 @@
+             _devices.Add(new RazerKeypad(_colorProfiles.Keypad));
+             _devices.Add(new RazerHeadset(_colorProfiles.Headset));
+             _devices.Add(new RazerLink(_colorProfiles.Generic));
+-            Console.WriteLine("Razer Chroma initialized.");
++            ReLogic.ReLogicLog.Log.Information("Razer Chroma initialized.");
+         }
+         catch (DeviceInitializationException)
+         {
+-            Console.WriteLine("Razer Chroma not supported. (Can be disabled via Config.json)");
++            ReLogic.ReLogicLog.Log.Information("Razer Chroma not supported. (Can be disabled via Config.json)");
+             Uninitialize();
+         }
+         catch (Exception ex2)
+         {
+-            Console.WriteLine("Razer Chroma not supported: " + ex2);
++            ReLogic.ReLogicLog.Log.Information("{Text:l}", "Razer Chroma not supported: " + ex2);
+             Uninitialize();
+         }
+     }
+@@ -64,13 +64,13 @@
+             {
+                 throw new DeviceInitializationException("Unable to uninitialize Razer Synapse: " + (int)rzResult);
+             }
+-            Console.WriteLine("Razer Chroma unitialized.");
++            ReLogic.ReLogicLog.Log.Information("Razer Chroma unitialized.");
+         }
+         catch (Exception ex)
+         {
+             if (!(ex is ObjectDisposedException))
+             {
+-                Console.WriteLine("Razer Chroma failed to uninitialize: " + ex);
++                ReLogic.ReLogicLog.Log.Warning("{Text:l}", "Razer Chroma failed to uninitialize: " + ex);
+             }
+         }
+         _isInitialized = false;

@@ -1,0 +1,54 @@
+--- a/ReLogic/Peripherals/RGB/Corsair/CorsairDeviceGroup.cs
++++ b/ReLogic/Peripherals/RGB/Corsair/CorsairDeviceGroup.cs
+@@ -54,21 +54,21 @@
+                 CorsairDeviceInfo deviceInfo = (CorsairDeviceInfo)Marshal.PtrToStructure(NativeMethods.CorsairGetDeviceInfo(i), typeof(CorsairDeviceInfo));
+                 AddDeviceIfSupported(i, deviceInfo);
+             }
+-            Console.WriteLine("Corsair RGB intialized.");
++            ReLogic.ReLogicLog.Log.Information("Corsair RGB intialized.");
+             if (_state != State.AnyDevicesAdded)
+             {
+-                Console.WriteLine("No usable Corsair RGB devices found. Shutting down Corsair SDK.");
++                ReLogic.ReLogicLog.Log.Information("No usable Corsair RGB devices found. Shutting down Corsair SDK.");
+                 Uninitialize();
+             }
+         }
+         catch (DeviceInitializationException)
+         {
+-            Console.WriteLine("Corsair RGB not supported. (Can be disabled via Config.json)");
++            ReLogic.ReLogicLog.Log.Information("Corsair RGB not supported. (Can be disabled via Config.json)");
+             Uninitialize();
+         }
+         catch (Exception ex2)
+         {
+-            Console.WriteLine("Corsair RGB not supported: " + ex2);
++            ReLogic.ReLogicLog.Log.Information("{Text:l}", "Corsair RGB not supported: " + ex2);
+             Uninitialize();
+         }
+     }
+@@ -86,14 +86,14 @@
+             {
+                 NativeMethods.CorsairReleaseControl(CorsairAccessMode.CAM_ExclusiveLightingControl);
+             }
+-            Console.WriteLine("Corsair RGB unitialized.");
++            ReLogic.ReLogicLog.Log.Information("Corsair RGB unitialized.");
+         }
+         catch (ObjectDisposedException)
+         {
+         }
+         catch (Exception ex2)
+         {
+-            Console.WriteLine("Corsair RGB failed to uninitialize: " + ex2);
++            ReLogic.ReLogicLog.Log.Warning("{Text:l}", "Corsair RGB failed to uninitialize: " + ex2);
+         }
+         if (_state >= State.HandshakeCompleted)
+         {
+@@ -128,7 +128,7 @@
+         }
+         catch (Exception ex)
+         {
+-            Console.WriteLine("Corsair RGB failed to create device: " + ex);
++            ReLogic.ReLogicLog.Log.Warning("{Text:l}", "Corsair RGB failed to create device: " + ex);
+             rgbDevice = null;
+         }
+         if (rgbDevice != null && rgbDevice.LedCount > 0)

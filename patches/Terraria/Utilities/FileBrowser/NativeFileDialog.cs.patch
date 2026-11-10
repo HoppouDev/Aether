@@ -22,7 +22,7 @@
 +        }
 +        catch (Exception e) when (e is DllNotFoundException || e is BadImageFormatException || e is EntryPointNotFoundException)
 +        {
-+            Console.WriteLine("Native file dialog unavailable: " + e.Message);
++            Aether.GameLog.Terraria.Information("{Text:l}", "Native file dialog unavailable: " + e.Message);
          }
          return null;
      }

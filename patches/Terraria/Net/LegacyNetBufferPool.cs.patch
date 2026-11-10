@@ -1,0 +1,19 @@
+--- a/Terraria/Net/LegacyNetBufferPool.cs
++++ b/Terraria/Net/LegacyNetBufferPool.cs
+@@ -105,11 +105,11 @@
+     {
+         lock (bufferLock)
+         {
+-            Console.WriteLine("Small Buffers:  " + _smallBufferQueue.Count + " queued of " + _smallBufferCount);
+-            Console.WriteLine("Medium Buffers: " + _mediumBufferQueue.Count + " queued of " + _mediumBufferCount);
+-            Console.WriteLine("Large Buffers:  " + _largeBufferQueue.Count + " queued of " + _largeBufferCount);
+-            Console.WriteLine("Custom Buffers: 0 queued of " + _customBufferCount);
+-            Console.WriteLine("");
++            Aether.GameLog.Terraria.Information("{Text:l}", "Small Buffers:  " + _smallBufferQueue.Count + " queued of " + _smallBufferCount);
++            Aether.GameLog.Terraria.Information("{Text:l}", "Medium Buffers: " + _mediumBufferQueue.Count + " queued of " + _mediumBufferCount);
++            Aether.GameLog.Terraria.Information("{Text:l}", "Large Buffers:  " + _largeBufferQueue.Count + " queued of " + _largeBufferCount);
++            Aether.GameLog.Terraria.Information("{Text:l}", "Custom Buffers: 0 queued of " + _customBufferCount);
++            Aether.GameLog.Terraria.Information("");
+         }
+     }
+ }

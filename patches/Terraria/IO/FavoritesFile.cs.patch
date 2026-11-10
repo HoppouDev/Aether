@@ -1,0 +1,11 @@
+--- a/Terraria/IO/FavoritesFile.cs
++++ b/Terraria/IO/FavoritesFile.cs
+@@ -101,7 +101,7 @@
+         }
+         catch (Exception)
+         {
+-            Console.WriteLine("Unable to load favorites.json file ({0} : {1})", Path, IsCloudSave ? "Cloud Save" : "Local Save");
++            Aether.GameLog.Terraria.Warning("Unable to load favorites.json file ({0} : {1})", Path, IsCloudSave ? "Cloud Save" : "Local Save");
+         }
+     }
+ }

@@ -1,0 +1,20 @@
+--- a/Terraria/GameContent/Shaders/WaterShaderData.cs
++++ b/Terraria/GameContent/Shaders/WaterShaderData.cs
+@@ -417,7 +417,7 @@
+         {
+             Lighting.Mode = LightMode.Retro;
+             _usingRenderTargets = false;
+-            Console.WriteLine("Failed to create water distortion render targets. " + ex);
++            Aether.GameLog.Terraria.Warning("{Text:l}", "Failed to create water distortion render targets. " + ex);
+         }
+     }
+ 
+@@ -436,7 +436,7 @@
+         }
+         catch (Exception ex)
+         {
+-            Console.WriteLine("Error disposing of water distortion render targets. " + ex);
++            Aether.GameLog.Terraria.Warning("{Text:l}", "Error disposing of water distortion render targets. " + ex);
+         }
+         _distortionTarget = null;
+         _distortionTargetSwap = null;

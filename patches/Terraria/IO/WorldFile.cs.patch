@@ -28,7 +28,7 @@
          }
 +        catch (ContentSaveException exception)
 +        {
-+            Console.Error.WriteLine($"{file}: {exception.Message}");
++            Aether.GameLog.Terraria.Error("{Text:l}", $"{file}: {exception.Message}");
 +            return WorldFileData.FromInvalidWorld(file, cloudSave, StatusID.LaterVersion, exception);
 +        }
          catch (Exception exception)
@@ -92,7 +92,7 @@
 +        {
 +            return false;
 +        }
-+        Console.Error.WriteLine($"{Main.worldPathName}: {error.Message}");
++        Aether.GameLog.Terraria.Error("{Text:l}", $"{Main.worldPathName}: {error.Message}");
 +        WorldGen.worldBackup = false;
 +        Main.statusText = error.Message;
 +        Main.menuMode = 15;
@@ -289,6 +289,17 @@
              {
                  writer.Write(nPC2.active);
                  writer.Write(nPC2.netID);
+@@ -1935,8 +2047,8 @@
+             }
+             catch (FormatException value)
+             {
+-                Console.WriteLine(Language.GetTextValue("Error.UnableToLoadWorld"));
+-                Console.WriteLine(value);
++                Aether.GameLog.Terraria.Warning("{Text:l}", Language.GetTextValue("Error.UnableToLoadWorld"));
++                Aether.GameLog.Terraria.Information("{Text:l}", value);
+                 return false;
+             }
+         }
 @@ -2786,13 +2898,13 @@
                  Item item = new Item();
                  if (num6 > 0)

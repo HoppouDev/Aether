@@ -1,0 +1,11 @@
+--- a/Terraria/Audio/SoundEngine.cs
++++ b/Terraria/Audio/SoundEngine.cs
+@@ -211,7 +211,7 @@
+         }
+         catch (NoAudioHardwareException)
+         {
+-            Console.WriteLine("No audio hardware found. Disabling all audio.");
++            Aether.GameLog.Terraria.Information("No audio hardware found. Disabling all audio.");
+             return false;
+         }
+         catch

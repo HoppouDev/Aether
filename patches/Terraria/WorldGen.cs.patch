@@ -98,8 +98,12 @@
                  {
                      worldBackup = true;
                  }
-@@ -6748,22 +6772,35 @@
-                     Console.WriteLine(Language.GetTextValue("Error.LoadFailedNoBackup"));
+@@ -6745,25 +6769,38 @@
+                 }
+                 if (!worldBackup)
+                 {
+-                    Console.WriteLine(Language.GetTextValue("Error.LoadFailedNoBackup"));
++                    Aether.GameLog.Terraria.Warning("{Text:l}", Language.GetTextValue("Error.LoadFailedNoBackup"));
                      return;
                  }
 -                FileUtilities.Copy(Main.worldPathName, Main.worldPathName + ".bad", isCloudSave);
@@ -118,7 +122,7 @@
 -                        FileUtilities.Delete(Main.worldPathName + ".bad", isCloudSave);
 -                        Console.WriteLine(Language.GetTextValue("Error.LoadFailed"));
 +                        if (!WorldFile.ReportContentLoadError())
-+                            Console.WriteLine(Language.GetTextValue("Error.LoadFailed"));
++                            Aether.GameLog.Terraria.Warning("{Text:l}", Language.GetTextValue("Error.LoadFailed"));
                          return;
                      }
                  }
@@ -136,7 +140,7 @@
 +                            FileUtilities.Copy(Main.worldPathName, Main.worldPathName + ".bak", isCloudSave);
 +                            FileUtilities.Copy(Main.worldPathName + ".bad", Main.worldPathName, isCloudSave);
 +                            FileUtilities.Delete(Main.worldPathName + ".bad", isCloudSave);
-+                            Console.WriteLine(Language.GetTextValue("Error.LoadFailed"));
++                            Aether.GameLog.Terraria.Warning("{Text:l}", Language.GetTextValue("Error.LoadFailed"));
 +                            return;
 +                        }
 +                    }
@@ -186,8 +190,12 @@
                  {
                      worldBackup = true;
                  }
-@@ -6858,18 +6906,31 @@
-                     Console.WriteLine(Language.GetTextValue("Error.LoadFailedNoBackup"));
+@@ -6855,21 +6903,34 @@
+                 }
+                 if (!worldBackup)
+                 {
+-                    Console.WriteLine(Language.GetTextValue("Error.LoadFailedNoBackup"));
++                    Aether.GameLog.Terraria.Warning("{Text:l}", Language.GetTextValue("Error.LoadFailedNoBackup"));
                      return;
                  }
 -                FileUtilities.Copy(Main.worldPathName + ".bak", Main.worldPathName, isCloudSave);
@@ -202,7 +210,7 @@
                      {
 -                        Console.WriteLine(Language.GetTextValue("Error.LoadFailed"));
 +                        if (!WorldFile.ReportContentLoadError())
-+                            Console.WriteLine(Language.GetTextValue("Error.LoadFailed"));
++                            Aether.GameLog.Terraria.Warning("{Text:l}", Language.GetTextValue("Error.LoadFailed"));
                          return;
                      }
                  }
@@ -216,7 +224,7 @@
 +                        WorldFile.LoadWorld();
 +                        if (loadFailed)
 +                        {
-+                            Console.WriteLine(Language.GetTextValue("Error.LoadFailed"));
++                            Aether.GameLog.Terraria.Warning("{Text:l}", Language.GetTextValue("Error.LoadFailed"));
 +                            return;
 +                        }
 +                    }
@@ -224,6 +232,15 @@
              }
          }
          SoundEngine.PlaySound(10);
+@@ -11036,7 +11097,7 @@
+         bool flag = false;
+         try
+         {
+-            Console.WriteLine("Creating world - Seed: {0}, Width: {1}, Height: {2}, Evil: {3}, Difficulty: {4}", Main.ActiveWorldFileData.SeedText, Main.maxTilesX, Main.maxTilesY, WorldGenParam_Evil, Main.GameMode);
++            Aether.GameLog.Terraria.Information("Creating world - Seed: {0}, Width: {1}, Height: {2}, Evil: {3}, Difficulty: {4}", Main.ActiveWorldFileData.SeedText, Main.maxTilesX, Main.maxTilesY, WorldGenParam_Evil, Main.GameMode);
+             GenVars.configuration = WorldGenConfiguration.FromEmbeddedPath("Terraria.GameContent.WorldBuilding.Configuration.json");
+             Hooks.ProcessWorldGenConfig(ref GenVars.configuration);
+             _generator = new WorldGenerator(Main.ActiveWorldFileData.Seed, GenVars.configuration, customProgressObject, customController);
 @@ -44379,6 +44440,7 @@
  
      public static bool paintTile(int x, int y, byte color, bool broadCast = false, bool paintEffects = true)

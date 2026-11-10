@@ -1,0 +1,11 @@
+--- a/ReLogic/IO/ConsoleOutputMirror.cs
++++ b/ReLogic/IO/ConsoleOutputMirror.cs
+@@ -59,7 +59,7 @@
+         }
+         catch (Exception arg)
+         {
+-            Console.WriteLine("Unable to bind console output to file: {0}\r\nException: {1}", path, arg);
++            ReLogic.ReLogicLog.Log.Warning("Unable to bind console output to file: {0}\r\nException: {1}", path, arg);
+         }
+     }
+ 

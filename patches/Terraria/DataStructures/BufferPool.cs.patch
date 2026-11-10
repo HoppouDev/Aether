@@ -1,0 +1,19 @@
+--- a/Terraria/DataStructures/BufferPool.cs
++++ b/Terraria/DataStructures/BufferPool.cs
+@@ -98,11 +98,11 @@
+     {
+         lock (bufferLock)
+         {
+-            Console.WriteLine("SmallBufferQueue.Count: " + SmallBufferQueue.Count);
+-            Console.WriteLine("MediumBufferQueue.Count: " + MediumBufferQueue.Count);
+-            Console.WriteLine("LargeBufferQueue.Count: " + LargeBufferQueue.Count);
+-            Console.WriteLine("HugeBufferQueue.Count: " + HugeBufferQueue.Count);
+-            Console.WriteLine("");
++            Aether.GameLog.Terraria.Information("{Text:l}", "SmallBufferQueue.Count: " + SmallBufferQueue.Count);
++            Aether.GameLog.Terraria.Information("{Text:l}", "MediumBufferQueue.Count: " + MediumBufferQueue.Count);
++            Aether.GameLog.Terraria.Information("{Text:l}", "LargeBufferQueue.Count: " + LargeBufferQueue.Count);
++            Aether.GameLog.Terraria.Information("{Text:l}", "HugeBufferQueue.Count: " + HugeBufferQueue.Count);
++            Aether.GameLog.Terraria.Information("");
+         }
+     }
+ }

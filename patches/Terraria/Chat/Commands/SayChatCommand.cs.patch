@@ -1,0 +1,11 @@
+--- a/Terraria/Chat/Commands/SayChatCommand.cs
++++ b/Terraria/Chat/Commands/SayChatCommand.cs
+@@ -11,7 +11,7 @@
+         ChatHelper.BroadcastChatMessageAs(clientId, NetworkText.FromLiteral(text), Main.player[clientId].ChatColor());
+         if (Main.dedServ)
+         {
+-            Console.WriteLine("<{0}> {1}", Main.player[clientId].name, text);
++            Aether.GameLog.Terraria.Information("<{0}> {1}", Main.player[clientId].name, text);
+         }
+     }
+ 

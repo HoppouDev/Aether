@@ -1,0 +1,25 @@
+--- a/ReLogic/Utilities/MultiTimer.cs
++++ b/ReLogic/Utilities/MultiTimer.cs
+@@ -82,7 +82,7 @@
+         if (_ticksElapsedForPrint == _ticksBetweenPrint)
+         {
+             _ticksElapsedForPrint = 0;
+-            Console.WriteLine("Average elapsed time: ");
++            ReLogic.ReLogicLog.Log.Information("Average elapsed time: ");
+             double num = 0.0;
+             int num2 = 0;
+             foreach (KeyValuePair<string, TimerData> item in _timerDataMap)
+@@ -93,11 +93,11 @@
+             {
+                 TimerData value = item2.Value;
+                 string text = new string(' ', num2 - item2.Key.Length);
+-                Console.WriteLine(item2.Key + text + " : (Average: " + value.Average.ToString("F4") + " Min: " + value.Min.ToString("F4") + " Max: " + value.Max.ToString("F4") + " from " + (int)value.Ticks + " records)");
++                ReLogic.ReLogicLog.Log.Information("{Text:l}", item2.Key + text + " : (Average: " + value.Average.ToString("F4") + " Min: " + value.Min.ToString("F4") + " Max: " + value.Max.ToString("F4") + " from " + (int)value.Ticks + " records)");
+                 num += value.Total;
+             }
+             _timerDataMap.Clear();
+-            Console.WriteLine("Total : " + (float)num / (float)_ticksBetweenPrint + "ms");
++            ReLogic.ReLogicLog.Log.Information("{Text:l}", "Total : " + (float)num / (float)_ticksBetweenPrint + "ms");
+             return true;
+         }
+         return false;

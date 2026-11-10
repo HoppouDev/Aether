@@ -109,7 +109,8 @@ dotnet build Aether.slnx -c Debug
   To drive that window without focusing it or sending system input, start it with `--control PORT` and use `./aether control` or the `aether-game` MCP server (see `.agents/skills/aether-game/SKILL.md`).
   Use [remote UI automation](docs/ui-automation.md) to inspect and act on retained components by ID.
 - **Logging:** Terraria and Aether log through Serilog (`client/Modding/AetherLog.cs`), which the bootstrap starts first thing; `Serilog` is shared with mods like FNA.
-  The game's console output (`Console.Out`/`Console.Error`, written all over vanilla) still reaches the console unchanged and is also logged a line an event (source `Console`).
+  Terraria's and ReLogic's own prints are log events (`Aether.GameLog.Terraria`, `ReLogic.ReLogicLog.Log`; sources `Terraria` and `ReLogic`), except the dedicated server's prompts written without a newline (`Console.Write`), and FNA's (`FNALoggerEXT`) and SDL's (`SDL_SetLogOutputFunction`) logs are routed in too (`GameLog.CaptureLibraries`, from `Program.SetupLogging`).
+  Other console output (native libraries' own prints aside, which bypass .NET) still reaches the console unchanged and is also logged a line an event (source `Console`).
   Aether's own events (`AetherLog.For("Aether.Something")`, mods' `ModLog.For(modId)`) go to standard error as `[time LVL] Source: message`, Information and above, Debug too with `-mixindebug`, so standard output stays the game's.
   Terraria's `-logfile [dir]` writes everything, Debug included, to `Logs/Log_<time>.log` through Serilog's file sink (in place of ReLogic's `ConsoleOutputMirror`), including the events from before the game opens it.
   At startup the bootstrap logs the Aether and Terraria versions, the loaded mods as a tree of their dependencies, and the mixins applied (each at Debug, then a summary); the API logs what it registered.

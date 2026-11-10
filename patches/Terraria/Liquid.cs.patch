@@ -1,0 +1,20 @@
+--- a/Terraria/Liquid.cs
++++ b/Terraria/Liquid.cs
+@@ -984,7 +984,7 @@
+             panicY = Main.maxTilesY - 3;
+             if (Main.dedServ)
+             {
+-                Console.WriteLine(Language.GetTextValue("Misc.ForceWaterSettling"));
++                Aether.GameLog.Terraria.Information("{Text:l}", Language.GetTextValue("Misc.ForceWaterSettling"));
+             }
+         }
+     }
+@@ -1040,7 +1040,7 @@
+                     {
+                         continue;
+                     }
+-                    Console.WriteLine(Language.GetTextValue("Misc.WaterSettled"));
++                    Aether.GameLog.Terraria.Information("{Text:l}", Language.GetTextValue("Misc.WaterSettled"));
+                     panicCounter = 0;
+                     panicMode = false;
+                     WorldGen.WaterCheck();

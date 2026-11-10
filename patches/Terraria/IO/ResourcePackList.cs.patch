@@ -1,0 +1,47 @@
+--- a/Terraria/IO/ResourcePackList.cs
++++ b/Terraria/IO/ResourcePackList.cs
+@@ -109,7 +109,7 @@
+             }
+             catch (Exception arg)
+             {
+-                Console.WriteLine("Failed to read resource pack {0}: {1}", text, arg);
++                Aether.GameLog.Terraria.Warning("Failed to read resource pack {0}: {1}", text, arg);
+             }
+         }
+     }
+@@ -129,7 +129,7 @@
+             }
+             catch (Exception arg)
+             {
+-                Console.WriteLine("Failed to read resource pack {0}: {1}", text, arg);
++                Aether.GameLog.Terraria.Warning("Failed to read resource pack {0}: {1}", text, arg);
+             }
+         }
+     }
+@@ -149,7 +149,7 @@
+             }
+             catch (Exception arg)
+             {
+-                Console.WriteLine("Failed to read resource pack {0}: {1}", text, arg);
++                Aether.GameLog.Terraria.Warning("Failed to read resource pack {0}: {1}", text, arg);
+             }
+         }
+     }
+@@ -175,7 +175,7 @@
+             }
+             catch (Exception arg)
+             {
+-                Console.WriteLine("Failed to read resource pack {0}: {1}", item, arg);
++                Aether.GameLog.Terraria.Warning("Failed to read resource pack {0}: {1}", item, arg);
+             }
+         }
+     }
+@@ -191,7 +191,7 @@
+         }
+         catch (JsonReaderException arg)
+         {
+-            Console.WriteLine("Failed to parse configuration entry for resource pack list. {0}", arg);
++            Aether.GameLog.Terraria.Warning("Failed to parse configuration entry for resource pack list. {0}", arg);
+         }
+         return new List<ResourcePackEntry>();
+     }
