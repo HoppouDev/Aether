@@ -99,7 +99,8 @@ An instance handler can use the containing game method's `this`, independently o
 For an instance call on a value type, the receiver is passed by reference.
 For a field on a value type, match the receiver on the evaluation stack.
 A field read from a returned struct can take the receiver by value, while a field write requires a managed reference.
-Aether rejects struct field sites when it cannot prove the receiver's stack form within the same basic block.
+Aether follows incoming control-flow paths and rejects a struct field site when it cannot prove that they agree on the receiver's stack form.
+For field access through an unmanaged pointer, use a custom delegate with a matching pointer parameter.
 Use a custom delegate for by-ref operands or results.
 A closed generic call can be selected with a signature such as `Example.Store::Find<System.Int32>(System.Int32)`.
 For a call parameterized by its containing method, use its CLR generic parameter name in the selector, such as `Example.Store::Find<T>(T)`.

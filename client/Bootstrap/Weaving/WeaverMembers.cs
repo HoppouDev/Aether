@@ -2,6 +2,7 @@ using Mono.Cecil;
 using Mono.Cecil.Cil;
 using static Aether.Bootstrap.Selectors;
 
+using static Aether.Bootstrap.TypeSignatures;
 namespace Aether.Bootstrap;
 
 internal sealed partial class AssemblyWeaver
@@ -10,6 +11,8 @@ internal sealed partial class AssemblyWeaver
     {
         if (source is GenericParameter)
             return source;
+        if (source is FunctionPointerType function)
+            return MapFunctionPointer(function, ImportType);
         if (source is ArrayType array)
             return array.IsVector ? new ArrayType(ImportType(array.ElementType)) : new ArrayType(ImportType(array.ElementType), array.Rank);
         if (source is ByReferenceType reference)
@@ -90,50 +93,54 @@ internal sealed partial class AssemblyWeaver
 
     private T TrackReference<T>(T member) where T : MemberReference
     {
-        switch (member)
-        {
-            case TypeReference type:
-                TrackType(type);
-                break;
-            case MethodReference method:
-                TrackType(method.DeclaringType);
-                TrackType(method.ReturnType);
-                foreach (ParameterDefinition parameter in method.Parameters)
-                    TrackType(parameter.ParameterType);
-                if (method is GenericInstanceMethod instance)
-                    foreach (TypeReference argument in instance.GenericArguments)
-                        TrackType(argument);
-                break;
-            case FieldReference field:
-                TrackType(field.DeclaringType);
-                TrackType(field.FieldType);
-                break;
-        }
+        foreach (TypeReference type in ReferencedTypes(member))
+            TrackType(type);
         return member;
+    }
+
+    private static IEnumerable<TypeReference> ReferencedTypes(object? operand) => operand switch
+    {
+        TypeReference type => [type],
+        GenericInstanceMethod method => new[] { method.DeclaringType, method.ReturnType }
+            .Concat(method.Parameters.Select(parameter => parameter.ParameterType)).Concat(method.GenericArguments),
+        MethodReference method => new[] { method.DeclaringType, method.ReturnType }
+            .Concat(method.Parameters.Select(parameter => parameter.ParameterType)),
+        FieldReference field => [field.DeclaringType, field.FieldType],
+        CallSite site => new[] { site.ReturnType }.Concat(site.Parameters.Select(parameter => parameter.ParameterType)),
+        _ => []
+    };
+
+    private static IEnumerable<AssemblyNameReference> ReferencedAssemblies(TypeReference type)
+    {
+        if (type is GenericParameter)
+            yield break;
+
+        if (type is GenericInstanceType generic)
+            foreach (AssemblyNameReference name in generic.GenericArguments.SelectMany(ReferencedAssemblies))
+                yield return name;
+        if (type is IModifierType modifier)
+            foreach (AssemblyNameReference name in ReferencedAssemblies(modifier.ModifierType))
+                yield return name;
+        if (type is FunctionPointerType function)
+        {
+            foreach (AssemblyNameReference name in ReferencedAssemblies(function.ReturnType)
+                .Concat(function.Parameters.SelectMany(parameter => ReferencedAssemblies(parameter.ParameterType))))
+                yield return name;
+        }
+        else if (type is TypeSpecification specification)
+        {
+            foreach (AssemblyNameReference name in ReferencedAssemblies(specification.ElementType))
+                yield return name;
+        }
+        else if (type.Scope is AssemblyNameReference reference)
+            yield return reference;
     }
 
     private void TrackType(TypeReference type)
     {
-        if (importingPackage == null || type is GenericParameter)
-            return;
-
-        if (type is GenericInstanceType generic)
-            foreach (TypeReference argument in generic.GenericArguments)
-                TrackType(argument);
-        if (type is IModifierType modifier)
-            TrackType(modifier.ModifierType);
-        if (type is FunctionPointerType function)
-        {
-            TrackType(function.ReturnType);
-            foreach (ParameterDefinition parameter in function.Parameters)
-                TrackType(parameter.ParameterType);
-        }
-        else if (type is TypeSpecification specification)
-        {
-            TrackType(specification.ElementType);
-        }
-        else if (type.Scope is AssemblyNameReference reference)
-            TrackAssembly(reference);
+        if (importingPackage != null)
+            foreach (AssemblyNameReference reference in ReferencedAssemblies(type))
+                TrackAssembly(reference);
     }
 
     private void TrackAssembly(AssemblyNameReference reference)
@@ -259,7 +266,7 @@ internal sealed partial class AssemblyWeaver
                 bool getter = bridge.Parameters.Count == 0 && bridge.ReturnType.MetadataType != MetadataType.Void;
                 bool setter = bridge.Parameters.Count == 1 && bridge.ReturnType.MetadataType == MetadataType.Void;
                 TypeReference? value = getter ? bridge.ReturnType : setter ? bridge.Parameters[0].ParameterType : null;
-                var field = target.Fields.SingleOrDefault(item => MemberMatches(item, mapped) && item.IsStatic == isStatic &&
+                var field = originalFields[target].SingleOrDefault(item => MemberMatches(item, mapped) && item.IsStatic == isStatic &&
                     value != null && Same(item.FieldType, value) && (getter || !item.IsInitOnly && !item.IsLiteral))
                     ?? throw new InvalidDataException($"Cannot bind field accessor {selectors.Describe(selector)}.");
                 if (field.IsLiteral)
@@ -268,7 +275,7 @@ internal sealed partial class AssemblyWeaver
             }
             else
             {
-                var called = target.Methods.SingleOrDefault(item => MemberMatches(item, mapped) &&
+                var called = originalMethods[target].SingleOrDefault(item => MemberMatches(item, mapped) &&
                     !item.HasGenericParameters && SameParameters(method, item) &&
                     (item.IsConstructor
                         ? !item.IsStatic && isStatic && Same(bridge.ReturnType, target)

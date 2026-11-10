@@ -190,6 +190,9 @@ internal sealed class ModContext(ModPackage package) : AssemblyLoadContext(packa
         return File.Exists(path) ? path : null;
     }
 
+    internal (string Path, ModContext Context)? ResolveApiLibrary(AssemblyName name) =>
+        Api != null && Api != this && Api.ResolveManagedPath(name) is { } path ? (path, Api) : null;
+
     internal void ShareWovenDependency(string name, string path, ModContext context) =>
         wovenDependencies.Add(name, (path, context));
 
@@ -218,8 +221,8 @@ internal sealed class ModContext(ModPackage package) : AssemblyLoadContext(packa
 
         // Libraries the API package ships (Brigadier.NET) are shared with its dependents, ahead of their own
         // copies, so the types in the API's signatures are the API's.
-        if (Api != null && Api != this && Api.ResolveManagedPath(name) is { } shared)
-            return Api.LoadManaged(shared);
+        if (ResolveApiLibrary(name) is { } shared)
+            return shared.Context.LoadManaged(shared.Path);
 
         if (wovenDependencies.TryGetValue(name.FullName, out var dependency))
             return dependency.Context.LoadManaged(dependency.Path);

@@ -165,7 +165,7 @@ def test_api_and_its_libraries_are_shared_with_consumers_and_woven_game(
         archive(
             tmp_path,
             name.lower(),
-            files=[api_assemblies / f"{name}.dll", api_assemblies / API_LIBRARY],
+            files=[api_assemblies / f"{name}.dll"],
             assembly=f"{name}.dll",
             entrypoint="ApiConsumer",
             mixins=mixins,
@@ -268,7 +268,7 @@ def test_startup_wrappers_and_il_editors_compose(game_fixture, tmp_path):
     archive(
         tmp_path,
         files=[FIXTURES / "Mod" / CONFIG / MOD],
-        mixins=["WrapperPatches", "StartupEditor"],
+        mixins=["WrapperPatches", "StartupEditor", "SameNameHelper"],
         entrypoint="WrapperTest",
     )
     result = run(game_fixture, tmp_path)
@@ -287,7 +287,7 @@ def test_field_receivers_embedded_fields_and_throw_paths(game_fixture, tmp_path)
     archive(
         tmp_path,
         files=[FIXTURES / "Mod" / CONFIG / MOD],
-        mixins=["FieldReceiverPatches", "StartupEditor"],
+        mixins=["FieldReceiverPatches", "StartupEditor", "EmbeddedResolverEditor"],
         entrypoint="ReceiverRegressionTest",
     )
     result = run(game_fixture, tmp_path)
@@ -301,6 +301,9 @@ def test_field_receivers_embedded_fields_and_throw_paths(game_fixture, tmp_path)
         ("InvalidEditor", "An IL branch points outside the edited body"),
         ("InvalidWrapper", "must match the wrapped signature"),
         ("InvalidOperationWrapper", "Invalid wrapper signature"),
+        ("InvalidOperandEditor", "Invalid operand for 'ldc.i4.s'"),
+        ("InvalidLocalEditor", "refers to a local outside the edited body"),
+        ("WrongAssemblyWrapper", "Invalid wrapper signature"),
     ],
 )
 def test_invalid_startup_edits_fail_before_game_load(

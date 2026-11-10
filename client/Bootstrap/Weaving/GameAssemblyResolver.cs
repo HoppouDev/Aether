@@ -20,6 +20,7 @@ internal sealed class GameAssemblyResolver : DefaultAssemblyResolver
             if (resource == null)
                 throw;
 
+            parameters.AssemblyResolver = this;
             return AssemblyDefinition.ReadAssembly(new MemoryStream(resource.GetResourceData(), writable: false), parameters);
         }
     }

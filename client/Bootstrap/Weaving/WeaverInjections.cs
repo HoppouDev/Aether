@@ -3,6 +3,7 @@ using Mono.Cecil;
 using Mono.Cecil.Cil;
 using static Aether.Bootstrap.Selectors;
 
+using static Aether.Bootstrap.TypeSignatures;
 namespace Aether.Bootstrap;
 
 internal sealed partial class AssemblyWeaver
@@ -102,7 +103,7 @@ internal sealed partial class AssemblyWeaver
 
     private IEnumerable<Site> FindSites(Injection injection, Instruction[] instructions)
     {
-        var (declaration, handler, target, attribute, _, _) = injection;
+        var (declaration, handler, target, attribute, _, _, _) = injection;
         if (instructions.Length == 0)
             throw new InvalidDataException($"Empty body for '{target.FullName}'.");
 
@@ -230,8 +231,7 @@ internal sealed partial class AssemblyWeaver
 
     private void EmitCallback(Site site, Instruction anchor, List<Instruction> code, int? depth)
     {
-        var (_, handler, target, attribute, _, _) = site.Injection;
-        MethodDefinition source = site.Injection.Declaration.Source.Methods.Single(item => methods.TryGetValue(item, out var copy) && copy == handler);
+        var (_, handler, target, attribute, _, _, source) = site.Injection;
         bool returns = target.ReturnType.MetadataType != MetadataType.Void;
         bool cancellable = Option(attribute, "Cancellable", false);
         bool atReturn = !site.After && anchor.OpCode.Code == Code.Ret;
@@ -296,7 +296,8 @@ internal sealed partial class AssemblyWeaver
         for (int argument = receiver ? 1 : 0; argument < explicitArguments; argument++)
         {
             ParameterDefinition parameter = target.Parameters[argument - (receiver ? 1 : 0)];
-            if (!Same(parameter.ParameterType, handler.Parameters[argument].ParameterType))
+            ParameterDefinition supplied = handler.Parameters[argument];
+            if (!SameParameter(parameter.ParameterType, parameter.Attributes, supplied.ParameterType, supplied.Attributes))
                 throw new InvalidDataException($"Callback '{source.Name}' argument '{parameter.Name}' has the wrong type.");
             Add(code, OpCodes.Ldarg, parameter);
         }

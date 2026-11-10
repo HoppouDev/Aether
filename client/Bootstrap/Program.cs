@@ -236,11 +236,12 @@ internal static class Program
                 continue;
             }
 
-            var candidates = new List<(ModPackage Package, string Path, ModContext Context)>();
+            var candidates = new List<(ModPackage Package, string Path, ModContext Context, bool ApiLibrary)>();
             foreach (ModPackage owner in owners.OrderBy(owner => owner.Manifest.Id, StringComparer.Ordinal))
             {
                 ModContext context = contexts[owner];
-                string? path = context.ResolveManagedPath(identity);
+                var apiLibrary = context.ResolveApiLibrary(identity);
+                string? path = apiLibrary?.Path ?? context.ResolveManagedPath(identity);
                 if (path == null)
                 {
                     if (platformNames.Contains(name))
@@ -253,12 +254,13 @@ internal static class Program
                 if (!string.Equals(AssemblyName.GetAssemblyName(path).FullName, reference, StringComparison.OrdinalIgnoreCase))
                     throw new InvalidDataException($"'{path}' in mod '{owner.Manifest.Id}' does not match woven reference '{reference}'.");
 
-                candidates.Add((owner, path, context));
+                candidates.Add((owner, path, apiLibrary?.Context ?? context, apiLibrary != null || owner.Manifest.Id == "aether-api"));
             }
 
             if (candidates.Count == 0)
                 continue;
-            var primary = candidates.FirstOrDefault(item => item.Path == item.Package.EntryPath, candidates[0]);
+            var primary = candidates.FirstOrDefault(item => item.Path == item.Package.EntryPath,
+                candidates.FirstOrDefault(item => item.ApiLibrary, candidates[0]));
             if (candidates.Count > 1)
             {
                 byte[] hash = HashFile(primary.Path);
@@ -269,7 +271,7 @@ internal static class Program
                     if (!HashFile(candidate.Path).AsSpan().SequenceEqual(hash))
                         throw new InvalidDataException($"Woven reference '{reference}' differs between mods '{primary.Package.Manifest.Id}' and '{candidate.Package.Manifest.Id}'.");
 
-                    candidate.Context.ShareWovenDependency(reference, primary.Path, primary.Context);
+                    contexts[candidate.Package].ShareWovenDependency(reference, primary.Path, primary.Context);
                 }
             }
             result.Add(reference, (primary.Path, primary.Context));

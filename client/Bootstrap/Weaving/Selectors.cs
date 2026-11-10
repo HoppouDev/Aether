@@ -4,6 +4,7 @@ using Aether.Modding;
 using Mono.Cecil;
 using Mono.Cecil.Cil;
 
+using static Aether.Bootstrap.TypeSignatures;
 namespace Aether.Bootstrap;
 
 internal sealed class Selectors
@@ -28,7 +29,7 @@ internal sealed class Selectors
 
     internal string Describe(string name) => name == Map(name) ? $"'{name}'" : $"'{name}' (mapped to '{Map(name)}')";
 
-    internal static string Signature(MethodReference method)
+    internal static string Signature(MethodReference method, bool normalize = true)
     {
         string name = method switch
         {
@@ -37,7 +38,7 @@ internal sealed class Selectors
             _ => method.Name
         };
         string TypeName(TypeReference type) => Specialize(type, method.DeclaringType, method).FullName;
-        return $"{name}({string.Join(",", method.Parameters.Select(parameter => TypeName(parameter.ParameterType)))}):{TypeName(method.ReturnType)}";
+        return $"{name}({string.Join(",", method.Parameters.Select(parameter => TypeName(normalize ? NormalizeIn(parameter.ParameterType) : parameter.ParameterType)))}):{TypeName(method.ReturnType)}";
     }
 
     internal static string Signature(FieldReference field) => $"{field.Name}:{Specialize(field.FieldType, field.DeclaringType).FullName}";
@@ -46,8 +47,9 @@ internal sealed class Selectors
     {
         if (selector == method.Name)
             return true;
-        string signature = Signature(method);
-        return selector == signature || selector == signature[..(signature.LastIndexOf("):", StringComparison.Ordinal) + 1)];
+        bool Matches(string signature) => selector == signature || selector == signature[..(signature.LastIndexOf("):", StringComparison.Ordinal) + 1)];
+        return Matches(Signature(method)) || method.Parameters.Any(parameter => NormalizeIn(parameter.ParameterType) != parameter.ParameterType) &&
+            Matches(Signature(method, normalize: false));
     }
 
     internal static bool MemberMatches(FieldReference field, string selector) => selector == field.Name || selector == Signature(field);
@@ -89,6 +91,8 @@ internal sealed class Selectors
                 return new RequiredModifierType(Map(required.ModifierType), Map(required.ElementType));
             case OptionalModifierType optional:
                 return new OptionalModifierType(Map(optional.ModifierType), Map(optional.ElementType));
+            case FunctionPointerType pointer:
+                return MapFunctionPointer(pointer, Map);
             default:
                 return type;
         }
@@ -108,9 +112,9 @@ internal sealed class Selectors
         };
     }
 
-    internal MethodDefinition? Method(TypeDefinition type, string name)
+    internal MethodDefinition? Method(TypeDefinition type, IEnumerable<MethodDefinition> original, string name)
     {
-        var candidates = type.Methods.Where(method => MemberMatches(method, Map(name))).ToArray();
+        var candidates = original.Where(method => MemberMatches(method, Map(name))).ToArray();
         return candidates.Length switch
         {
             0 => null,

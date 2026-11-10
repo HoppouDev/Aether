@@ -44,12 +44,22 @@ public class Target
     public int ReadStructValue(int value) => MakeFieldSample(value).Value;
     public int ReadStructAddress(ref FieldSample sample) => sample.Value;
     public void WriteStructAddress(ref FieldSample sample, int value) => sample.Value = Echo(value.ToString()).Length;
+    public int ReadStructBranch(bool first, ref FieldSample a, ref FieldSample b) => (first ? ref a : ref b).Value;
+    public void WriteStructBranch(bool first, ref FieldSample sample) => sample.Value = first ? 5 : 6;
+    public virtual int VirtualInput(in int value) => value + 1;
+    public int CallVirtualInput(in int value) => VirtualInput(in value);
+    public static MixinTypeIdentity.Thing RoundTrip(MixinTypeIdentity.Thing value) => value;
     public string ThrowWithPendingOperand(string left, string right) => left + (right ?? throw new ArgumentNullException(nameof(right)));
     public static int WriteEmbeddedField(int value)
     {
         Aether.Tests.Embedded.Fields.Value = value;
         return Aether.Tests.Embedded.Fields.Value;
     }
+}
+
+namespace MixinTypeIdentity
+{
+    public sealed class Thing { }
 }
 public static class Program
 {

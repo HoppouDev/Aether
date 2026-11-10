@@ -69,19 +69,19 @@ internal sealed partial class AssemblyWeaver
 
     private void EditBody(MethodDefinition target, Action<ILPatchContext> edit)
     {
-        var oldReferences = game.AssemblyReferences.ToHashSet();
-        var oldOperands = target.Body.Instructions.ToDictionary(instruction => instruction, instruction => instruction.Operand);
-        var oldLocals = target.Body.Variables.ToDictionary(local => local, local => local.VariableType);
-        var oldCatches = target.Body.ExceptionHandlers.ToDictionary(handler => handler, handler => handler.CatchType);
+        var oldReferences = game.AssemblyReferences.Select(reference => reference.FullName).ToHashSet(StringComparer.Ordinal);
+        var oldOperands = target.Body.Instructions.ToDictionary(instruction => instruction, instruction => Snapshot(instruction.Operand));
+        var oldLocals = target.Body.Variables.ToDictionary(local => local, local => Snapshot(local.VariableType));
+        var oldCatches = target.Body.ExceptionHandlers.ToDictionary(handler => handler, handler => Snapshot(handler.CatchType));
         edit(new ILPatchContext(target));
 
-        foreach (AssemblyNameReference reference in game.AssemblyReferences.Where(reference => !oldReferences.Contains(reference)))
+        foreach (AssemblyNameReference reference in game.AssemblyReferences.Where(reference => !oldReferences.Contains(reference.FullName)))
             TrackAssembly(reference);
         foreach (VariableDefinition local in target.Body.Variables)
-            if (oldLocals.GetValueOrDefault(local) != local.VariableType)
+            if (oldLocals.GetValueOrDefault(local) != Snapshot(local.VariableType))
                 TrackType(local.VariableType);
         foreach (ExceptionHandler handler in target.Body.ExceptionHandlers)
-            if (handler.CatchType != null && oldCatches.GetValueOrDefault(handler) != handler.CatchType)
+            if (handler.CatchType != null && oldCatches.GetValueOrDefault(handler) != Snapshot(handler.CatchType))
                 TrackType(handler.CatchType);
 
         Instruction[] instructions = target.Body.Instructions.ToArray();
@@ -90,10 +90,7 @@ internal sealed partial class AssemblyWeaver
         foreach (Instruction instruction in instructions)
         {
             instruction.OpCode = LongBranch(instruction.OpCode);
-            if (instruction.OpCode.OperandType is OperandType.InlineBrTarget or OperandType.ShortInlineBrTarget &&
-                instruction.Operand is not Instruction || instruction.OpCode.OperandType == OperandType.InlineSwitch &&
-                instruction.Operand is not Instruction[])
-                throw new InvalidDataException("An IL branch is missing its destination.");
+            ValidateOperand(target, instruction);
             switch (instruction.Operand)
             {
                 case Instruction branch when !indexes.ContainsKey(branch):
@@ -104,15 +101,10 @@ internal sealed partial class AssemblyWeaver
                 case ParameterDefinition parameter when !target.Parameters.Contains(parameter) &&
                     (!target.HasThis || parameter != target.Body.ThisParameter):
                     throw new InvalidDataException("An IL instruction refers to a parameter outside the edited method.");
-                case MemberReference member when oldOperands.GetValueOrDefault(instruction) != member:
-                    TrackReference(member);
-                    break;
-                case CallSite site when oldOperands.GetValueOrDefault(instruction) != site:
-                    TrackType(site.ReturnType);
-                    foreach (ParameterDefinition parameter in site.Parameters)
-                        TrackType(parameter.ParameterType);
-                    break;
             }
+            if (oldOperands.GetValueOrDefault(instruction) != Snapshot(instruction.Operand))
+                foreach (TypeReference type in ReferencedTypes(instruction.Operand))
+                    TrackType(type);
         }
         bool ValidRange(Instruction? start, Instruction? end) => start != null && indexes.TryGetValue(start, out int first) &&
             (end == null || indexes.TryGetValue(end, out int last) && first < last);
@@ -123,4 +115,48 @@ internal sealed partial class AssemblyWeaver
 
         AnalyzeDepths(target, instructions, verifyBody: true);
     }
+
+    private static (object? Operand, string Signature) Snapshot(object? operand) =>
+        (operand, string.Join("|", ReferencedTypes(operand).Select(type =>
+            type.FullName + ":" + string.Join(",", ReferencedAssemblies(type).Select(reference => reference.FullName)))));
+
+    private static void ValidateOperand(MethodDefinition target, Instruction instruction)
+    {
+        object? operand = instruction.Operand;
+        bool valid = instruction.OpCode.OperandType switch
+        {
+            OperandType.InlineNone => operand == null,
+            OperandType.InlineBrTarget or OperandType.ShortInlineBrTarget => operand is Instruction,
+            OperandType.InlineField => operand is FieldReference,
+            OperandType.InlineI => operand is int,
+            OperandType.InlineI8 => operand is long,
+            OperandType.InlineMethod => operand is MethodReference,
+            OperandType.InlineR => operand is double,
+            OperandType.InlineSig => operand is CallSite,
+            OperandType.InlineString => operand is string,
+            OperandType.InlineSwitch => operand is Instruction[] targets && targets.All(branch => branch != null),
+            OperandType.InlineTok => operand is TypeReference or MethodReference or FieldReference,
+            OperandType.InlineType => operand is TypeReference,
+            OperandType.InlineVar or OperandType.ShortInlineVar => operand is VariableDefinition,
+            OperandType.InlineArg or OperandType.ShortInlineArg => operand is ParameterDefinition,
+            OperandType.ShortInlineI => instruction.OpCode.Code == Code.Ldc_I4_S ? operand is sbyte : operand is byte,
+            OperandType.ShortInlineR => operand is float,
+            _ => false
+        };
+        if (!valid)
+            throw new InvalidDataException($"Invalid operand for '{instruction.OpCode}'.");
+
+        int slot = instruction.OpCode.Code switch
+        {
+            >= Code.Ldloc_0 and <= Code.Ldloc_3 => instruction.OpCode.Code - Code.Ldloc_0,
+            >= Code.Stloc_0 and <= Code.Stloc_3 => instruction.OpCode.Code - Code.Stloc_0,
+            _ => -1
+        };
+        if (slot >= target.Body.Variables.Count)
+            throw new InvalidDataException($"'{instruction.OpCode}' refers to a local outside the edited body.");
+        if (instruction.OpCode.Code is >= Code.Ldarg_0 and <= Code.Ldarg_3 &&
+            instruction.OpCode.Code - Code.Ldarg_0 >= target.Parameters.Count + (target.HasThis ? 1 : 0))
+            throw new InvalidDataException($"'{instruction.OpCode}' refers to a parameter outside the edited method.");
+    }
+
 }

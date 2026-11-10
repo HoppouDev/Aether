@@ -2,6 +2,7 @@ using Mono.Cecil;
 using Mono.Cecil.Cil;
 using static Aether.Bootstrap.Selectors;
 
+using static Aether.Bootstrap.TypeSignatures;
 namespace Aether.Bootstrap;
 
 internal sealed partial class AssemblyWeaver
@@ -16,7 +17,8 @@ internal sealed partial class AssemblyWeaver
             {
                 TypeReference[] operands = target.Parameters.Select(parameter => parameter.ParameterType).ToArray();
                 string name = $"__aether$method${target.DeclaringType.Methods.IndexOf(target)}";
-                MethodDefinition original = CreateContinuation(target, name, operands, target.ReturnType);
+                MethodDefinition original = CreateContinuation(target, name, operands, target.ReturnType,
+                    target.Parameters.Select(parameter => parameter.Attributes).ToArray());
                 CloneBody(target, original);
                 MethodDefinition first = BuildWrapperChain(target, original, wrappers);
                 target.Body = new MethodBody(target);
@@ -38,7 +40,15 @@ internal sealed partial class AssemblyWeaver
             throw new InvalidDataException($"Cannot wrap a write to readonly field '{field.FullName}'.");
 
         string name = $"__aether$operation${target.DeclaringType.Methods.IndexOf(target)}${index}";
-        MethodDefinition original = CreateContinuation(target, name, operands, result, hasThis: wrappers.Any(wrapper => wrapper.Handler.HasThis));
+        var attributes = new ParameterAttributes[operands.Length];
+        if (anchor.Operand is MethodReference called && called.Parameters.Any(parameter => NormalizeIn(parameter.ParameterType).IsByReference))
+        {
+            var definition = called.Resolve() ?? throw new InvalidDataException($"Cannot resolve by-reference parameters of '{called.FullName}'.");
+            int offset = operands.Length - definition.Parameters.Count;
+            for (int i = 0; i < definition.Parameters.Count; i++)
+                attributes[i + offset] = definition.Parameters[i].Attributes;
+        }
+        MethodDefinition original = CreateContinuation(target, name, operands, result, attributes, hasThis: wrappers.Any(wrapper => wrapper.Handler.HasThis));
         var operation = new List<Instruction>();
         LoadArguments(operation, original, receiver: false);
         Add(operation, anchor.OpCode, anchor.Operand);
@@ -72,14 +82,14 @@ internal sealed partial class AssemblyWeaver
                 TypeReference MatchType(TypeReference type) => RebindMethodParameters(type, handler, original);
                 if (!SameGenericConstraints(handler, original) || handler.HasThis && !target.HasThis ||
                     handler.Parameters.Count != operands.Length + 1 || !Same(MatchType(handler.ReturnType), original.ReturnType) ||
-                    !handler.Parameters.Skip(1).Select(parameter => OperandTypeName(MatchType(parameter.ParameterType)))
-                        .SequenceEqual(operands.Select(OperandTypeName), StringComparer.Ordinal))
+                    !handler.Parameters.Skip(1).Zip(original.Parameters).All(pair =>
+                        SameParameter(MatchType(pair.First.ParameterType), pair.First.Attributes, pair.Second.ParameterType, pair.Second.Attributes)))
                     throw new InvalidDataException($"Invalid wrapper signature '{handler.FullName}' for '{target.FullName}'.");
 
-                MethodDefinition source = wrapper.Declaration.Source.Methods.Single(method => methods.GetValueOrDefault(method) == handler);
-                var bridge = CreateContinuation(original, $"{original.Name}${ordinal}", operands, original.ReturnType);
+                var bridge = CreateContinuation(original, $"{original.Name}${ordinal}", operands, original.ReturnType,
+                    original.Parameters.Select(parameter => parameter.Attributes).ToArray());
                 TypeReference delegateType = RebindMethodParameters(handler.Parameters[0].ParameterType, handler, bridge);
-                MethodReference constructor = DelegateConstructor(source, delegateType, operands, original, target);
+                MethodReference constructor = DelegateConstructor(wrapper.Source, delegateType, original, target);
                 var code = new List<Instruction>();
                 if (handler.HasThis)
                     Add(code, OpCodes.Ldarg_0);
@@ -104,15 +114,15 @@ internal sealed partial class AssemblyWeaver
         {
             GenericParameter actual = handler.GenericParameters[i];
             GenericParameter expected = original.GenericParameters[i];
-            if (actual.Attributes != expected.Attributes || !actual.Constraints.Select(constraint =>
-                RebindMethodParameters(constraint.ConstraintType, handler, original).FullName).ToHashSet(StringComparer.Ordinal)
-                .SetEquals(expected.Constraints.Select(constraint => constraint.ConstraintType.FullName)))
+            if (actual.Attributes != expected.Attributes || actual.Constraints.Count != expected.Constraints.Count ||
+                actual.Constraints.Any(constraint => !expected.Constraints.Any(candidate =>
+                    Same(RebindMethodParameters(constraint.ConstraintType, handler, original), candidate.ConstraintType))))
                 return false;
         }
         return true;
     }
 
-    private MethodReference DelegateConstructor(MethodDefinition sourceHandler, TypeReference type, TypeReference[] operands,
+    private MethodReference DelegateConstructor(MethodDefinition sourceHandler, TypeReference type,
         MethodDefinition original, MethodDefinition target)
     {
         TypeReference source = sourceHandler.Parameters[0].ParameterType;
@@ -121,8 +131,8 @@ internal sealed partial class AssemblyWeaver
         TypeReference MatchType(TypeReference argument) => ImportType(RebindMethodParameters(Specialize(argument, source), sourceHandler, original));
         if (definition?.BaseType?.FullName != "System.MulticastDelegate" || !IsPublicType(definition) || invoke == null ||
             !Same(MatchType(invoke.ReturnType), original.ReturnType) ||
-            !invoke.Parameters.Select(parameter => OperandTypeName(MatchType(parameter.ParameterType)))
-                .SequenceEqual(operands.Select(OperandTypeName), StringComparer.Ordinal))
+            invoke.Parameters.Count != original.Parameters.Count || !invoke.Parameters.Zip(original.Parameters).All(pair =>
+                SameParameter(MatchType(pair.First.ParameterType), pair.First.Attributes, pair.Second.ParameterType, pair.Second.Attributes)))
             throw new InvalidDataException($"Continuation delegate '{source.FullName}' must match the wrapped signature in '{target.FullName}' and be public.");
 
         var constructor = new MethodReference(".ctor", game.TypeSystem.Void, type) { HasThis = true };
@@ -135,13 +145,8 @@ internal sealed partial class AssemblyWeaver
         ? type.IsNestedPublic && IsPublicType(declaring)
         : type.IsPublic;
 
-    // C# can encode an in parameter differently on a delegate's virtual Invoke and a nonvirtual method.
-    private static string OperandTypeName(TypeReference type) => type is RequiredModifierType
-        { ElementType: ByReferenceType reference, ModifierType.FullName: "System.Runtime.InteropServices.InAttribute" }
-        ? reference.FullName : type.FullName;
-
     private static MethodDefinition CreateContinuation(MethodDefinition target, string name, TypeReference[] operands,
-        TypeReference result, bool? hasThis = null)
+        TypeReference result, ParameterAttributes[] attributes, bool? hasThis = null)
     {
         if (target.DeclaringType.Methods.Any(method => method.Name == name))
             throw new InvalidDataException($"Generated wrapper method name '{name}' is already in use.");
@@ -151,8 +156,9 @@ internal sealed partial class AssemblyWeaver
         var method = new MethodDefinition(name, flags, result);
         CopyGenericParameters(target, method, type => type);
         method.ReturnType = RebindMethodParameters(result, target, method);
-        foreach (TypeReference operand in operands)
-            method.Parameters.Add(new ParameterDefinition(RebindMethodParameters(operand, target, method)));
+        for (int i = 0; i < operands.Length; i++)
+            method.Parameters.Add(new ParameterDefinition(null, attributes[i] & (ParameterAttributes.In | ParameterAttributes.Out),
+                RebindMethodParameters(operands[i], target, method)));
         target.DeclaringType.Methods.Add(method);
         return method;
     }

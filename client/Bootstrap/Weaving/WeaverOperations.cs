@@ -3,6 +3,7 @@ using Mono.Cecil;
 using Mono.Cecil.Cil;
 using static Aether.Bootstrap.Selectors;
 
+using static Aether.Bootstrap.TypeSignatures;
 namespace Aether.Bootstrap;
 
 internal sealed partial class AssemblyWeaver
@@ -24,8 +25,7 @@ internal sealed partial class AssemblyWeaver
             selected = candidates[0];
         }
 
-        bool allArguments = handler.Parameters.Select(parameter => parameter.ParameterType.FullName)
-            .SequenceEqual(types.Select(type => type.FullName), StringComparer.Ordinal);
+        bool allArguments = SameTypes(handler.Parameters.Select(parameter => parameter.ParameterType).ToArray(), types);
         if (selected < 0 || selected >= types.Length || !Same(handler.ReturnType, types[selected]) ||
             !allArguments && (handler.Parameters.Count != 1 || !Same(handler.Parameters[0].ParameterType, types[selected])) ||
             handler.HasThis && !target.HasThis)
@@ -94,7 +94,7 @@ internal sealed partial class AssemblyWeaver
             Code.Stloc_2 => target.Body.Variables[2].VariableType,
             Code.Stloc_3 => target.Body.Variables[3].VariableType,
             Code.Stloc or Code.Stloc_S => ((VariableDefinition)next.Operand).VariableType,
-            Code.Stfld or Code.Stsfld => ((FieldReference)next.Operand).FieldType,
+            Code.Stfld or Code.Stsfld when next.Operand is FieldReference field => Specialize(field.FieldType, field.DeclaringType),
             Code.Call or Code.Callvirt or Code.Newobj when next.Operand is MethodReference method && method.HasParameters
                 => Specialize(method.Parameters[^1].ParameterType, method.DeclaringType, method),
             _ => null
@@ -109,8 +109,7 @@ internal sealed partial class AssemblyWeaver
         var (operands, result) = OperationSignature(target, anchor);
 
         if (!Same(handler.ReturnType, result) ||
-            !handler.Parameters.Select(parameter => parameter.ParameterType.FullName)
-                .SequenceEqual(operands.Select(operand => operand.FullName), StringComparer.Ordinal) ||
+            !SameTypes(handler.Parameters.Select(parameter => NormalizeIn(parameter.ParameterType)).ToArray(), operands.Select(NormalizeIn).ToArray()) ||
             handler.HasThis && !target.HasThis)
             throw new InvalidDataException($"Invalid redirect signature '{handler.FullName}' for '{anchor.Operand}'.");
 

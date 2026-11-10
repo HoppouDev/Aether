@@ -7,6 +7,8 @@ public delegate ref int SelectRefOperation(Target self, ref int amount, out int 
 public delegate ref readonly int ReadonlyNext(in int amount);
 public delegate int ReadStructNext(ref FieldSample receiver);
 public delegate void WriteStructNext(ref FieldSample receiver, int value);
+public delegate int VirtualInputNext(in int value);
+public delegate int VirtualInputOperation(Target receiver, in int value);
 
 [Mixin(typeof(Target))]
 public class WrapperPatches
@@ -64,6 +66,15 @@ public class WrapperPatches
     [WrapMethod("ReadonlyRef")]
     private ref readonly int ReadOnly(ReadonlyNext next, in int amount) => ref next(in amount);
 
+    [Inject("VirtualInput(System.Int32&)", At.RETURN, Cancellable = true)]
+    private static void ObserveVirtualInput(in int amount, CallbackInfoReturnable<int> info) => info.SetReturnValue(info.ReturnValue + amount);
+
+    [WrapMethod("VirtualInput(System.Int32&)")]
+    private static int WrapVirtualInput(VirtualInputNext next, in int amount) => next(in amount) + 2;
+
+    [WrapOperation("CallVirtualInput", At.INVOKE, Target = "Target::VirtualInput(System.Int32&)")]
+    private static int WrapVirtualOperation(VirtualInputOperation next, Target receiver, in int amount) => next(receiver, in amount) + 3;
+
     [WrapOperation("RefCall", At.INVOKE, Target = "Target::SelectRef(System.Int32&,System.Int32&)")]
     private static ref int RefCall(SelectRefOperation next, Target self, ref int amount, out int snapshot)
     {
@@ -93,6 +104,12 @@ public static class FieldReceiverPatches
     [WrapOperation("WriteStructAddress", At.FIELD, Target = "FieldSample::Value:System.Int32")]
     private static void WriteAddress(WriteStructNext next, ref FieldSample receiver, int value) => next(ref receiver, value * 3);
 
+    [Redirect("ReadStructBranch", At.FIELD, Target = "FieldSample::Value:System.Int32")]
+    private static int ReadBranch(ref FieldSample receiver) => receiver.Value + 2;
+
+    [WrapOperation("WriteStructBranch", At.FIELD, Target = "FieldSample::Value:System.Int32")]
+    private static void WriteBranch(WriteStructNext next, ref FieldSample receiver, int value) => next(ref receiver, value * 3);
+
     [WrapOperation("WriteEmbeddedField", At.FIELD, Target = "Aether.Tests.Embedded.Fields::Value:System.Int32", Ordinal = 0)]
     private static void WriteEmbedded(Action<int> next, int value) => next(value + 4);
 }
@@ -100,7 +117,7 @@ public static class FieldReceiverPatches
 [Mixin("Target")]
 public static class StartupEditor
 {
-    [EditIL("Rewrite(System.Int32)")]
+    [EditIL("Rewrite")]
     private static void Rewrite(ILPatchContext patch)
     {
         var result = new VariableDefinition(patch.Method.Module.TypeSystem.Int32);
@@ -120,6 +137,26 @@ public static class StartupEditor
     private static void PreserveThrow(ILPatchContext patch) { }
 }
 
+[Mixin("Target")]
+public static class EmbeddedResolverEditor
+{
+    [EditIL("WriteEmbeddedField")]
+    private static void VerifyResolver(ILPatchContext patch)
+    {
+        var module = patch.Method.Module;
+        var reference = module.AssemblyReferences.Single(name => name.Name == "Aether.Tests.Embedded");
+        var embedded = module.AssemblyResolver.Resolve(reference);
+        if (!ReferenceEquals(embedded.MainModule.AssemblyResolver, module.AssemblyResolver))
+            throw new InvalidOperationException("Embedded DLL did not inherit the game resolver.");
+    }
+}
+
+[Mixin("Target")]
+public static class SameNameHelper
+{
+    private static int Rewrite(string text) => text.Length;
+}
+
 public static class EditorHelpers
 {
     public static int Increment(int amount) => amount + 1;
@@ -130,6 +167,39 @@ public static class InvalidEditor
 {
     [EditIL("Rewrite(System.Int32)")]
     private static void Rewrite(ILPatchContext patch) => patch.IL.Emit(OpCodes.Br, patch.IL.Create(OpCodes.Nop));
+}
+
+[Mixin("Target")]
+public static class InvalidOperandEditor
+{
+    [EditIL("Rewrite")]
+    private static void Rewrite(ILPatchContext patch)
+    {
+        Instruction literal = patch.Body.Instructions.First(instruction => instruction.OpCode == OpCodes.Ldc_I4_2);
+        literal.OpCode = OpCodes.Ldc_I4_S;
+        literal.Operand = "not an integer";
+    }
+}
+
+[Mixin("Target")]
+public static class InvalidLocalEditor
+{
+    [EditIL("Rewrite")]
+    private static void Rewrite(ILPatchContext patch) => patch.IL.InsertBefore(patch.Body.Instructions[0], patch.IL.Create(OpCodes.Ldloc_3));
+}
+
+[Mixin("Target")]
+public static class WrongAssemblyWrapper
+{
+#pragma warning disable CS0436 // A type with the same name as the game's type, from this assembly.
+    [WrapMethod("RoundTrip")]
+    private static MixinTypeIdentity.Thing Wrap(Func<MixinTypeIdentity.Thing, MixinTypeIdentity.Thing> next, MixinTypeIdentity.Thing value) => next(value);
+#pragma warning restore CS0436
+}
+
+namespace MixinTypeIdentity
+{
+    public sealed class Thing { }
 }
 
 [Mixin(typeof(Target))]
@@ -169,6 +239,7 @@ public class WrapperTest : IModInitializer
         ref readonly int readOnly = ref target.ReadonlyRef(in amount);
         amount = 24;
         Equal(24, readOnly);
+        Equal(12, target.CallVirtualInput(3));
         Equal(42, target.Rewrite(2));
         Equal(6, target.Recurse(2));
         Console.WriteLine("WRAPPERS OK");
@@ -192,6 +263,12 @@ public class ReceiverRegressionTest : IModInitializer
         target.WriteStructAddress(ref sample, 1234);
         if (sample.Value != 12)
             throw new InvalidOperationException("Struct field write did not reach the original receiver.");
+        var other = new FieldSample { Value = 30 };
+        if (target.ReadStructBranch(false, ref sample, ref other) != 32)
+            throw new InvalidOperationException("Struct field read lost the receiver at a branch join.");
+        target.WriteStructBranch(true, ref sample);
+        if (sample.Value != 15)
+            throw new InvalidOperationException("Struct field write lost the receiver at a branch join.");
         if (Target.WriteEmbeddedField(6) != 10)
             throw new InvalidOperationException("Embedded field write did not execute the wrapper.");
         if (target.ThrowWithPendingOperand("left", "right") != "leftright")

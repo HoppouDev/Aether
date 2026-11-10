@@ -2,61 +2,84 @@ using Mono.Cecil;
 using Mono.Cecil.Cil;
 using static Aether.Bootstrap.Selectors;
 
+using static Aether.Bootstrap.TypeSignatures;
 namespace Aether.Bootstrap;
 
 internal sealed partial class AssemblyWeaver
 {
-    private readonly Dictionary<MethodDefinition, HashSet<Instruction>> stackEntries = new();
+    private readonly Dictionary<MethodDefinition, Dictionary<Instruction, List<Instruction>>> fieldPredecessors = new();
 
     private TypeReference StructFieldReceiver(MethodDefinition method, Instruction access, TypeReference receiver, bool reads)
     {
-        if (!stackEntries.TryGetValue(method, out var entries))
+        if (!fieldPredecessors.TryGetValue(method, out var predecessors))
         {
-            entries = new HashSet<Instruction>();
-            foreach (Instruction instruction in method.Body.Instructions)
+            var instructions = method.Body.Instructions;
+            predecessors = instructions.ToDictionary(instruction => instruction, _ => new List<Instruction>());
+            foreach (Instruction instruction in instructions)
             {
                 if (instruction.Operand is Instruction target)
-                    entries.Add(target);
+                    predecessors[target].Add(instruction);
                 else if (instruction.Operand is Instruction[] targets)
-                    entries.UnionWith(targets);
+                    foreach (Instruction branch in targets)
+                        predecessors[branch].Add(instruction);
+                if (instruction.Next is { } next && instruction.OpCode.FlowControl is not
+                    (FlowControl.Branch or FlowControl.Return or FlowControl.Throw))
+                    predecessors[next].Add(instruction);
             }
             foreach (ExceptionHandler handler in method.Body.ExceptionHandlers)
             {
-                entries.Add(handler.HandlerStart);
+                predecessors[handler.HandlerStart].Clear();
                 if (handler.FilterStart != null)
-                    entries.Add(handler.FilterStart);
+                    predecessors[handler.FilterStart].Clear();
             }
-            stackEntries.Add(method, entries);
+            fieldPredecessors.Add(method, predecessors);
         }
 
-        // Trace the receiver's stack slot backwards until a producer or a control-flow join.
-        int slot = reads ? 0 : 1;
-        for (Instruction current = access; !entries.Contains(current) && current.Previous is { } previous; current = previous)
+        var pending = new Queue<(Instruction Instruction, int Slot)>();
+        var visited = new HashSet<(Instruction, int)>();
+        pending.Enqueue((access, reads ? 0 : 1));
+        TypeReference? verified = null;
+        while (pending.TryDequeue(out var state))
         {
-            if (previous.OpCode.FlowControl is FlowControl.Branch or FlowControl.Return or FlowControl.Throw)
-                break;
-            if (previous.OpCode.Code == Code.Dup && slot < 2)
-            {
-                slot = 0;
+            if (!visited.Add(state))
                 continue;
-            }
+            if (state.Slot >= method.Body.MaxStackSize || predecessors[state.Instruction].Count == 0)
+                throw Unverified();
 
-            int pushed = PushCount(previous);
-            if (slot >= pushed)
+            foreach (Instruction predecessor in predecessors[state.Instruction])
             {
-                slot += PopCount(method, previous, 0) - pushed;
-                continue;
-            }
+                if (predecessor.OpCode.StackBehaviourPop == StackBehaviour.PopAll)
+                    throw Unverified();
+                if (predecessor.OpCode.Code == Code.Dup && state.Slot < 2)
+                {
+                    pending.Enqueue((predecessor, 0));
+                    continue;
+                }
 
-            TypeReference? produced = StripModifiers(ProducedType(method, previous));
-            if (produced is ByReferenceType address && StripModifiers(address.ElementType) is { } element && Same(element, receiver))
-                return new ByReferenceType(receiver);
-            if (reads && produced != null && Same(produced, receiver))
-                return receiver;
-            break;
+                int pushed = PushCount(predecessor);
+                if (state.Slot >= pushed)
+                {
+                    pending.Enqueue((predecessor, state.Slot - pushed + PopCount(method, predecessor, 0)));
+                    continue;
+                }
+
+                TypeReference? produced = StripModifiers(ProducedType(method, predecessor));
+                TypeReference? form = produced switch
+                {
+                    ByReferenceType address when StripModifiers(address.ElementType) is { } element && Same(element, receiver)
+                        => new ByReferenceType(receiver),
+                    PointerType pointer when Same(pointer.ElementType, receiver) => new PointerType(receiver),
+                    _ when reads && produced != null && Same(produced, receiver) => receiver,
+                    _ => null
+                };
+                if (form == null || verified != null && !Same(verified, form))
+                    throw Unverified();
+                verified = form;
+            }
         }
+        return verified ?? throw Unverified();
 
-        throw new InvalidDataException($"Cannot verify the receiver stack type for '{access.Operand}' at IL_{access.Offset:x4} in '{method.FullName}'.");
+        InvalidDataException Unverified() => new($"Cannot verify the receiver stack type for '{access.Operand}' at IL_{access.Offset:x4} in '{method.FullName}'.");
     }
 
     private static TypeReference? StripModifiers(TypeReference? type) => type switch
