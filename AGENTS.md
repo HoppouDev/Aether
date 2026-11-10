@@ -2,7 +2,7 @@
 
 Aether is a Terraria utility client: a modified build of Terraria (the Linux Steam build's `Terraria.exe`), currently based on the version pinned in `tools/base.json` (`game_version`), that runs on .NET 10 on every OS (the game itself ships on Mono and .NET Framework).
 It is **not** a decompilation project.
-Aether's GPLv3 client source lives in `client/` and is tracked directly.
+Aether's MIT-licensed client source lives in `client/` and is tracked directly.
 Changes to existing game files live in `patches/`.
 The game's own code and data are regenerated locally from each developer's copy of Terraria.
 Notes on the game's modules live in `AGENTS.md` files under `src/Terraria/`; read the nearest one before editing a module.
