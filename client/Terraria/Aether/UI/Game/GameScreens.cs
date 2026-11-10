@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Terraria;
+using Terraria.GameInput;
 using Terraria.UI;
 
 namespace Aether.UI.Game;
@@ -61,7 +62,15 @@ public static class GameScreens
         // in-game interface has ever set its game time.
         GameTime gameTime = Main._drawInterfaceGameTime ?? Main.gameTimeCache;
         screen.UpdateState();
+        int wheel = PlayerInput.ScrollWheelDeltaForUI;
         ui.Update(gameTime);
+        // The screen covers the whole UI but is only a container: with the mouse over nothing else on
+        // it, the wheel goes on to the next UI (the title menu's achievements list, a fancy UI), as it
+        // did past the legacy draw the screen replaces.
+        if (wheel != 0 && PlayerInput.ScrollWheelDeltaForUI == 0 && screen.GetElementAt(ui.MousePosition) == screen)
+        {
+            PlayerInput.ScrollWheelDeltaForUI = wheel;
+        }
         ui.Draw(spriteBatch, gameTime);
         UserInterface.ActiveInstance = previous;
         if (Aether.Testing.AllocationProfiler.Active)
