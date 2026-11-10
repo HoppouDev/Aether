@@ -153,7 +153,7 @@ internal static class ItemSave
         }
         catch (ContentSaveException exception)
         {
-            Console.Error.WriteLine($"{path}: {exception.Message}");
+            AetherLog.For("Aether.Saves").Warning("{Path}: {Reason}", path, exception.Message);
             return false;
         }
     }

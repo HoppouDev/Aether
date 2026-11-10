@@ -54,7 +54,21 @@
              }
          }
      }
-@@ -180,20 +206,45 @@
+@@ -142,7 +168,12 @@
+         {
+             string text = LaunchParameters["-logfile"];
+             text = ((text != null && !(text.Trim() == "")) ? Path.Combine(text, $"Log_{DateTime.Now:yyyyMMddHHmmssfff}.log") : Path.Combine(SavePath, "Logs", $"Log_{DateTime.Now:yyyyMMddHHmmssfff}.log"));
+-            ConsoleOutputMirror.ToFile(text);
++            // Aether: logs (the console's output and Aether's events) through Serilog to the file.
++            Aether.Modding.AetherLog.WriteToFile(text);
++        }
++        else
++        {
++            Aether.Modding.AetherLog.WithoutFile();
+         }
+         CrashWatcher.Inititialize();
+         CrashWatcher.DumpOnException = LaunchParameters.ContainsKey("-minidump");
+@@ -180,20 +211,45 @@
      public static void LaunchGame(string[] args, bool monoArgs = false)
      {
          Thread.CurrentThread.Name = "Main Thread";
@@ -105,7 +119,7 @@
      public static void RunGame()
      {
          LanguageManager.Instance.SetLanguage(GameCulture.DefaultCulture);
-@@ -240,7 +291,8 @@
+@@ -240,7 +296,8 @@
      private static void LogFNANativeLibVersions()
      {
          Console.WriteLine(("SDL v" + SDL.SDL_GetVersion() + "." + SDL.SDL_GetRevision()) ?? "");

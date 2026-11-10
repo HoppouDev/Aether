@@ -91,7 +91,7 @@ public static class MenuPreview
                 {
                     if (value.Length > 0)
                     {
-                        System.Console.WriteLine("-aetherscreens: " + value + " isn't a migrated menuMode; opening the gallery.");
+                        Aether.Modding.AetherLog.For("Aether.Screens").Warning("-aetherscreens: {Mode} isn't a migrated menuMode; opening the gallery.", value);
                     }
                     Main.menuMode = GalleryMode;
                 }

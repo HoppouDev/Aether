@@ -19,11 +19,14 @@ internal static class Program
         string savePath = ".";
         string phase = "startup";
         bool dedicated = false;
+        AetherLog.Start();
         try
         {
             var parameters = ClientStartup.ParseArguments(args, monoArgs: true);
             savePath = ClientStartup.ResolveSavePath(parameters);
             dedicated = parameters.ContainsKey("-aetherserver");
+            if (parameters.ContainsKey("-mixindebug"))
+                AetherLog.ConsoleMinimum = Serilog.Events.LogEventLevel.Debug;
             if (dedicated && !OperatingSystem.IsLinux())
                 throw new PlatformNotSupportedException("Aether's dedicated server currently runs on Linux.");
             ClientContent.IsDedicatedServer = dedicated;
@@ -164,13 +167,14 @@ internal static class Program
             catch (IOException) { }
             catch (UnauthorizedAccessException) { }
 
-            Console.Error.WriteLine(message);
+            AetherLog.For("Aether.Bootstrap").Error("{Message:l}", message);
             if (!dedicated)
                 ShowError(message);
             return 1;
         }
         finally
         {
+            AetherLog.Flush();
             ClientStartup.InitializeMods = null;
             ClientStartup.HandleLocalCommand = null;
             ClientStartup.BlockCraft = null;
@@ -204,7 +208,7 @@ internal static class Program
 
     internal static readonly HashSet<string> SharedNames = new(StringComparer.OrdinalIgnoreCase)
     {
-        "Terraria", "Aether.Modding", "FNA", "ReLogic", "Mono.Cecil"
+        "Terraria", "Aether.Modding", "FNA", "ReLogic", "Mono.Cecil", "Serilog"
     };
 
     private static Dictionary<string, (string Path, ModContext Context)> ResolveWovenDependencies(

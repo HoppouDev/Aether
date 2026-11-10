@@ -109,7 +109,7 @@ internal sealed class Listener<T>(string owner, Action<T> callback)
         {
             enabled = false;
             string detail = subject == null ? "" : $" for {subject}";
-            Console.Error.WriteLine($"Aether API disabled a callback from '{Owner}'{detail}: {exception}");
+            AetherLog.For("Aether.Api").Error(exception, "Disabled a callback from '{Mod}'{Detail}", Owner, detail);
             return false;
         }
     }

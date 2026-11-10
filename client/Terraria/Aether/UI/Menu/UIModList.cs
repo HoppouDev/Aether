@@ -314,7 +314,7 @@ internal sealed class UIModList : UIState, IHaveBackButtonCommand
         }
         catch (Exception exception) when (exception is System.ComponentModel.Win32Exception or InvalidOperationException)
         {
-            Console.Error.WriteLine($"Could not open '{target}': {exception.Message}");
+            AetherLog.For("Aether.Mods").Warning("Could not open '{Target}': {Reason}", target, exception.Message);
         }
     }
 
@@ -341,7 +341,7 @@ internal sealed class UIModList : UIState, IHaveBackButtonCommand
         }
         catch (Exception exception)
         {
-            Console.Error.WriteLine($"Could not read the icon for '{mod.Id}': {exception.Message}");
+            AetherLog.For("Aether.Mods").Warning("Could not read the icon for '{Mod}': {Reason}", mod.Id, exception.Message);
             return null;
         }
     }

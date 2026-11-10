@@ -180,7 +180,8 @@ internal sealed partial class AssemblyWeaver
             if (debug)
             {
                 string locals = string.Join(", ", target.Body.Variables.Select(local => $"{local.Index}={local.VariableType.FullName}"));
-                Console.Error.WriteLine($"{declaration.Name}: {target.FullName} IL_{anchor.Offset:x4}; locals: {locals}");
+                AetherLog.For("Aether.Weaver").Debug("{Injector}: {Target} IL_{Offset:x4}; locals: {Locals}",
+                    declaration.Name, target.FullName, anchor.Offset, locals);
             }
             yield return new Site(injection, index, point, after, point == At.HEAD && index == start && !after);
         }

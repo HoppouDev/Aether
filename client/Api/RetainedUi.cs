@@ -210,11 +210,11 @@ public sealed class RetainedUiLayer
     private void Disable(Exception exception, bool deactivate = true)
     {
         failed = true;
-        Console.Error.WriteLine($"Aether API disabled retained UI '{id}': {exception}");
+        AetherLog.For("Aether.Api").Error(exception, "Disabled retained UI '{Layer}'", id);
         if (deactivate && ui?.CurrentState != null)
         {
             try { ui.SetState(null); }
-            catch (Exception cleanup) { Console.Error.WriteLine($"Aether API could not deactivate retained UI '{id}': {cleanup}"); }
+            catch (Exception cleanup) { AetherLog.For("Aether.Api").Error(cleanup, "Could not deactivate retained UI '{Layer}'", id); }
         }
         ui = null;
         state = null;

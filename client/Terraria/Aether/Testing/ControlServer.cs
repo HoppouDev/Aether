@@ -1,3 +1,4 @@
+using Aether.Modding;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -192,7 +193,7 @@ public static class ControlServer
         string value = Program.LaunchParameters["-aethercontrol"];
         if (value != "" && !int.TryParse(value, out port))
         {
-            Console.WriteLine("-aethercontrol: " + value + " isn't a port; using " + DefaultPort + ".");
+            AetherLog.For("Aether.Control").Warning("-aethercontrol: {Value} isn't a port; using {Port}.", value, DefaultPort);
             port = DefaultPort;
         }
         TcpListener listener = new TcpListener(IPAddress.Loopback, port);
@@ -202,7 +203,7 @@ public static class ControlServer
         }
         catch (SocketException exception)
         {
-            Console.WriteLine("-aethercontrol: can't listen on 127.0.0.1:" + port + ": " + exception.Message);
+            AetherLog.For("Aether.Control").Warning("-aethercontrol: can't listen on 127.0.0.1:{Port}: {Reason}", port, exception.Message);
             return;
         }
         SyntheticInput.Enabled = true;
@@ -212,7 +213,7 @@ public static class ControlServer
         thread.IsBackground = true;
         thread.Name = "Aether control";
         thread.Start();
-        Console.WriteLine("Aether control listening on 127.0.0.1:" + port);
+        AetherLog.For("Aether.Control").Information("Listening on 127.0.0.1:{Port}", port);
     }
 
     private static void Accept(TcpListener listener)

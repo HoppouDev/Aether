@@ -1,3 +1,4 @@
+using Aether.Modding;
 using Brigadier.NET;
 using Brigadier.NET.Builder;
 using Brigadier.NET.Exceptions;
@@ -139,7 +140,7 @@ internal sealed class CommandRegistry
         }
         catch (Exception exception)
         {
-            Console.Error.WriteLine($"Aether API command '/{name}' from '{owner}' failed: {exception}");
+            AetherLog.For("Aether.Api").Error(exception, "Command '/{Command}' from '{Mod}' failed", name, owner);
             sender.ReplyError($"The command failed: {exception.Message}");
         }
         return true;

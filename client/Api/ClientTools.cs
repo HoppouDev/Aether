@@ -1,3 +1,4 @@
+using Aether.Modding;
 using System.Text.Json;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
@@ -35,7 +36,7 @@ public static class Keybinds
             try { bindings = JsonSerializer.Deserialize<Dictionary<string, string>>(File.ReadAllText(path)) ?? []; }
             catch (Exception exception) when (exception is JsonException or IOException or UnauthorizedAccessException)
             {
-                Console.Error.WriteLine($"Aether API could not read '{path}': {exception.Message}");
+                AetherLog.For("Aether.Api").Warning("Could not read '{Path}': {Reason}", path, exception.Message);
                 return;
             }
         }
@@ -54,7 +55,7 @@ public static class Keybinds
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
-            Console.Error.WriteLine($"Aether API could not save '{path}': {exception.Message}");
+            AetherLog.For("Aether.Api").Warning("Could not save '{Path}': {Reason}", path, exception.Message);
         }
     }
 

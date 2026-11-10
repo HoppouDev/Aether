@@ -1,3 +1,4 @@
+using Aether.Modding;
 using Terraria;
 using System.Threading;
 using Microsoft.Xna.Framework;
@@ -84,15 +85,15 @@ public static class TerrainRendererHost
                 if (Gpu is null || boundDevice is null) throw new NotSupportedException(GpuReason);
                 current = new ChunkedTerrainRenderer(Gpu, boundDevice, Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "AetherTerrain"));
                 FallbackReason = "";
-                Console.WriteLine("Aether terrain: Chunked Vulkan (geometry: {0}, fast cache: {1})", previousCompute ? "compute" : "CPU", previousFast);
+                AetherLog.For("Aether.Terrain").Information("Chunked Vulkan (geometry: {Geometry}, fast cache: {FastCache})", previousCompute ? "compute" : "CPU", previousFast);
             }
             catch (Exception error) when (error is IOException or InvalidOperationException or NotSupportedException or ArgumentException or OutOfMemoryException)
-            { initializationFailed = true; FallbackReason = error.Message; Console.Error.WriteLine("Aether terrain fell back to Legacy: " + FallbackReason); }
+            { initializationFailed = true; FallbackReason = error.Message; AetherLog.For("Aether.Terrain").Warning("Fell back to Legacy: {Reason}", FallbackReason); }
         }
         if (current is ChunkedTerrainRenderer chunked && chunked.Failure.Length != 0)
         {
             FallbackReason = chunked.Failure;
-            Console.Error.WriteLine("Aether terrain fell back to Legacy: " + FallbackReason);
+            AetherLog.For("Aether.Terrain").Warning("Fell back to Legacy: {Reason}", FallbackReason);
             RetireRenderer();
             initializationFailed = true;
         }
@@ -116,7 +117,7 @@ public static class TerrainRendererHost
     private static void Recover(Exception error)
     {
         FallbackReason = error.Message;
-        Console.Error.WriteLine("Aether terrain fell back to Legacy: " + FallbackReason);
+        AetherLog.For("Aether.Terrain").Warning("Fell back to Legacy: {Reason}", FallbackReason);
         initializationFailed = true;
         // SDL retains submitted references until the device is finished with them.
         // Dispose while this FNA device still exists; never reuse a failed context.
