@@ -108,6 +108,11 @@ dotnet build Aether.slnx -c Debug
 - The client exe has no headless mode: `Main.dedServ` is only set in the separate server build, so any runtime test opens a game window.
   To drive that window without focusing it or sending system input, start it with `--control PORT` and use `./aether control` or the `aether-game` MCP server (see `.agents/skills/aether-game/SKILL.md`).
   Use [remote UI automation](docs/ui-automation.md) to inspect and act on retained components by ID.
+- **Logging:** Terraria and Aether log through Serilog (`client/Modding/AetherLog.cs`), which the bootstrap starts first thing; `Serilog` is shared with mods like FNA.
+  The game's console output (`Console.Out`/`Console.Error`, written all over vanilla) still reaches the console unchanged and is also logged a line an event (source `Console`).
+  Aether's own events (`AetherLog.For("Aether.Something")`, mods' `ModLog.For(modId)`) go to standard error as `[time LVL] Source: message`, Information and above, Debug too with `-mixindebug`, so standard output stays the game's.
+  Terraria's `-logfile [dir]` writes everything, Debug included, to `Logs/Log_<time>.log` through Serilog's file sink (in place of ReLogic's `ConsoleOutputMirror`), including the events from before the game opens it.
+  At startup the bootstrap logs the Aether and Terraria versions, the loaded mods as a tree of their dependencies, and the mixins applied (each at Debug, then a summary); the API logs what it registered.
 - **Finding allocations:** `--profile` (Linux; with `--control`) has .NET load Aether's allocation profiler at startup (`CORECLR_PROFILER*`), a CoreCLR profiler (`ICorProfilerCallback3`) compiled from `tools/aether/profiler/aether_profiler.c` into `.aether/profiler/` (needs `cc`).
   The control command `profile [FRAMES] [TOP] PATH` (MCP: `game_profile`) then records every managed allocation's class, size and call stack and writes the methods with the most bytes allocated under them and the top sites, per frame.
   Allocation tracking turns off the runtime's allocation fast paths for the whole run, so only compare profiled runs with each other.

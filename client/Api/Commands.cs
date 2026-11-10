@@ -92,6 +92,9 @@ internal sealed class CommandRegistry
     private readonly CommandDispatcher<CommandSource> dispatcher = new();
     private readonly Dictionary<string, string> owners = new(StringComparer.Ordinal);
 
+    /// <summary>The commands registered (by full ID; aliases aren't counted).</summary>
+    internal int Count => owners.Keys.Count(id => id.Contains(':'));
+
     internal void Register(string id, Func<LiteralArgumentBuilder<CommandSource>, LiteralArgumentBuilder<CommandSource>> command)
     {
         ArgumentNullException.ThrowIfNull(command);

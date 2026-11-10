@@ -422,9 +422,19 @@ Aether's ReLogic adds `DynamicSpriteFont.SetCharacterImage` to draw one of a fon
 Pass the texels per font unit and the image's offset from where the font draws the character, in font units.
 The character's spacing is unchanged, so text measures and wraps as before.
 
+## Log
+
+Log with `ModLog.For("your-mod")` from `Aether.Modding`: `Debug`, `Information`, `Warning` and `Error`, with optional exceptions.
+Messages are Serilog templates whose named holes take the values in order, such as `log.Information("Loaded {Count} recipes", count)`.
+Events go to standard error with the game's other log output, and to the log file when the game runs with `-logfile`.
+Debug events reach the console only with `-mixindebug`.
+Aether shares its Serilog with mods, so leave it out of your archive.
+
+At startup Aether logs its version, the loaded mods as a tree of their dependencies, and a summary of the mixins it applied (each mixin at Debug).
+
 ## Diagnose startup
 
-Run `./aether launch -- -mixindebug` to see selected instruction offsets and local slots.
+Run `./aether launch -- -mixindebug` to see each mixin and its target, the selected instruction offsets and local slots.
 A required startup failure stops the launch and writes `Logs/mod-load-error.log` under the active save directory.
 Start with `./aether launch -- -nomods` to bypass discovery.
 Restart after replacing or removing a package.

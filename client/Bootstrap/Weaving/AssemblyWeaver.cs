@@ -94,6 +94,11 @@ internal sealed partial class AssemblyWeaver(ModuleDefinition game, bool debug)
 
             var declarations = weaver.mixinTypes.Values.OrderByDescending(item => item.Priority)
                 .ThenBy(item => item.ModOrder).ThenBy(item => item.Source.FullName, StringComparer.Ordinal).ToArray();
+            var log = AetherLog.For("Aether.Mixins");
+            var started = System.Diagnostics.Stopwatch.StartNew();
+            foreach (Declaration declaration in declarations)
+                log.Debug("{Mod}: {Mixin} -> {Target} (priority {Priority})", declaration.Package.Manifest.Id,
+                    declaration.Source.FullName, declaration.Target.FullName, declaration.Priority);
             foreach (Declaration declaration in declarations)
                 weaver.WithContext(declaration, () => weaver.DeclareMembers(declaration));
             foreach (Declaration declaration in declarations)
@@ -103,6 +108,9 @@ internal sealed partial class AssemblyWeaver(ModuleDefinition game, bool debug)
             weaver.ApplyILEditors();
             weaver.ApplyMethodWrappers();
             game.Write(output);
+            log.Information("Applied {Mixins} mixins from {Mods} mods to {Targets} types in {Elapsed} ms", declarations.Length,
+                declarations.Select(item => item.Package).Distinct().Count(), declarations.Select(item => item.Target).Distinct().Count(),
+                started.ElapsedMilliseconds);
             return weaver.referenceOwners.Where(reference => !originalReferences.Contains(reference.Key))
                 .ToDictionary(reference => reference.Key, reference => reference.Value, StringComparer.OrdinalIgnoreCase);
         }

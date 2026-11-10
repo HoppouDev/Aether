@@ -22,6 +22,10 @@ public sealed class ApiStartup : IModInitializer
             ProjectileRegistry.Freeze();
             ClientCommands.Registry.Freeze();
             ServerCommands.Registry.Freeze();
+            AetherLog.For("Aether.Api").Information(
+                "Registered {Items} items, {Npcs} NPCs, {Projectiles} projectiles, {ClientCommands} client and {ServerCommands} server commands",
+                ClientContent.Items.Count, ClientContent.Npcs.Count, ClientContent.Projectiles.Count,
+                ClientCommands.Registry.Count, ServerCommands.Registry.Count);
         };
         ClientContent.ApplyPlayerModifiers = player => PlayerModifiers.Apply((Player)player);
         ClientContent.ServerReady = GameBridge.ReadyServer;

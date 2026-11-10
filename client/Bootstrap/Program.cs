@@ -38,6 +38,8 @@ internal static class Program
 
             string terrariaVersion = AssemblyName.GetAssemblyName(clientPath).Version!.ToString();
             string aetherVersion = typeof(Program).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()!.InformationalVersion;
+            AetherLog.For("Aether.Bootstrap").Information("Aether {AetherVersion} for Terraria {TerrariaVersion}{Server:l}", aetherVersion,
+                terrariaVersion, dedicated ? " (dedicated server)" : "");
             if (archives.Length == 0)
             {
                 if (requestModdedConnection)
@@ -55,6 +57,7 @@ internal static class Program
 
             phase = "dependency resolution";
             packages = ModPackage.Sort(packages, aetherVersion, terrariaVersion);
+            AetherLog.For("Aether.Bootstrap").Information("Loading {Count} mods:{Tree:l}", packages.Count, ModTree(packages));
             var packagesById = packages.ToDictionary(package => package.Manifest.Id, StringComparer.Ordinal);
             ModPackage FindPackage(string modId) => packagesById.TryGetValue(modId, out var package)
                 ? package
@@ -204,6 +207,24 @@ internal static class Program
                 .Select(package => new { package.Manifest.Id, package.Manifest.Version, package.Digest })
         });
         ClientContent.ConnectionVersion = "Aether/2/" + Convert.ToHexStringLower(SHA256.HashData(profile));
+    }
+
+    // Each mod (in load order), its version, and under it the mods it depends on, theirs under them.
+    private static string ModTree(IReadOnlyList<ModPackage> packages)
+    {
+        var byId = packages.ToDictionary(package => package.Manifest.Id, StringComparer.Ordinal);
+        var tree = new System.Text.StringBuilder();
+        void Add(ModPackage package, string indent, bool last)
+        {
+            tree.Append('\n').Append(indent).Append(last ? "└─ " : "├─ ").Append(package.Manifest.Id).Append(' ').Append(package.Manifest.Version);
+            ModPackage[] dependencies = package.Dependencies.Where(dependency => byId.ContainsKey(dependency.Id))
+                .Select(dependency => byId[dependency.Id]).ToArray();
+            for (int i = 0; i < dependencies.Length; i++)
+                Add(dependencies[i], indent + (last ? "   " : "│  "), i == dependencies.Length - 1);
+        }
+        for (int i = 0; i < packages.Count; i++)
+            Add(packages[i], "", i == packages.Count - 1);
+        return tree.ToString();
     }
 
     internal static readonly HashSet<string> SharedNames = new(StringComparer.OrdinalIgnoreCase)
