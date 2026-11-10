@@ -57,6 +57,7 @@ internal static class ItemSave
     internal sealed class Payload(Stream stream, Entry[] items = null, NpcSave.Entry[] npcs = null) : IDisposable
     {
         internal Stream Stream { get; } = stream;
+        internal bool IsWrapped => items != null;
         internal NpcSave.Entry[] Npcs { get; } = npcs ?? Array.Empty<NpcSave.Entry>();
 
         internal BinaryReader Read(Stream decoded = null) => items == null
@@ -132,6 +133,15 @@ internal static class ItemSave
             using Stream stream = File.OpenRead(path);
             ReadHeader(stream, kind, readItems: false);
         }
+    }
+
+    internal static void CheckForOverwrite(string path, Kind kind, Func<Payload, bool> validate)
+    {
+        if (!File.Exists(path))
+            return;
+        using Payload payload = Open(File.OpenRead(path), kind);
+        if (payload.IsWrapped && !validate(payload))
+            throw new ContentSaveException("The existing Aether save is unreadable.");
     }
 
     internal static bool CanRecover(string path, Kind kind)

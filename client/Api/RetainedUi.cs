@@ -123,6 +123,7 @@ public sealed class RetainedUiLayer
     {
         if (failed)
             return;
+        bool deactivating = false;
         try
         {
             if (present && visible)
@@ -141,12 +142,13 @@ public sealed class RetainedUiLayer
             else if (ui?.CurrentState != null)
             {
                 UserInterface.ActiveInstance = ui;
+                deactivating = true;
                 ui.SetState(null);
             }
         }
         catch (Exception exception)
         {
-            Disable(exception);
+            Disable(exception, deactivate: !deactivating);
         }
     }
 
@@ -205,11 +207,16 @@ public sealed class RetainedUiLayer
         state = null;
     }
 
-    private void Disable(Exception exception)
+    private void Disable(Exception exception, bool deactivate = true)
     {
         failed = true;
+        Console.Error.WriteLine($"Aether API disabled retained UI '{id}': {exception}");
+        if (deactivate && ui?.CurrentState != null)
+        {
+            try { ui.SetState(null); }
+            catch (Exception cleanup) { Console.Error.WriteLine($"Aether API could not deactivate retained UI '{id}': {cleanup}"); }
+        }
         ui = null;
         state = null;
-        Console.Error.WriteLine($"Aether API disabled retained UI '{id}': {exception}");
     }
 }

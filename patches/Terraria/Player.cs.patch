@@ -64,6 +64,15 @@
          bool flag = false;
          if (theItemWeDrop.favorited)
          {
+@@ -5188,7 +5222,7 @@
+             {
+                 LucyAxeMessage.Create(LucyAxeMessage.MessageSource.ThrownAway, Top, new Vector2(direction * 7, -2f));
+             }
+-            Item.RequestNewItem(GetItemSource_Misc(ItemSourceID.PlayerDrop), Center, theItemWeDrop.type, theItemWeDrop.stack, theItemWeDrop.prefix, ItemID.Sets.DropWithGrabDelayForAllPlayers[theItemWeDrop.type] ? NewItemOwnership.GrabDelayForAllPlayers : NewItemOwnership.GrabDelayForLocalPlayer, new Vector2((float)(4 * direction) + velocity.X, -2f));
++            Item.RequestNewItem(GetItemSource_Misc(ItemSourceID.PlayerDrop), Center, theItemWeDrop.type, theItemWeDrop.stack, theItemWeDrop.prefix, ItemID.Sets.DropWithGrabDelayForAllPlayers[theItemWeDrop.type] ? NewItemOwnership.GrabDelayForAllPlayers : NewItemOwnership.GrabDelayForLocalPlayer, new Vector2((float)(4 * direction) + velocity.X, -2f), ItemWire.CopyStateToDrop(theItemWeDrop));
+             theItemWeDrop = new Item();
+             if (slot == 58)
+             {
 @@ -5656,6 +5690,13 @@
      {
          if ((whoAmI != Main.myPlayer || (!UsingOrReusingItem && !CCed && !dead)) && loadoutIndex != CurrentLoadoutIndex && loadoutIndex >= 0 && loadoutIndex < Loadouts.Length)
@@ -78,6 +87,15 @@
              Loadouts[CurrentLoadoutIndex].Swap(this);
              Loadouts[loadoutIndex].Swap(this);
              CurrentLoadoutIndex = loadoutIndex;
+@@ -7199,7 +7240,7 @@
+         Item item2 = GetItem(item, settings);
+         if (!item2.IsAir)
+         {
+-            Item.RequestNewItem(GetItemSource_InventoryOverflow(), Center, item2.type, item2.stack, item2.prefix, NewItemOwnership.ReserveForLocalPlayer);
++            Item.RequestNewItem(GetItemSource_InventoryOverflow(), Center, item2.type, item2.stack, item2.prefix, NewItemOwnership.ReserveForLocalPlayer, modifier: ItemWire.CopyStateToDrop(item2));
+         }
+     }
+ 
 @@ -13021,6 +13062,10 @@
                      GrantPrefixBenefits(effectiveArmor);
                  }
@@ -218,7 +236,7 @@
      }
  
      public void TryDroppingSingleItem(IEntitySource source, Item theItem)
-@@ -55152,6 +55237,10 @@
+@@ -55152,9 +55237,13 @@
  
      public void TryDroppingSingleItem(IEntitySource source, Item theItem, int stack)
      {
@@ -228,8 +246,12 @@
 +        }
          if (stack > 0 && Main.netMode != 1)
          {
-             Item.NewItem(velocity: new Vector2((float)Main.rand.Next(-20, 21) * 0.2f, (float)Main.rand.Next(-20, 1) * 0.2f), source: source, X: (int)position.X, Y: (int)position.Y, Width: width, Height: height, type: theItem.type, stack: stack, noBroadcast: false, prefix: theItem.prefix);
-@@ -55511,21 +55600,30 @@
+-            Item.NewItem(velocity: new Vector2((float)Main.rand.Next(-20, 21) * 0.2f, (float)Main.rand.Next(-20, 1) * 0.2f), source: source, X: (int)position.X, Y: (int)position.Y, Width: width, Height: height, type: theItem.type, stack: stack, noBroadcast: false, prefix: theItem.prefix);
++            Item.NewItem(velocity: new Vector2((float)Main.rand.Next(-20, 21) * 0.2f, (float)Main.rand.Next(-20, 1) * 0.2f), source: source, X: (int)position.X, Y: (int)position.Y, Width: width, Height: height, type: theItem.type, stack: stack, noBroadcast: false, prefix: theItem.prefix, modifier: ItemWire.CopyStateToDrop(theItem));
+         }
+         theItem.stack -= stack;
+         if (theItem.stack <= 0)
+@@ -55511,21 +55600,31 @@
          {
              return;
          }
@@ -237,7 +259,8 @@
 +        bool modded = ClientContent.HasItems && !isCloudSave;
 +        if (!isCloudSave)
 +        {
-+            ItemSave.CheckCompatibility(path, ItemSave.Kind.Player);
++            ItemSave.CheckForOverwrite(path, ItemSave.Kind.Player, payload =>
++                ReadPlayerPayload(payload, new PlayerFileData(path, false), new Player(), out _));
 +        }
 +        if (!modded && FileUtilities.Exists(path, isCloudSave))
          {
@@ -264,7 +287,7 @@
          {
              SocialAPI.Cloud.Write(playerFile.Path, ((MemoryStream)stream).ToArray());
          }
-@@ -55595,54 +55693,63 @@
+@@ -55595,54 +55694,63 @@
          fileIO.Write(newPlayer.shoeColor.B);
          for (int k = 0; k < newPlayer.armor.Length; k++)
          {
@@ -355,29 +378,39 @@
          }
          fileIO.Write(newPlayer.voidVaultInfo);
          for (int num5 = 0; num5 < maxBuffs; num5++)
-@@ -55857,10 +55964,10 @@
+@@ -55855,29 +55963,13 @@
+         bool gotToReadName = false;
+         try
          {
-             RijndaelManaged rijndaelManaged = new RijndaelManaged();
-             rijndaelManaged.Padding = PaddingMode.None;
+-            RijndaelManaged rijndaelManaged = new RijndaelManaged();
+-            rijndaelManaged.Padding = PaddingMode.None;
 -            using (MemoryStream stream = new MemoryStream(FileUtilities.ReadAllBytes(playerPath, cloudSave)))
 +            using (ItemSave.Payload payload = ItemSave.Open(new MemoryStream(FileUtilities.ReadAllBytes(playerPath, cloudSave)), ItemSave.Kind.Player))
              {
 -                using CryptoStream input = new CryptoStream(stream, rijndaelManaged.CreateDecryptor(ENCRYPTION_KEY, ENCRYPTION_KEY), CryptoStreamMode.Read);
 -                using BinaryReader binaryReader = new BinaryReader(input);
-+                using CryptoStream input = new CryptoStream(payload.Stream, rijndaelManaged.CreateDecryptor(ENCRYPTION_KEY, ENCRYPTION_KEY), CryptoStreamMode.Read);
-+                using BinaryReader binaryReader = payload.Read(input);
-                 int num = binaryReader.ReadInt32();
-                 if (num >= 135)
+-                int num = binaryReader.ReadInt32();
+-                if (num >= 135)
++                if (!ReadPlayerPayload(payload, playerFileData, player, out gotToReadName))
                  {
-@@ -55878,6 +55985,7 @@
+-                    playerFileData.Metadata = FileMetadata.Read(binaryReader, FileType.Player);
+-                }
+-                else
+-                {
+-                    playerFileData.Metadata = FileMetadata.FromCurrentSettings(FileType.Player);
+-                }
+-                if (num > 326)
+-                {
+-                    player.loadStatus = StatusID.LaterVersion;
+-                    player.name = binaryReader.ReadString();
+                     playerFileData.Player = player;
                      return playerFileData;
                  }
-                 Deserialize(playerFileData, player, binaryReader, num, out gotToReadName);
-+                (binaryReader as ItemSave.Reader)?.Finish();
+-                Deserialize(playerFileData, player, binaryReader, num, out gotToReadName);
                  if (player.lastTimePlayerWasSaved == 0L && !cloudSave)
                  {
                      player.lastTimePlayerWasSaved = File.GetLastWriteTimeUtc(playerPath).ToBinary();
-@@ -55888,6 +55996,15 @@
+@@ -55888,6 +55980,15 @@
              playerFileData.Player = player;
              return playerFileData;
          }
@@ -393,7 +426,33 @@
          catch
          {
          }
-@@ -56084,7 +56201,7 @@
+@@ -55906,6 +56007,25 @@
+         return playerFileData;
+     }
+ 
++    private static bool ReadPlayerPayload(ItemSave.Payload payload, PlayerFileData data, Player player, out bool gotToReadName)
++    {
++        gotToReadName = false;
++        using var cipher = new RijndaelManaged { Padding = PaddingMode.None };
++        using var input = new CryptoStream(payload.Stream, cipher.CreateDecryptor(ENCRYPTION_KEY, ENCRYPTION_KEY), CryptoStreamMode.Read);
++        using BinaryReader reader = payload.Read(input);
++        int release = reader.ReadInt32();
++        data.Metadata = release >= 135 ? FileMetadata.Read(reader, FileType.Player) : FileMetadata.FromCurrentSettings(FileType.Player);
++        if (release > 326)
++        {
++            player.loadStatus = StatusID.LaterVersion;
++            player.name = reader.ReadString();
++            return false;
++        }
++        Deserialize(data, player, reader, release, out gotToReadName);
++        (reader as ItemSave.Reader)?.Finish();
++        return true;
++    }
++
+     public Player SerializedClone()
+     {
+         Player player = new Player();
+@@ -56084,7 +56204,7 @@
                      {
                          num2 += 2;
                      }
@@ -402,7 +461,7 @@
                      newPlayer.armor[num2].Prefix(fileIO.ReadByte());
                  }
              }
-@@ -56093,7 +56210,7 @@
+@@ -56093,7 +56213,7 @@
                  int num3 = 20;
                  for (int m = 0; m < num3; m++)
                  {
@@ -411,7 +470,7 @@
                      newPlayer.armor[m].Prefix(fileIO.ReadByte());
                      if (release >= 322)
                      {
-@@ -56115,7 +56232,7 @@
+@@ -56115,7 +56235,7 @@
                  for (int n = 0; n < num4; n++)
                  {
                      int num5 = n;
@@ -420,7 +479,7 @@
                      newPlayer.dye[num5].Prefix(fileIO.ReadByte());
                      if (release >= 322)
                      {
-@@ -56140,7 +56257,7 @@
+@@ -56140,7 +56260,7 @@
                      }
                      else
                      {
@@ -429,7 +488,7 @@
                          newPlayer.inventory[num6].stack = fileIO.ReadInt32();
                          newPlayer.inventory[num6].Prefix(fileIO.ReadByte());
                          if (release >= 114)
-@@ -56214,7 +56331,7 @@
+@@ -56214,7 +56334,7 @@
                          }
                          else
                          {
@@ -438,7 +497,7 @@
                              newPlayer.miscEquips[num12].Prefix(fileIO.ReadByte());
                          }
                          num13 = fileIO.ReadInt32();
-@@ -56225,7 +56342,7 @@
+@@ -56225,7 +56345,7 @@
                          }
                          else
                          {
@@ -447,7 +506,7 @@
                              newPlayer.miscDyes[num12].Prefix(fileIO.ReadByte());
                          }
                      }
-@@ -56235,13 +56352,13 @@
+@@ -56235,13 +56355,13 @@
              {
                  for (int num14 = 0; num14 < 40; num14++)
                  {
@@ -463,7 +522,7 @@
                      newPlayer.bank2.item[num15].stack = fileIO.ReadInt32();
                      newPlayer.bank2.item[num15].Prefix(fileIO.ReadByte());
                  }
-@@ -56250,13 +56367,13 @@
+@@ -56250,13 +56370,13 @@
              {
                  for (int num16 = 0; num16 < 20; num16++)
                  {
@@ -479,7 +538,7 @@
                      newPlayer.bank2.item[num17].stack = fileIO.ReadInt32();
                      newPlayer.bank2.item[num17].Prefix(fileIO.ReadByte());
                  }
-@@ -56265,7 +56382,7 @@
+@@ -56265,7 +56385,7 @@
              {
                  for (int num18 = 0; num18 < 40; num18++)
                  {
@@ -488,7 +547,7 @@
                      newPlayer.bank3.item[num18].stack = fileIO.ReadInt32();
                      newPlayer.bank3.item[num18].Prefix(fileIO.ReadByte());
                  }
-@@ -56274,7 +56391,7 @@
+@@ -56274,7 +56394,7 @@
              {
                  for (int num19 = 0; num19 < 40; num19++)
                  {
@@ -497,7 +556,7 @@
                      newPlayer.bank4.item[num19].stack = fileIO.ReadInt32();
                      newPlayer.bank4.item[num19].Prefix(fileIO.ReadByte());
                      if (release >= 255)
-@@ -56658,7 +56775,8 @@
+@@ -56658,7 +56778,8 @@
          {
              if (playerFileData.Player.loadStatus != StatusID.Ok && playerFileData.Player.loadStatus != StatusID.LaterVersion)
              {

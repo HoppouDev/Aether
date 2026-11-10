@@ -67,7 +67,7 @@ public static class ServerCommands
     internal static readonly CommandRegistry Registry = new();
 
     /// <summary>
-    /// Registers <c>/mod-id:name</c>, and <c>/name</c> when no other mod registers that name.
+    /// Registers <c>/mod-id:name</c>, and <c>/name</c> when the name is unique and Terraria does not recognize it as a chat command.
     /// <paramref name="command" /> adds arguments and handlers to the command's literal and returns it.
     /// </summary>
     public static void Register(string id, Func<LiteralArgumentBuilder<CommandSource>, LiteralArgumentBuilder<CommandSource>> command) =>

@@ -151,7 +151,7 @@ internal sealed class EntityWire : NetModule
                 : slot >= projectileReplicas.Length || type < ProjectileID.VanillaCount || type >= ProjectileID.Count || generation != 0))
             return false;
         if (active != 0 && (!IsBounded(position, Main.maxTilesX * 16 + 4096, Main.maxTilesY * 16 + 4096) ||
-            !IsBounded(velocity, 4096, 4096) || !float.IsFinite(rotation) ||
+            !IsBounded(velocity, ClientContent.MaxReplicatedEntityVelocity, ClientContent.MaxReplicatedEntityVelocity) || !float.IsFinite(rotation) ||
             damage is < 0 or > 1_000_000 || (family == 0 ? maximum is < 1 or > 20_000_000 || value < 1 || value > maximum
                 : maximum != 0 || value is < 1 or > 36_000)))
             return false;

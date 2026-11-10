@@ -76,8 +76,7 @@ public static partial class Entities
         RequireWorldPosition(spawn.Center);
         if (spawn.Owner != Main.maxPlayers && (Main.netMode != 0 || spawn.Owner != Main.myPlayer))
             throw new ArgumentOutOfRangeException(nameof(spawn.Owner), "Use 255 for a world-owned projectile, or the local player in single-player.");
-        RequireFinite(spawn.Velocity.X, nameof(spawn.Velocity));
-        RequireFinite(spawn.Velocity.Y, nameof(spawn.Velocity));
+        RequireVelocity(spawn.Velocity, nameof(spawn.Velocity));
         ArgumentOutOfRangeException.ThrowIfNegative(spawn.Damage);
         if (Main.netMode == 2)
             ArgumentOutOfRangeException.ThrowIfGreaterThan(spawn.Damage, short.MaxValue);
@@ -134,8 +133,7 @@ public static partial class Entities
     public static bool TrySetNpcVelocity(NpcHandle handle, Vector2 velocity)
     {
         Registration.RequireGameThread();
-        RequireFinite(velocity.X, nameof(velocity));
-        RequireFinite(velocity.Y, nameof(velocity));
+        RequireVelocity(velocity, nameof(velocity));
         if (!CanSpawn || !TryGetNpc(handle, out _) || !NpcRegistry.IsManaged(Main.npc[handle.Slot]))
             return false;
         Main.npc[handle.Slot].velocity = velocity;
@@ -171,8 +169,7 @@ public static partial class Entities
     public static bool TrySetProjectileVelocity(ProjectileHandle handle, Vector2 velocity)
     {
         Registration.RequireGameThread();
-        RequireFinite(velocity.X, nameof(velocity));
-        RequireFinite(velocity.Y, nameof(velocity));
+        RequireVelocity(velocity, nameof(velocity));
         if (!CanSpawn || !TryGetProjectile(handle, out _) || !ProjectileRegistry.IsManaged(Main.projectile[handle.Slot]))
             return false;
         Main.projectile[handle.Slot].velocity = velocity;
@@ -217,6 +214,15 @@ public static partial class Entities
     }
 
     private static bool CanSpawn => GameBridge.AuthoritativeWorld;
+
+    private static void RequireVelocity(Vector2 velocity, string argument)
+    {
+        RequireFinite(velocity.X, argument);
+        RequireFinite(velocity.Y, argument);
+        const int limit = ClientContent.MaxReplicatedEntityVelocity;
+        if (Main.netMode == 2 && (Math.Abs(velocity.X) > limit || Math.Abs(velocity.Y) > limit))
+            throw new ArgumentOutOfRangeException(argument, $"Replicated velocity must be within {limit} pixels per tick on each axis.");
+    }
 
     private static bool IsObserved(Vector2 center)
     {

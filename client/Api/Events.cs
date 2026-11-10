@@ -95,12 +95,11 @@ internal sealed class Listener<T>(string owner, Action<T> callback)
     internal string Owner { get; } = owner;
     private bool enabled = true;
 
-    internal void Invoke(T value) => TryInvoke(value);
-
-    internal bool TryInvoke(T value, string? subject = null)
+    // A disabled listener is skipped. Only an invocation that throws reports a failure.
+    internal bool Invoke(T value, string? subject = null)
     {
         if (!enabled)
-            return false;
+            return true;
         try
         {
             callback(value);

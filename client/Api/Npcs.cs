@@ -193,7 +193,7 @@ public static class NpcRegistry
         }
         foreach (NPC npc in pending)
             if (live.TryGetValue(npc, out var instance))
-                instance.Callbacks.Restored?.TryInvoke(new(Context(npc, instance),
+                instance.Callbacks.Restored?.Invoke(new(Context(npc, instance),
                     ClientContent.Npcs[npc.type - NPCID.VanillaCount].SaveSchema, DecodeState(npc.AetherSavedState)),
                     instance.Callbacks.Subject);
     }
@@ -220,7 +220,7 @@ public static class NpcRegistry
             return;
         Instance instance = Attach(npc);
         var behavior = instance.Callbacks;
-        if (behavior.Spawn?.TryInvoke(new(Context(npc, instance), source), behavior.Subject) == false)
+        if (behavior.Spawn?.Invoke(new(Context(npc, instance), source), behavior.Subject) == false)
             npc.AetherRetire(EntityRemovalReason.BehaviorFailed);
     }
 
@@ -236,7 +236,7 @@ public static class NpcRegistry
     private static void OnTickStart(NPC npc)
     {
         if (live.TryGetValue(npc, out var instance) && instance.Callbacks.TickStart is { } tick &&
-            !tick.TryInvoke(Context(npc, instance), instance.Callbacks.Subject))
+            !tick.Invoke(Context(npc, instance), instance.Callbacks.Subject))
             npc.AetherRetire(EntityRemovalReason.BehaviorFailed);
     }
 
@@ -244,27 +244,27 @@ public static class NpcRegistry
     internal static void OnTickEnd(NPC npc)
     {
         if (live.Count != 0 && npc.active && live.TryGetValue(npc, out var instance) &&
-            instance.Callbacks.TickEnd is { } tick && !tick.TryInvoke(Context(npc, instance), instance.Callbacks.Subject))
+            instance.Callbacks.TickEnd is { } tick && !tick.Invoke(Context(npc, instance), instance.Callbacks.Subject))
             npc.AetherRetire(EntityRemovalReason.BehaviorFailed);
     }
 
     private static void OnHit(NPC npc, int owner, int damage, bool critical)
     {
         if (live.TryGetValue(npc, out var instance) && instance.Callbacks.Hit is { } hit)
-            hit.TryInvoke(new(Context(npc, instance), (uint)owner < Main.maxPlayers ? owner : null, damage, critical),
+            hit.Invoke(new(Context(npc, instance), (uint)owner < Main.maxPlayers ? owner : null, damage, critical),
                 instance.Callbacks.Subject);
     }
 
     private static void OnHitPlayer(NPC npc, Player player, int damage)
     {
         if (live.TryGetValue(npc, out var instance) && instance.Callbacks.HitPlayer is { } hit)
-            hit.TryInvoke(new(Context(npc, instance), player, damage), instance.Callbacks.Subject);
+            hit.Invoke(new(Context(npc, instance), player, damage), instance.Callbacks.Subject);
     }
 
     private static void OnRemoved(NPC npc, EntityRemovalReason reason)
     {
         if (live.Remove(npc, out var instance) && instance.Callbacks.Removed is { } removed)
-            removed.TryInvoke(new(Context(npc, instance), reason), instance.Callbacks.Subject);
+            removed.Invoke(new(Context(npc, instance), reason), instance.Callbacks.Subject);
     }
 
     private static NpcBehaviorContext Context(NPC npc, Instance instance) =>

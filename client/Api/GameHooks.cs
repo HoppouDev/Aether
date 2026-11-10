@@ -42,7 +42,7 @@ public static class GameBridge
     internal static long WorldRevision { get; private set; }
 
     internal static bool WorldReady => ready && !endingWorld && !Main.gameMenu && !WorldGen.isGeneratingOrLoadingWorld &&
-        (Main.dedServ || Main.CanUpdateGameplay) && (Main.netMode != 1 || !Netplay.Disconnect);
+        (Main.dedServ || Main.CanUpdateGameplay) && (Main.netMode == 0 || !Netplay.Disconnect);
 
     internal static bool AuthoritativeWorld => WorldReady &&
         (Main.netMode == 0 || Main.netMode == 2 && ServerEvents.IsDedicatedServer);
@@ -70,7 +70,8 @@ public static class GameBridge
         UpdateWorld();
         Keybinds.Update(Main.keyState, activeWorld != null && FocusHelper.AllowInputProcessing &&
             !Main.gamePaused && !Main.drawingPlayerChat && !Main.blockInput &&
-            !Main.editSign && !Main.editChest && !Main.ingameOptionsWindow && !Main.InGameUI.IsVisible);
+            !Main.editSign && !Main.editChest && !Main.ingameOptionsWindow && !Main.InGameUI.IsVisible &&
+            !Main.mapFullscreen && !Main.inFancyUI);
     }
 
     public static void Tick()
@@ -82,9 +83,9 @@ public static class GameBridge
 
     public static void BeforeWorldTick()
     {
-        if (ClientContent.HasPersistentNpcs)
-            UpdateWorld();
-        if (RaisesTicks)
+        WorldFileData? previous = activeWorld;
+        UpdateWorld();
+        if (ReferenceEquals(previous, activeWorld) && RaisesTicks)
             WorldEvents.TickStart.Raise(world);
     }
 

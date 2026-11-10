@@ -131,7 +131,22 @@
          projectile.SetDefaults(Type);
          projectile.position.X = X - (float)projectile.width * 0.5f;
          projectile.position.Y = Y - (float)projectile.height * 0.5f;
-@@ -10936,22 +11004,7 @@
+@@ -10903,7 +10971,13 @@
+                 projectile.velocity.Y *= 0.97f;
+             }
+         }
+-        if (Owner == Main.myPlayer)
++        if (Type >= ProjectileID.VanillaCount)
++        {
++            projectile.ai[0] = ai0;
++            projectile.ai[1] = ai1;
++            projectile.ai[2] = ai2;
++        }
++        else if (Owner == Main.myPlayer)
+         {
+             switch (Type)
+             {
+@@ -10936,22 +11010,7 @@
          {
              if (ProjectileID.Sets.IsAGolfBall[Type] && Damage <= 0)
              {
@@ -155,7 +170,7 @@
                  {
                      Main.projectile[num3].Kill();
                  }
-@@ -11096,6 +11149,15 @@
+@@ -11096,6 +11155,15 @@
          }
          projectile.FinalizeProjectile();
          modifer?.Invoke(projectile);
@@ -171,7 +186,7 @@
          NetMessage.SendData(27, -1, -1, null, projectile.whoAmI);
          if (Owner == Main.myPlayer)
          {
-@@ -11104,6 +11166,27 @@
+@@ -11104,6 +11172,27 @@
          return projectile.whoAmI;
      }
  
@@ -199,7 +214,7 @@
      private void FindBannerToAssociateTo(IEntitySource spawnSource)
      {
          if (spawnSource is EntitySource_Parent entitySource_Parent)
-@@ -12518,16 +12601,22 @@
+@@ -12518,16 +12607,22 @@
                  CutTiles();
              }
              Damage_TryUsingPowders(projRectangle);
@@ -225,7 +240,7 @@
          }
      }
  
-@@ -13702,6 +13791,8 @@
+@@ -13702,6 +13797,8 @@
          Invariant.Assert(Main.netMode == 0 || owner == Main.myPlayer, "Cannot simulate someone else's projectile dealing damage. ({0})", this);
          Invariant.Assert((Main.netMode != 1) | ownedBySomeone, "Must be ownedBySomeone to do damage on client. ({0})", this);
          int num41 = targetNPC.StrikeNPC(dmg, num5, num40, crit, fromNet: false, ownedBySomeone ? owner : 255);
@@ -234,7 +249,7 @@
          if (ownedBySomeone && attempt.DidNPCDie())
          {
              Main.player[owner].OnKillNPC(ref attempt, this);
-@@ -14942,9 +15033,17 @@
+@@ -14942,9 +15039,17 @@
              {
                  playerIndex = (int)ai[0];
              }
@@ -254,7 +269,7 @@
              }
              if (trap)
              {
-@@ -16769,6 +16868,12 @@
+@@ -16769,6 +16874,12 @@
          {
              return;
          }
@@ -267,7 +282,7 @@
          if (Main.netMode == 1 && (ProjectileID.Sets.IsAGolfBall[type] || type == 820))
          {
              int x = (int)(position.X + (float)(width / 2)) / 16;
-@@ -16801,7 +16906,8 @@
+@@ -16801,7 +16912,8 @@
                      }
                  }
                  active = false;
@@ -277,7 +292,7 @@
                  return;
              }
              if (!noEnchantmentVisuals)
-@@ -16880,6 +16986,8 @@
+@@ -16880,6 +16992,8 @@
              if (active)
              {
                  AI();
@@ -286,7 +301,7 @@
              }
              if (ShouldUseWindPhysics() && (double)Center.Y < Main.worldSurface * 16.0 && Main.tile[(int)Center.X / 16, (int)Center.Y / 16] != null && Main.tile[(int)Center.X / 16, (int)Center.Y / 16].wall == 0 && ((velocity.X > 0f && Main.windSpeedCurrent < 0f) || (velocity.X < 0f && Main.windSpeedCurrent > 0f) || Math.Abs(velocity.X) < Math.Abs(Main.windSpeedCurrent * Main.windPhysicsStrength) * 180f) && Math.Abs(velocity.X) < 16f)
              {
-@@ -18016,6 +18124,11 @@
+@@ -18016,6 +18130,11 @@
              }
              if (flag)
              {
@@ -298,7 +313,7 @@
                  if (ProjectileID.Sets.BreaksFromToyBreaker[type] && Collision.AnyCollisionWithSpecificTiles(vector, lastVelocity, colWidth, colHeight, TileID.Sets.BreaksToys) != lastVelocity)
                  {
                      Kill();
-@@ -23405,6 +23518,13 @@
+@@ -23405,6 +23524,13 @@
  
      public void AI()
      {
@@ -312,7 +327,7 @@
          if (aiStyle == 1)
          {
              AI_001();
-@@ -71662,7 +71782,12 @@
+@@ -71662,7 +71788,12 @@
          }
      }
  
@@ -326,7 +341,7 @@
      {
          if (!active)
          {
-@@ -78883,7 +79008,7 @@
+@@ -78883,7 +79014,7 @@
                  NewProjectile(GetProjectileSource_FromThis(), Center.X, Center.Y, x2, y9, 379, damage, knockBack, owner);
              }
          }
@@ -335,7 +350,7 @@
          {
              NetMessage.SendData(29, -1, -1, null, key, vector.X, vector.Y);
          }
-@@ -78891,7 +79016,9 @@
+@@ -78891,7 +79022,9 @@
          {
              Kill_ExplodeTiles();
          }

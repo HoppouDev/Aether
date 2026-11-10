@@ -177,7 +177,7 @@
                  });
                  return;
              }
-@@ -915,12 +986,12 @@
+@@ -915,12 +986,30 @@
          {
              lock (IOLock)
              {
@@ -188,17 +188,35 @@
      }
  
 -    private static void InternalSaveWorld(bool useCloudSaving, bool resetTime, bool useTemps)
++    private static bool ValidateExistingAetherWorld(ItemSave.Payload payload)
++    {
++        int version = _versionNumber;
++        FileMetadata metadata = Main.WorldFileMetadata;
++        string status = Main.statusText;
++        try
++        {
++            using var reader = new BinaryReader(payload.Stream);
++            return ValidateWorld(reader);
++        }
++        finally
++        {
++            _versionNumber = version;
++            Main.WorldFileMetadata = metadata;
++            Main.statusText = status;
++        }
++    }
++
 +    private static void InternalSaveWorld(bool useCloudSaving, bool resetTime, bool useTemps, NpcSave.Entry[] npcSnapshot)
      {
          Utils.TryCreatingDirectory(Main.WorldPath);
          if (!useTemps)
-@@ -935,18 +1006,41 @@
+@@ -935,18 +1024,41 @@
          {
              return;
          }
 +        if (!useCloudSaving)
 +        {
-+            ItemSave.CheckCompatibility(Main.worldPathName, ItemSave.Kind.World);
++            ItemSave.CheckForOverwrite(Main.worldPathName, ItemSave.Kind.World, ValidateExistingAetherWorld);
 +        }
 +        bool modded = ClientContent.WorldSaveIdentity != null && !useCloudSaving;
 +        if (modded)
@@ -235,7 +253,7 @@
          byte[] array2 = null;
          if (FileUtilities.Exists(Main.worldPathName, useCloudSaving))
          {
-@@ -1691,7 +1785,7 @@
+@@ -1691,7 +1803,7 @@
                  writer.Write((short)item.stack);
                  if (item.stack > 0)
                  {
@@ -244,7 +262,7 @@
                      writer.Write(item.prefix);
                  }
              }
-@@ -1726,7 +1820,7 @@
+@@ -1726,7 +1838,7 @@
  
      public static int SaveNPCs(BinaryWriter writer)
      {
@@ -253,7 +271,7 @@
          writer.Write(array.Count(value: true));
          for (int i = 0; i < array.Length; i++)
          {
-@@ -1738,7 +1832,7 @@
+@@ -1738,7 +1850,7 @@
          for (int j = 0; j < Main.npc.Length; j++)
          {
              NPC nPC = Main.npc[j];
@@ -262,7 +280,7 @@
              {
                  writer.Write(nPC.active);
                  writer.Write(nPC.netID);
-@@ -1762,7 +1856,7 @@
+@@ -1762,7 +1874,7 @@
          for (int k = 0; k < Main.npc.Length; k++)
          {
              NPC nPC2 = Main.npc[k];
@@ -271,7 +289,7 @@
              {
                  writer.Write(nPC2.active);
                  writer.Write(nPC2.netID);
-@@ -2786,13 +2880,13 @@
+@@ -2786,13 +2898,13 @@
                  Item item = new Item();
                  if (num6 > 0)
                  {
@@ -287,7 +305,7 @@
                      item.Prefix(reader.ReadByte());
                      item.stack = 1;
                  }
-@@ -3284,8 +3378,10 @@
+@@ -3284,8 +3396,10 @@
              {
                  num = 0;
              }

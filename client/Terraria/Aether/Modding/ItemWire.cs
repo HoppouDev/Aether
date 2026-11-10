@@ -17,6 +17,9 @@ internal static class ItemWire
     internal static bool IsCustom(int type) => type >= ItemID.VanillaCount;
     internal static bool IsReadOnly(Item item) => Main.netMode == 1 && IsCustom(item.type);
 
+    internal static Item.NewItemModifier CopyStateToDrop(Item item) => item.AetherState is { } state
+        ? spawned => spawned.inner.AetherState = state : null;
+
     internal static void WriteState(BinaryWriter writer, Item item)
     {
         if (Main.netMode != 2 || !IsCustom(item.type) || item.IsAir)

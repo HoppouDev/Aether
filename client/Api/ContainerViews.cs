@@ -32,8 +32,10 @@ public static class Containers
         if ((uint)openChest < (uint)Main.chest.Length && Main.chest[openChest] is Chest chest)
         {
             long revision = player.AetherChestRevision;
+            long capacityRevision = chest.AetherCapacityRevision;
             container = CreateStorage(player, chest,
-                () => player.AetherChestRevision == revision && ReferenceEquals(Main.chest[openChest], chest),
+                () => player.AetherChestRevision == revision && chest.AetherCapacityRevision == capacityRevision &&
+                    ReferenceEquals(Main.chest[openChest], chest),
                 slot => Main.netMode != 1 || chest.AetherHasObservedSlot(slot),
                 readOnly: () => Chest.IsLocked(chest.x, chest.y));
             return true;
@@ -61,13 +63,16 @@ public static class Containers
         Players.RequireActive(player);
         container = null;
         int shop = Main.npcShop;
-        if (!Players.IsLocal(player) || !Main.playerInventory || shop <= 0 ||
-            shop >= Main.instance.shop.Length || Main.instance.shop[shop] is not Chest stock)
-            return false;
         int merchant = player.talkNPC;
+        if (!Players.IsLocal(player) || !Main.playerInventory || shop <= 0 ||
+            shop >= Main.instance.shop.Length || Main.instance.shop[shop] is not Chest stock ||
+            (uint)merchant >= Main.maxNPCs || !Main.npc[merchant].active)
+            return false;
+        NPC npc = Main.npc[merchant];
         long revision = Main.AetherShopRevision;
         var view = new ContainerView(player, () => Main.playerInventory && Main.AetherShopRevision == revision &&
-            player.talkNPC == merchant && ReferenceEquals(Main.instance.shop[shop], stock), () => true);
+            player.talkNPC == merchant && npc.active && ReferenceEquals(Main.npc[merchant], npc) &&
+            ReferenceEquals(Main.instance.shop[shop], stock), () => true);
         for (int index = 0; index < stock.maxItems; index++)
         {
             int slot = index;

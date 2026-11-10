@@ -6,7 +6,7 @@ Each command is a tree of literals and typed arguments with handlers.
 | Registry | Where it runs |
 | --- | --- |
 | `ClientCommands` | On the local client, before the chat message is sent. It works on any server, including vanilla servers. |
-| `ServerCommands` | On the world's simulation owner: locally in single-player, and on an Aether dedicated server for every player's chat, including players without mods. |
+| `ServerCommands` | On the world's simulation owner, locally in single-player or on an Aether dedicated server for connected players using its mod profile. |
 
 ```csharp
 using Aether.Api;
@@ -32,7 +32,8 @@ ServerCommands.Register("example:heal", command => command
 The callback receives the command's root literal and returns it after adding arguments, subcommands, and handlers.
 The ID uses the `your-mod:name` form of other registrations, and it is the command's full name: `/example:echo hello`.
 When only one mod registers a name in a registry, the name also works on its own: `/echo hello`.
-A mod command takes precedence over a Terraria chat command with the same name, and client commands are matched before server commands.
+Client commands take precedence over Terraria chat commands and server commands.
+Terraria parses built-in chat commands before forwarding chat to the server registry, so use a server command's full name when its short name overlaps a built-in command.
 
 ## Sources and replies
 

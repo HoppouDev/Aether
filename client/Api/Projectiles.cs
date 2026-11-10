@@ -165,14 +165,14 @@ public static class ProjectileRegistry
         var handle = new ProjectileHandle(projectile.whoAmI, GameBridge.WorldRevision, projectile.AetherSpawnIdentity);
         var instance = new Instance(handle, ProjectileTypeKey.Custom(GetId(projectile.type)!), behavior, new EntityBehaviorState());
         live.Add(projectile, instance);
-        if (behavior.Spawn?.TryInvoke(new(Context(projectile, instance), source), behavior.Subject) == false)
+        if (behavior.Spawn?.Invoke(new(Context(projectile, instance), source), behavior.Subject) == false)
             projectile.AetherKill(EntityRemovalReason.BehaviorFailed);
     }
 
     private static void OnTickStart(Projectile projectile)
     {
         if (live.TryGetValue(projectile, out var instance) && instance.Callbacks.TickStart is { } tick &&
-            !tick.TryInvoke(Context(projectile, instance), instance.Callbacks.Subject))
+            !tick.Invoke(Context(projectile, instance), instance.Callbacks.Subject))
             projectile.AetherKill(EntityRemovalReason.BehaviorFailed);
     }
 
@@ -180,7 +180,7 @@ public static class ProjectileRegistry
     internal static void OnTickEnd(Projectile projectile)
     {
         if (live.Count != 0 && projectile.active && live.TryGetValue(projectile, out var instance) &&
-            instance.Callbacks.TickEnd is { } tick && !tick.TryInvoke(Context(projectile, instance), instance.Callbacks.Subject))
+            instance.Callbacks.TickEnd is { } tick && !tick.Invoke(Context(projectile, instance), instance.Callbacks.Subject))
             projectile.AetherKill(EntityRemovalReason.BehaviorFailed);
     }
 
@@ -190,7 +190,7 @@ public static class ProjectileRegistry
             NpcRegistry.TryGetKey(npc.netID, out var type))
         {
             var handle = new NpcHandle(npc.whoAmI, GameBridge.WorldRevision, npc.AetherSpawnIdentity);
-            hit.TryInvoke(new(Context(projectile, instance), Entities.SnapshotNpc(npc, handle, type), damage, critical),
+            hit.Invoke(new(Context(projectile, instance), Entities.SnapshotNpc(npc, handle, type), damage, critical),
                 instance.Callbacks.Subject);
         }
     }
@@ -198,13 +198,13 @@ public static class ProjectileRegistry
     private static void OnHitPlayer(Projectile projectile, Player player, int damage)
     {
         if (live.TryGetValue(projectile, out var instance) && instance.Callbacks.HitPlayer is { } hit)
-            hit.TryInvoke(new(Context(projectile, instance), player, damage), instance.Callbacks.Subject);
+            hit.Invoke(new(Context(projectile, instance), player, damage), instance.Callbacks.Subject);
     }
 
     private static void OnRemoved(Projectile projectile, EntityRemovalReason reason)
     {
         if (live.Remove(projectile, out var instance) && instance.Callbacks.Removed is { } removed)
-            removed.TryInvoke(new(Context(projectile, instance), reason), instance.Callbacks.Subject);
+            removed.Invoke(new(Context(projectile, instance), reason), instance.Callbacks.Subject);
     }
 
     private static ProjectileBehaviorContext Context(Projectile projectile, Instance instance) =>

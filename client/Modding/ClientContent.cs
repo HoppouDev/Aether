@@ -32,6 +32,7 @@ public sealed record ContentModRequirement(string Id, string Version);
 [EditorBrowsable(EditorBrowsableState.Never)]
 public static class ClientContent
 {
+    public const int MaxReplicatedEntityVelocity = 4096;
     private static readonly object itemTableLock = new();
     private static bool itemTablesSized;
     private static bool npcTablesSized;
