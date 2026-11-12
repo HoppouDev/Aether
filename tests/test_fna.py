@@ -1,7 +1,10 @@
 import hashlib
 import json
 import re
+import subprocess
+from pathlib import Path
 
+from aether import fna
 from aether.fna import verify_files
 
 from .conftest import REAL_REPO, write_files
@@ -25,6 +28,35 @@ def test_verify_files_reports_missing_unexpected_and_changed(tmp_path):
         "unexpected extra.dll",
         "hash mismatch lib64/libSDL3.so.0",
     ]
+
+
+def test_fetch_natives_only_refetches_stale_artifacts(tmp_path, monkeypatch):
+    downloads = []
+
+    def fake_run(cmd, **kwargs):
+        artifact, dest = cmd[cmd.index("-n") + 1], Path(cmd[cmd.index("-D") + 1])
+        downloads.append(artifact)
+        write_files(dest, {"lib64/libFNA3D.so.0": b"new"})
+        return subprocess.CompletedProcess(cmd, 0, "", "")
+
+    monkeypatch.setattr(fna.subprocess, "run", fake_run)
+    files = {"lib64/libFNA3D.so.0": sha(b"new")}
+    pin = {
+        "natives": {
+            "repo": "o/r",
+            "run_id": 1,
+            "artifacts": {"current": files, "stale": files},
+        }
+    }
+    write_files(tmp_path / "current", {"lib64/libFNA3D.so.0": b"new"})
+    write_files(tmp_path / "stale", {"lib64/libFNA3D.so.0": b"old", "gone.so": b"x"})
+
+    fna.fetch_natives(pin, tmp_path, only_stale=True)
+    assert downloads == ["stale"]
+    assert verify_files(tmp_path / "stale", files) == []
+
+    fna.fetch_natives(pin, tmp_path, only_stale=True)
+    assert downloads == ["stale"]
 
 
 def test_fna_pin_is_well_formed():

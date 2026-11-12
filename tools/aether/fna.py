@@ -96,14 +96,23 @@ def verify_files(root: Path, expected: dict[str, str]) -> list[str]:
     return problems
 
 
-def fetch_natives(pinned: dict, lib: Path) -> None:
+def fetch_natives(pinned: dict, lib: Path, only_stale: bool = False) -> None:
     """Downloads every pinned native-library package into lib/<artifact>/, hash-checked.
 
     `fnalibs` holds Linux and Windows (x86/x64) libraries, `fnalibs-apple` the macOS ones.
+    only_stale: skip the packages lib/ already holds exactly (e.g. on every build, so a
+    re-pinned fna.json gets its natives without a new `aether setup`).
     """
     natives = pinned["natives"]
+    artifacts = {
+        artifact: files
+        for artifact, files in natives["artifacts"].items()
+        if not only_stale or verify_files(lib / artifact, files)
+    }
+    if not artifacts:
+        return
     log(f"fetching FNA native libraries ({natives['repo']} run {natives['run_id']})…")
-    for artifact, files in natives["artifacts"].items():
+    for artifact, files in artifacts.items():
         with tempfile.TemporaryDirectory(prefix="aether-fnalibs-") as tmp:
             result = subprocess.run(
                 [
@@ -134,4 +143,7 @@ def fetch_natives(pinned: dict, lib: Path) -> None:
                     f"{artifact} doesn't match tools/fna.json:\n  "
                     + "\n  ".join(problems)
                 )
-            shutil.copytree(tmp, lib / artifact)
+            target = lib / artifact
+            if target.exists():
+                shutil.rmtree(target)
+            shutil.copytree(tmp, target)

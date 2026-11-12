@@ -30,7 +30,7 @@ import sys
 from pathlib import Path
 
 from . import paths
-from .fna import build_fna, load_fna_json
+from .fna import build_fna, fetch_natives, load_fna_json
 from .patches import patches_changed_since_sync, rebuild_src
 from .pinning import load_base_json, require_base
 from .steam import platform_pin
@@ -186,10 +186,13 @@ def run_dotnet(command: list[str], what: str) -> None:
 
 
 def update_fna() -> None:
-    """Builds lib/'s FNA again if the pin or tools/fna.patch changed since (cached otherwise)."""
+    """Builds lib/'s FNA again if the pin or tools/fna.patch changed since (cached otherwise),
+    and fetches the pinned native libraries again where lib/ doesn't match them."""
     if not paths.LIB.is_dir():
         raise AetherError("lib/ is missing; run `./aether setup` first.")
-    build_fna(load_fna_json(), paths.LIB)
+    pinned = load_fna_json()
+    build_fna(pinned, paths.LIB)
+    fetch_natives(pinned, paths.LIB, only_stale=True)
 
 
 def update_src() -> None:

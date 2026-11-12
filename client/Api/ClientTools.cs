@@ -14,6 +14,8 @@ public static class Keybinds
     private static readonly Dictionary<string, (Keys DefaultKey, Listener<int> Callback)> entries = [];
     private static readonly HashSet<Keys> previous = [];
     private static Dictionary<string, string> bindings = new(StringComparer.Ordinal);
+    // Each registered keybind's key, resolved from the bindings file once it's loaded.
+    private static (Keys Key, Listener<int> Callback)[] active = [];
 
     public static void Register(string id, string defaultKey, Action onPressed)
     {
@@ -29,6 +31,19 @@ public static class Keybinds
         string.Equals(key.ToString(), text, StringComparison.OrdinalIgnoreCase);
 
     internal static void Load(string savePath)
+    {
+        try
+        {
+            LoadBindings(savePath);
+        }
+        finally
+        {
+            active = entries.Select(entry => (TryKey(bindings.GetValueOrDefault(entry.Key), out Keys configured)
+                ? configured : entry.Value.DefaultKey, entry.Value.Callback)).ToArray();
+        }
+    }
+
+    private static void LoadBindings(string savePath)
     {
         string path = Path.Combine(savePath, "aether-api-keybinds.json");
         if (File.Exists(path))
@@ -61,17 +76,15 @@ public static class Keybinds
 
     internal static void Update(KeyboardState keyboard, bool acceptsInput)
     {
-        foreach (var (id, entry) in entries)
+        foreach (var (key, callback) in active)
         {
-            Keys key = TryKey(bindings.GetValueOrDefault(id), out Keys configured) ? configured : entry.DefaultKey;
             if (acceptsInput && keyboard.IsKeyDown(key) && !previous.Contains(key))
-                entry.Callback.Invoke(0);
+                callback.Invoke(0);
         }
 
         previous.Clear();
-        foreach (var entry in entries)
+        foreach (var (key, _) in active)
         {
-            Keys key = TryKey(bindings.GetValueOrDefault(entry.Key), out Keys configured) ? configured : entry.Value.DefaultKey;
             if (keyboard.IsKeyDown(key))
                 previous.Add(key);
         }

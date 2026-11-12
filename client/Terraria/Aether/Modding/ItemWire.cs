@@ -108,17 +108,21 @@ internal sealed class DisplayItemStateModule : NetModule
         }
     }
 
-    public override bool Deserialize(BinaryReader reader, int userId)
+    public override bool Deserialize(BinaryReader reader, int userId) => false;
+
+    internal override bool Deserialize(BinaryReader reader, int userId, int payloadLength)
     {
-        if (Main.netMode != 1 || !ClientContent.HasItems)
+        // The entity ID, slot and type, then at least the state's length.
+        if (Main.netMode != 1 || !ClientContent.HasItems || payloadLength < 7 + sizeof(ushort))
             return false;
+        long end = reader.BaseStream.Position + payloadLength;
         int id = reader.ReadInt32();
         int index = reader.ReadByte();
         int type = reader.ReadInt16();
         if (!TileEntity.TryGet<TileEntity>(id, out var entity) ||
             entity.DisplayItems().ElementAtOrDefault(index) is not Item item || item.type != type)
             return false;
-        item.AetherState = ItemWire.ReadState(reader, type, reader.BaseStream.Length);
+        item.AetherState = ItemWire.ReadState(reader, type, end);
         return true;
     }
 }
