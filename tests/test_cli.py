@@ -54,6 +54,21 @@ def test_apply_exit_code_reflects_conflicts(repo):
     assert runner.invoke(cli.app, ["apply", "--force"]).exit_code == 1
 
 
+def test_diff_refuses_while_patch_conflicts_remain(repo):
+    repo.make_base(BASE_FILES)
+    main = repo.src / "Terraria/Main.cs"
+    main.write_text(main.read_text().replace("int a = 1;", "int a = 2;"))
+    assert runner.invoke(cli.app, ["diff"]).exit_code == 0
+    patch = (repo.patches / "Terraria/Main.cs.patch").read_bytes()
+
+    (repo.src / "Terraria/Main.cs.rej").write_text("rejected hunk\n")
+    main.write_text(main.read_text().replace("int a = 2;", "int a = 1;"))
+    result = runner.invoke(cli.app, ["diff"])
+    assert result.exit_code == 1
+    assert "src/Terraria/Main.cs.rej" in str(result.exception)
+    assert (repo.patches / "Terraria/Main.cs.patch").read_bytes() == patch
+
+
 def test_diff_refuses_to_recreate_patches_for_moved_project_source(repo):
     repo.make_base(BASE_FILES)
     old_source = "Aether/Feature.cs"

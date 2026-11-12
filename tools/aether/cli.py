@@ -543,6 +543,16 @@ def diff(
         raise AetherError(
             "src/ doesn't exist. Run `./aether apply` (or `./aether setup`)."
         )
+    # A patch that failed to apply left its hunks in a .rej; regenerating now would drop them.
+    rejects = sorted(paths.SRC.rglob("*.rej"))
+    if rejects:
+        listing = "\n  ".join(
+            f"src/{path.relative_to(paths.SRC).as_posix()}" for path in rejects
+        )
+        raise AetherError(
+            f"unresolved patch conflicts; patches/ would lose their hunks:\n  {listing}\n"
+            "Apply them to src/ by hand and delete the .rej files, then run `./aether diff`."
+        )
     source_changes = changed_files(paths.SRC, paths.BASE)
     new_source = next(
         (path for path in source_changes[1] if path.suffix.lower() == ".cs"), None

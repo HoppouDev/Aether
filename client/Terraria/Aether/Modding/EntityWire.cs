@@ -157,6 +157,10 @@ internal sealed class EntityWire : NetModule
             return false;
 
         ref Replica replica = ref (family == 0 ? ref npcReplicas[slot] : ref projectileReplicas[slot]);
+        // A replica projectile killed here frees its object, which vanilla netcode may reuse for a
+        // real projectile: it's no longer this replica's, so neither update nor clear it.
+        if (replica.Entity is Projectile previous && (!previous.active || previous.owner != Main.maxPlayers || !previous.AetherIsCustom))
+            replica.Entity = null;
         if (identity < replica.Identity || update <= replica.Sequence ||
             (identity == replica.Identity && active != 0 && replica.Retired))
             return false;

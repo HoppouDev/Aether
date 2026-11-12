@@ -155,6 +155,11 @@ public static class ControlServer
                     Finish("error " + error.Message);
                     continue;
                 }
+                catch (Exception exception)
+                {
+                    Finish("error " + exception.GetType().Name + ": " + exception.Message.Replace('\n', ' '));
+                    continue;
+                }
             }
             bool more;
             try

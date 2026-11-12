@@ -34,7 +34,7 @@ def require_base() -> dict:
     if stamp.get("recipe") != pinned["recipe"]:
         raise AetherError(
             f".base/ was built with recipe {stamp.get('recipe')}, but tools/base.json expects "
-            f"{pinned['recipe']}. Rebuild it with `./aether setup --base-only`."
+            f"{pinned['recipe']}. Rebuild it with `./aether setup` (it checks src/ for unsaved edits first)."
         )
     if stamp.get("exe_sha256") != pinned["exe_sha256"]:
         log(
