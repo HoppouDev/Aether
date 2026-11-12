@@ -105,7 +105,7 @@ public class UIChestControls : UIGameScreen
             ChatManager.DrawColorCodedStringWithShadow(spriteBatch, font, composition, position, Main.imeCompositionStringColor, 0f, Vector2.Zero, Vector2.One, -1f, 1.5f);
             position.X += font.MeasureString(composition).X;
         }
-        if (++Main.instance.textBlinkerCount >= 20)
+        if ((Main.instance.textBlinkerCount += Aether.Graphics.VisualAnimationTime.WholeTicks) >= 20)
         {
             Main.instance.textBlinkerState = (Main.instance.textBlinkerState == 0) ? 1 : 0;
             Main.instance.textBlinkerCount = 0;

@@ -2,6 +2,7 @@ using Aether.Api;
 using Aether.Modding;
 using Brigadier.NET;
 using Brigadier.NET.Builder;
+using Brigadier.NET.Context;
 using Microsoft.Xna.Framework;
 using Terraria.DataStructures;
 using Terraria.GameContent.UI.Elements;
@@ -36,6 +37,21 @@ public sealed class Startup : IModInitializer
             .Requires(source => Terraria.Main.netMode == 0)
             .Executes(context => Players.GetStats(context.Source.Player).IsAlive &&
                 Players.TryApplyEffect(context.Source.Player, BuffID.Swiftness, 600) ? 1 : 0));
+        ClientCommands.Register("api-example:buff", command => command
+            .Requires(source => Terraria.Main.netMode == 0)
+            .Then(c => c.Argument("buff", Arguments.Word())
+                .Suggests((context, builder) =>
+                {
+                    foreach ((string name, int buff) in Buffs)
+                    {
+                        if (name.StartsWith(builder.RemainingLowerCase, StringComparison.Ordinal))
+                            builder.Suggest(name, new LiteralMessage(Terraria.Lang.GetBuffName(buff)));
+                    }
+                    return builder.BuildAsync();
+                })
+                .Executes(context => ApplyBuff(context, 10))
+                .Then(c => c.Argument("seconds", Arguments.Integer(1, 600))
+                    .Executes(context => ApplyBuff(context, Arguments.GetInteger(context, "seconds"))))));
         ClientCommands.Register("api-example:training", command => command
             .Requires(source => Terraria.Main.netMode == 0)
             .Then(c => c.Literal("on").Executes(context =>
@@ -111,6 +127,21 @@ public sealed class Startup : IModInitializer
         RetainedUiLayer counter = RetainedUi.Register("api-example:counter", CreateCounter, initiallyVisible: false);
         Keybinds.Register("api-example:counter", "F7", () => counter.IsVisible = !counter.IsVisible);
         RecipeRegistry.Register("api-example:torch", new RecipeDefinition(new ItemAmount(8, 1), [new ItemAmount(9, 1)]));
+    }
+
+    private static readonly (string Name, int Buff)[] Buffs =
+        [("ironskin", BuffID.Ironskin), ("regeneration", BuffID.Regeneration), ("shine", BuffID.Shine), ("swiftness", BuffID.Swiftness)];
+
+    private static int ApplyBuff(CommandContext<CommandSource> context, int seconds)
+    {
+        string name = Arguments.GetString(context, "buff");
+        foreach ((string buffName, int buff) in Buffs)
+        {
+            if (buffName == name)
+                return Players.TryApplyEffect(context.Source.Player, buff, seconds * 60) ? 1 : 0;
+        }
+        context.Source.ReplyError($"Unknown buff '{name}'.");
+        return 0;
     }
 
     private static UIState CreateCounter()

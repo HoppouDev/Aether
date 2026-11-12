@@ -95,6 +95,11 @@ internal sealed class CommandRegistry
     /// <summary>The commands registered (by full ID; aliases aren't counted).</summary>
     internal int Count => owners.Keys.Count(id => id.Contains(':'));
 
+    internal CommandDispatcher<CommandSource> Dispatcher => dispatcher;
+
+    /// <summary>Whether <paramref name="name" /> (a full ID or a short name) runs a registered command.</summary>
+    internal bool Has(string name) => owners.ContainsKey(name) && dispatcher.Root.GetChild(name) != null;
+
     internal void Register(string id, Func<LiteralArgumentBuilder<CommandSource>, LiteralArgumentBuilder<CommandSource>> command)
     {
         ArgumentNullException.ThrowIfNull(command);
@@ -130,8 +135,9 @@ internal sealed class CommandRegistry
     {
         int end = input.IndexOf(' ');
         string name = end < 0 ? input : input[..end];
-        if (!owners.TryGetValue(name, out string? owner) || dispatcher.Root.GetChild(name) == null)
+        if (!Has(name))
             return false;
+        string owner = owners[name];
         CommandSource sender = source();
         try
         {

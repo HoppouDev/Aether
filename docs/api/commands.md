@@ -43,6 +43,47 @@ Terraria parses built-in chat commands before forwarding chat to the server regi
 `Reply` and `ReplyError` show text in the sender's chat, sending it over the network from a dedicated server.
 Use `Requires` on a node to limit who can run it; a sender who fails the requirement gets Brigadier's unknown-command error.
 
+## Completion
+
+`CommandCompletion.Complete(text, cursor)` completes chat input for a chat UI to show, the way Minecraft completes commands; the API draws nothing itself ([FreshUI](https://github.com/HoppouDev/FreshUI) shows it).
+Call it on the game thread with the input, slash included, and the cursor's position in it.
+It returns a task that is usually already complete; a mod's suggestion provider can make it finish later.
+
+```csharp
+CommandCompletions completions = await CommandCompletion.Complete("/example:buff ir", 16);
+foreach (CommandSuggestion suggestion in completions.Suggestions)
+    Console.WriteLine($"{suggestion.Apply("/example:buff ir")} ({suggestion.Tooltip})");
+```
+
+Each `CommandSuggestion` replaces the text from `Start` to `End` (the cursor) with `Text`; `Apply` returns the input with it.
+Positions count the slash, so a suggestion for the command's name starts at 1.
+`Start` on `CommandCompletions` is where the word being completed starts, to place a list under it.
+With nothing to suggest and the cursor at the end of the input, `Hints` holds the usage of the arguments that follow (from `HintStart`), or why the command doesn't parse (`IsError`, from 0).
+Text that isn't a command gets `CommandCompletions.None`.
+
+Command names come from both registries and Terraria's chat commands, leaving out commands whose `Requires` fails for the local player.
+After the name, the command's own registry completes literals and arguments.
+Terraria's commands complete too: emoji names after `/emoji` and `/e`, and a `<message>` hint after `/p` and `/me`; text after them is never an error, since Terraria ignores what they don't use.
+Add suggestions to an argument with Brigadier's `Suggests`; a suggestion's tooltip is passed along:
+
+```csharp
+ClientCommands.Register("example:buff", command => command
+    .Then(c => c.Argument("buff", Arguments.Word())
+        .Suggests((context, builder) =>
+        {
+            foreach (string name in new[] { "ironskin", "swiftness" })
+            {
+                if (name.StartsWith(builder.RemainingLowerCase, StringComparison.Ordinal))
+                    builder.Suggest(name, new LiteralMessage($"The {name} buff"));
+            }
+            return builder.BuildAsync();
+        })
+        .Executes(context => 1)));
+```
+
+An exception from a provider is logged and its suggestions are left out.
+Server commands are completed from the client's own registrations, so in multiplayer they assume the server runs the same mods.
+
 ## Errors
 
 Chat whose first word is not a registered command is sent or said as usual.

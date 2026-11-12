@@ -21,6 +21,15 @@
              DrawSlots(spritebatch);
          }
          else
+@@ -167,7 +171,7 @@
+                 ChatManager.DrawColorCodedStringWithShadow(spritebatch, value, compositionString, vector, Main.imeCompositionStringColor, 0f, Vector2.Zero, Vector2.One, -1f, 1.5f);
+                 vector.X += value.MeasureString(compositionString).X;
+             }
+-            if (++Main.instance.textBlinkerCount >= 20)
++            if ((Main.instance.textBlinkerCount += Aether.Graphics.VisualAnimationTime.WholeTicks) >= 20)
+             {
+                 Main.instance.textBlinkerState = ((Main.instance.textBlinkerState == 0) ? 1 : 0);
+                 Main.instance.textBlinkerCount = 0;
 @@ -323,6 +327,10 @@
  
      private static void DrawSlots(SpriteBatch spriteBatch)

@@ -1248,6 +1248,15 @@
          uint? selectedCandidate = Platform.Get<IImeService>().SelectedCandidate;
          DynamicSpriteFont value = FontAssets.MouseText.Value;
          float num2 = 0.85f;
+@@ -41826,7 +41881,7 @@
+         HandleIME();
+         if (drawingPlayerChat)
+         {
+-            textBlinkerCount++;
++            textBlinkerCount += Aether.Graphics.VisualAnimationTime.WholeTicks;
+             if (textBlinkerCount >= 20)
+             {
+                 if (textBlinkerState == 0)
 @@ -41911,10 +41966,11 @@
          DrawTrashItemSlot(num, num2);
          spriteBatch.DrawString(FontAssets.MouseText.Value, Lang.inter[4].Value, new Vector2(40f, 0f) + vector, new Microsoft.Xna.Framework.Color(mouseTextColor, mouseTextColor, mouseTextColor, mouseTextColor), 0f, default, 1f, SpriteEffects.None, 0f);
@@ -2206,6 +2215,24 @@
          {
              array9[0] = Lang.menu[102].Value;
              num2 = 200;
+@@ -49670,7 +49880,7 @@
+                 SoundEngine.PlaySound(12);
+             }
+             array9[0] = Lang.menu[3].Value;
+-            textBlinkerCount++;
++            textBlinkerCount += Aether.Graphics.VisualAnimationTime.WholeTicks;
+             if (textBlinkerCount >= 20)
+             {
+                 if (textBlinkerState == 0)
+@@ -49794,7 +50004,7 @@
+                 SoundEngine.PlaySound(12);
+             }
+             array9[0] = Lang.menu[7].Value;
+-            textBlinkerCount++;
++            textBlinkerCount += Aether.Graphics.VisualAnimationTime.WholeTicks;
+             if (textBlinkerCount >= 20)
+             {
+                 if (textBlinkerState == 0)
 @@ -49955,12 +50165,17 @@
              array9[2] = Lang.menu[6].Value;
              if (selectedMenu == 1)
@@ -2228,6 +2255,24 @@
                      menuMode = 10;
                  }
                  else
+@@ -51969,7 +52184,7 @@
+                     {
+                         OnSubmitServerIP(getIP);
+                     }
+-                    textBlinkerCount++;
++                    textBlinkerCount += Aether.Graphics.VisualAnimationTime.WholeTicks;
+                     if (textBlinkerCount >= 20)
+                     {
+                         if (textBlinkerState == 0)
+@@ -52024,7 +52239,7 @@
+                         array2[2] = false;
+                     }
+                 }
+-                textBlinkerCount++;
++                textBlinkerCount += Aether.Graphics.VisualAnimationTime.WholeTicks;
+                 if (textBlinkerCount >= 20)
+                 {
+                     if (textBlinkerState == 0)
 @@ -52202,7 +52417,7 @@
          selectedMenu2 = -1;
          focusMenu = -1;

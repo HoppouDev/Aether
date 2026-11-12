@@ -73,3 +73,12 @@
      {
          Vector2 vector = textArea.TopLeft() + new Vector2(20f, 20f);
          DynamicSpriteFont value = FontAssets.MouseText.Value;
+@@ -253,7 +257,7 @@
+             Main.instance.SetIMEPanelAnchor(vector2 + new Vector2(0f, 54f), 0f);
+             vector2.X += x;
+         }
+-        if (++textBlinkerCount >= 20)
++        if ((textBlinkerCount += Aether.Graphics.VisualAnimationTime.WholeTicks) >= 20)
+         {
+             textBlinkerState = ((textBlinkerState == 0) ? 1 : 0);
+             textBlinkerCount = 0;

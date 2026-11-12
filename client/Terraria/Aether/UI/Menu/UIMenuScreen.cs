@@ -123,7 +123,7 @@ public abstract class UIMenuScreen : UIState
 
     protected static void BlinkCursor()
     {
-        Main.instance.textBlinkerCount++;
+        Main.instance.textBlinkerCount += Aether.Graphics.VisualAnimationTime.WholeTicks;
         if (Main.instance.textBlinkerCount >= 20)
         {
             Main.instance.textBlinkerState = 1 - Main.instance.textBlinkerState;
