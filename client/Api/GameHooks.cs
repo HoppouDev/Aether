@@ -152,7 +152,8 @@ public static class GameBridge
 
     public static void ProjectileTickEnded(Projectile projectile) => ProjectileRegistry.OnTickEnd(projectile);
 
-    public static void FilterGuideRecipes()
+    /// <summary>Removes blocked recipes from the available list (multiplayer only).</summary>
+    public static void FilterAvailableRecipes()
     {
         if (Main.netMode == 0)
             return;
@@ -220,13 +221,11 @@ internal static class RecipeHooks
     [Inject("SetupRecipes()", At.INVOKE, Target = "Terraria.Recipe::CreateRequiredItemQuickLookups()", Allow = 1)]
     private static void Install(CallbackInfo callback) => GameBridge.InstallRecipes();
 
-    [Inject("PlayerMeetsEnvironmentConditions", At.HEAD, Cancellable = true)]
-    private static void Filter(Recipe self, Player player, List<string> missingObjects, CallbackInfoReturnable<bool> callback)
-    {
-        if (GameBridge.IsRecipeBlocked(self))
-            callback.SetReturnValue(false);
-    }
+    // Once per list update, before the focus is restored: not a callback per recipe, since the list is
+    // rebuilt every frame the inventory is open.
+    [Inject("UpdateRecipeList()", At.INVOKE, Target = "Terraria.Recipe::TryRefocusingRecipe(System.Int32)", Ordinal = 1)]
+    private static void Filter(CallbackInfo callback) => GameBridge.FilterAvailableRecipes();
 
     [Inject("CollectGuideRecipes()", At.RETURN)]
-    private static void FilterGuide(CallbackInfo callback) => GameBridge.FilterGuideRecipes();
+    private static void FilterGuide(CallbackInfo callback) => GameBridge.FilterAvailableRecipes();
 }
