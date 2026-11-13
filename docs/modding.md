@@ -226,6 +226,7 @@ Mods run in the client process with its permissions.
 
 Each mod loads managed dependencies through its own context.
 Include the entry DLL's `.deps.json` and its dependency layout, or place private managed DLLs alongside the entry DLL.
+A managed DLL's `.pdb` beside it is loaded with it, so debuggers bind breakpoints and stack traces have line numbers; `PackMod` packages the entry DLL's.
 Native libraries use the dependency resolver and need binaries for the player's platform.
 Managed-only mods can use one archive across Aether's platforms.
 The game, FNA, ReLogic, and `Aether.Modding` are shared host assemblies.

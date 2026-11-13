@@ -203,7 +203,10 @@ internal sealed class ModContext(ModPackage package) : AssemblyLoadContext(packa
             if (images.TryGetValue(path, out Assembly? existing))
                 return existing;
             using FileStream stream = File.OpenRead(path);
-            Assembly assembly = LoadFromStream(stream);
+            // The symbols beside it, if packaged: a debugger binds breakpoints, and stack traces get line numbers.
+            string symbolsPath = Path.ChangeExtension(path, ".pdb");
+            using FileStream? symbols = File.Exists(symbolsPath) ? File.OpenRead(symbolsPath) : null;
+            Assembly assembly = LoadFromStream(stream, symbols);
             images.Add(path, assembly);
             return assembly;
         }

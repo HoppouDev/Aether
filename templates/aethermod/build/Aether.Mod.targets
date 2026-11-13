@@ -79,6 +79,9 @@
     <MakeDir Directories="$(ModStaging)" />
     <WriteLinesToFile File="$(ModStaging)aether.mod.json" Lines="$([MSBuild]::Escape('$(ResolvedModManifest)'))" Overwrite="true" />
     <Copy SourceFiles="$(TargetPath);$(ProjectDepsFilePath)" DestinationFolder="$(ModStaging)" />
+    <!-- Aether loads the symbols with the assembly, for debuggers and line numbers in stack traces. -->
+    <Copy SourceFiles="$(TargetDir)$(TargetName).pdb" DestinationFolder="$(ModStaging)"
+      Condition="Exists('$(TargetDir)$(TargetName).pdb')" />
     <Copy SourceFiles="$(MSBuildProjectDirectory)/icon.png" DestinationFolder="$(ModStaging)"
       Condition="Exists('$(MSBuildProjectDirectory)/icon.png')" />
     <ItemGroup>
