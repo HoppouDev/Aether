@@ -30,6 +30,16 @@ def test_verify_files_reports_missing_unexpected_and_changed(tmp_path):
     ]
 
 
+def test_verify_files_expects_rebuilt_natives_instead_of_the_pins(tmp_path):
+    write_files(tmp_path, {"lib64/libFNA3D.so.0": b"patched"})
+    stamp = {"lib64/libFNA3D.so.0": sha(b"patched")}
+    (tmp_path / fna.REBUILT_STAMP).write_text(json.dumps(stamp))
+    expected = {"lib64/libFNA3D.so.0": sha(b"downloaded")}
+    assert verify_files(tmp_path, expected) == []
+    (tmp_path / "lib64/libFNA3D.so.0").write_bytes(b"changed since")
+    assert verify_files(tmp_path, expected) == ["hash mismatch lib64/libFNA3D.so.0"]
+
+
 def test_fetch_natives_only_refetches_stale_artifacts(tmp_path, monkeypatch):
     downloads = []
 

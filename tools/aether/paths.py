@@ -15,10 +15,14 @@ BASE_JSON = REPO / "tools" / "base.json"
 FNA_JSON = REPO / "tools" / "fna.json"
 # Aether's changes to FNA's code, applied before building it.
 FNA_PATCH = REPO / "tools" / "fna.patch"
+# Aether's changes to FNA3D (in FNA's checkout) and SDL: GPU frame timing, built on Linux.
+FNA3D_PATCH = REPO / "tools" / "fna3d.patch"
+SDL_PATCH = REPO / "tools" / "sdl.patch"
 STEAMWORKS_JSON = REPO / "tools" / "steamworks.json"
 # Self-contained builds per target (`aether build --target`); they contain game files.
 DIST = REPO / "dist"
 FNA_CACHE = STATE / "fna"  # FNA source checkout and build, reused across setups
+NATIVES_CACHE = STATE / "natives"  # SDL checkout and the patched SDL3/FNA3D builds
 # The pinned Linux build, fetched by `aether download`.
 DOWNLOADED_GAME_DIR = STATE / "game"
 # SteamCMD, installed by `aether download` if there's none.

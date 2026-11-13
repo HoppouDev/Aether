@@ -1,0 +1,224 @@
+diff --git a/include/FNA3D.h b/include/FNA3D.h
+index f7c9947..bd96fe1 100644
+--- a/include/FNA3D.h
++++ b/include/FNA3D.h
+@@ -1540,6 +1540,13 @@ FNA3DAPI void FNA3D_SetStringMarker(FNA3D_Device *device, const char *text);
+  */
+ FNA3DAPI void FNA3D_SetTextureName(FNA3D_Device *device, FNA3D_Texture *texture, const char *text);
+
++/* Returns how long the GPU took to draw a recent frame (from the start of its
++ * first command buffer to its backbuffer blit), in milliseconds, or a negative
++ * number when the driver can't measure it. Only the SDL GPU driver can, where
++ * SDL supports timestamp queries. Local addition: not part of upstream FNA3D.
++ */
++FNA3DAPI float FNA3D_GetGPUFrameTimeEXT(FNA3D_Device *device);
++
+ #ifdef __cplusplus
+ }
+ #endif /* __cplusplus */
+diff --git a/src/FNA3D.c b/src/FNA3D.c
+index b70bcbb..cfd8936 100644
+--- a/src/FNA3D.c
++++ b/src/FNA3D.c
+@@ -1529,6 +1529,15 @@ void FNA3D_SetTextureName(FNA3D_Device* device, FNA3D_Texture* texture, const ch
+
+ 	device->SetTextureName(device->driverData, texture, text);
+ }
++
++float FNA3D_GetGPUFrameTimeEXT(FNA3D_Device *device)
++{
++	if (device == NULL)
++	{
++		return -1.0f;
++	}
++	return device->GetGPUFrameTimeEXT(device->driverData);
++}
+ /* External Interop */
+
+ void FNA3D_GetSysRendererEXT(
+diff --git a/src/FNA3D_Driver.h b/src/FNA3D_Driver.h
+index 14e92cc..53c3c67 100644
+--- a/src/FNA3D_Driver.h
++++ b/src/FNA3D_Driver.h
+@@ -723,6 +723,7 @@ struct FNA3D_Device
+
+ 	void (*SetStringMarker)(FNA3D_Renderer *driverData, const char *text);
+ 	void (*SetTextureName)(FNA3D_Renderer *driverData, FNA3D_Texture *texture, const char *text);
++	float (*GetGPUFrameTimeEXT)(FNA3D_Renderer *driverData);
+
+ 	/* External Interop */
+
+@@ -816,6 +817,7 @@ struct FNA3D_Device
+ 	ASSIGN_DRIVER_FUNC(GetMaxMultiSampleCount, name) \
+ 	ASSIGN_DRIVER_FUNC(SetStringMarker, name) \
+ 	ASSIGN_DRIVER_FUNC(SetTextureName, name) \
++	ASSIGN_DRIVER_FUNC(GetGPUFrameTimeEXT, name) \
+ 	ASSIGN_DRIVER_FUNC(GetSysRenderer, name) \
+ 	ASSIGN_DRIVER_FUNC(CreateSysTexture, name)
+
+diff --git a/src/FNA3D_Driver_D3D11.c b/src/FNA3D_Driver_D3D11.c
+index cf6e2bb..6ad95e6 100644
+--- a/src/FNA3D_Driver_D3D11.c
++++ b/src/FNA3D_Driver_D3D11.c
+@@ -5148,6 +5148,12 @@ static void D3D11_SetTextureName(FNA3D_Renderer* driverData, FNA3D_Texture* text
+ 	ID3D11DeviceChild_SetPrivateData(d3dTexture->handle, &GUID_D3DDebugObjectName, SDL_strlen(text), text);
+ }
+
++/* This driver has no GPU timer support */
++static float D3D11_GetGPUFrameTimeEXT(FNA3D_Renderer *driverData)
++{
++	return -1.0f;
++}
++
+ /* External Interop */
+
+ static void D3D11_GetSysRenderer(
+diff --git a/src/FNA3D_Driver_OpenGL.c b/src/FNA3D_Driver_OpenGL.c
+index 9d253ff..1e45aac 100644
+--- a/src/FNA3D_Driver_OpenGL.c
++++ b/src/FNA3D_Driver_OpenGL.c
+@@ -5472,6 +5472,12 @@ static void GLAPIENTRY DebugCall(
+ 	}
+ }
+
++/* This driver has no GPU timer support */
++static float OPENGL_GetGPUFrameTimeEXT(FNA3D_Renderer *driverData)
++{
++	return -1.0f;
++}
++
+ /* External Interop */
+
+ static void OPENGL_GetSysRenderer(
+diff --git a/src/FNA3D_Driver_SDL.c b/src/FNA3D_Driver_SDL.c
+index 6b56a74..5eb9db0 100644
+--- a/src/FNA3D_Driver_SDL.c
++++ b/src/FNA3D_Driver_SDL.c
+@@ -659,8 +659,18 @@ typedef struct SDLGPU_Renderer
+ 	uint8_t supportsD24;
+ 	uint8_t supportsD24S8;
+
++	/* GPU frame timing: a start and an end timestamp per frame, in a ring of
++	 * GPU_TIMING_FRAMES frames, each read just before its slots are reused.
++	 * NULL when SDL can't time the GPU.
++	 */
++	SDL_GPUQueryPool *timestampPool;
++	uint32_t timedFrame;
++	float gpuFrameTime;
++
+ } SDLGPU_Renderer;
+
++#define GPU_TIMING_FRAMES 4
++
+ /* Format Conversion */
+
+ static inline SDL_GPUTextureFormat XNAToSDL_DepthFormat(
+@@ -1116,6 +1126,39 @@ static bool SDLGPU_INTERNAL_ClaimWindow(
+ 	return true;
+ }
+
++/* Starts timing the next frame in a fresh render command buffer, first reading
++ * the oldest frame in the ring, whose slots this frame reuses. A frame the GPU
++ * hasn't finished by then is skipped.
++ */
++static void SDLGPU_INTERNAL_BeginTimedFrame(
++	SDLGPU_Renderer *renderer
++) {
++	Uint64 timestamps[2];
++	uint32_t slot;
++
++	renderer->timedFrame += 1;
++	slot = (renderer->timedFrame % GPU_TIMING_FRAMES) * 2;
++
++	if (	renderer->timedFrame >= GPU_TIMING_FRAMES &&
++		SDL_GetGPUTimestamps(
++			renderer->device,
++			renderer->timestampPool,
++			slot,
++			2,
++			timestamps
++		) &&
++		timestamps[1] >= timestamps[0]	)
++	{
++		renderer->gpuFrameTime = (float) (timestamps[1] - timestamps[0]) / 1000000.0f;
++	}
++
++	SDL_WriteGPUTimestamp(
++		renderer->renderCommandBuffer,
++		renderer->timestampPool,
++		slot
++	);
++}
++
+ static void SDLGPU_SwapBuffers(
+ 	FNA3D_Renderer *driverData,
+ 	FNA3D_Rect *sourceRectangle,
+@@ -1200,8 +1243,22 @@ static void SDLGPU_SwapBuffers(
+ 		);
+ 	}
+
++	if (renderer->timestampPool != NULL)
++	{
++		SDL_WriteGPUTimestamp(
++			renderer->renderCommandBuffer,
++			renderer->timestampPool,
++			(renderer->timedFrame % GPU_TIMING_FRAMES) * 2 + 1
++		);
++	}
++
+ 	SDLGPU_INTERNAL_FlushCommands(renderer);
+
++	if (renderer->timestampPool != NULL)
++	{
++		SDLGPU_INTERNAL_BeginTimedFrame(renderer);
++	}
++
+ 	/* Reset bound RT state */
+ 	for (i = 0; i < renderer->boundRenderTargetCount; i += 1)
+ 	{
+@@ -4171,6 +4228,12 @@ static void SDLGPU_SetTextureName(
+ 	);
+ }
+
++static float SDLGPU_GetGPUFrameTimeEXT(FNA3D_Renderer *driverData)
++{
++	SDLGPU_Renderer *renderer = (SDLGPU_Renderer*) driverData;
++	return renderer->timestampPool != NULL ? renderer->gpuFrameTime : -1.0f;
++}
++
+ /* External Interop */
+
+ static void SDLGPU_GetSysRenderer(
+@@ -4212,6 +4275,8 @@ static void SDLGPU_DestroyDevice(FNA3D_Device *device)
+ 	SDL_UnlockMutex(renderer->commandLock);
+ 	SDL_DestroyMutex(renderer->commandLock);
+
++	SDL_ReleaseGPUQueryPool(renderer->device, renderer->timestampPool);
++
+ 	if (renderer->textureDownloadBuffer != NULL)
+ 	{
+ 		SDL_ReleaseGPUTransferBuffer(
+@@ -4612,6 +4677,23 @@ static FNA3D_Device* SDLGPU_CreateDevice(
+ 	SDLGPU_INTERNAL_ResetUploadCommandBufferState(renderer);
+ 	SDLGPU_INTERNAL_ResetRenderCommandBufferState(renderer);
+
++	/* Time the GPU where SDL can; NULL leaves timing off. The first frame starts
++	 * in slot 0 (timedFrame is 0).
++	 */
++	renderer->gpuFrameTime = -1.0f;
++	renderer->timestampPool = SDL_CreateGPUTimestampQueryPool(
++		renderer->device,
++		GPU_TIMING_FRAMES * 2
++	);
++	if (renderer->timestampPool != NULL)
++	{
++		SDL_WriteGPUTimestamp(renderer->renderCommandBuffer, renderer->timestampPool, 0);
++	}
++	else
++	{
++		FNA3D_LogInfo("GPU frame timing unavailable: %s", SDL_GetError());
++	}
++
+ 	/* Enqueue dummy uploads */
+
+ 	SDLGPU_INTERNAL_SetTextureData(

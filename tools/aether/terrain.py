@@ -14,6 +14,8 @@ from .fna import (
     FNA_PATCH_STAMP,
     FNA_PROJECT,
     load_fna_json,
+    natives_cache,
+    sdl_cmake_args,
 )
 from .util import AetherError, log
 
@@ -22,7 +24,8 @@ TOOLS = ("cmake", "ninja", "patch", "glslangValidator", "spirv-val")
 
 
 def build_backend() -> Path:
-    pin = load_fna_json()["commit"]
+    pinned = load_fna_json()
+    pin = pinned["commit"]
     source = paths.FNA_CACHE / pin
     if not (source / "lib" / "FNA3D" / "CMakeLists.txt").is_file():
         raise AetherError("Run ./aether setup to obtain the pinned FNA source.")
@@ -30,6 +33,8 @@ def build_backend() -> Path:
     # The FNA build it bundles (a .NET Framework one before the move to .NET 10), and
     # the version of Aether's patch to FNA that the checkout it copies has applied.
     digest.update(FNA_PROJECT.encode())
+    # The patched SDL its FNA3D (with tools/fna3d.patch, from the checkout) builds against.
+    digest.update(natives_cache(pinned).name.encode())
     stamp = source / FNA_PATCH_STAMP
     if stamp.is_file():
         digest.update(stamp.read_bytes())
@@ -90,6 +95,7 @@ def build_backend() -> Path:
             "-G",
             "Ninja",
             "-DBUILD_SDL3=ON",
+            *sdl_cmake_args(pinned),
             "-DCMAKE_BUILD_TYPE=Release",
             "-DCMAKE_POLICY_VERSION_MINIMUM=3.5",
         )

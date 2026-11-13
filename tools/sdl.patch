@@ -1,0 +1,435 @@
+diff --git a/include/SDL3/SDL_gpu.h b/include/SDL3/SDL_gpu.h
+index b3e9a8954..d9082ba90 100644
+--- a/include/SDL3/SDL_gpu.h
++++ b/include/SDL3/SDL_gpu.h
+@@ -4507,6 +4507,82 @@ extern SDL_DECLSPEC void SDLCALL SDL_ReleaseGPUFence(
+     SDL_GPUDevice *device,
+     SDL_GPUFence *fence);
+
++/* Timestamp Queries (local addition: not part of upstream SDL) */
++
++/**
++ * An opaque handle representing a pool of GPU timestamp queries.
++ *
++ * Used for measuring how long work takes on the GPU: write a timestamp into
++ * two slots around some commands, then read both once the command buffer has
++ * finished.
++ *
++ * \sa SDL_CreateGPUTimestampQueryPool
++ * \sa SDL_WriteGPUTimestamp
++ * \sa SDL_GetGPUTimestamps
++ * \sa SDL_ReleaseGPUQueryPool
++ */
++typedef struct SDL_GPUQueryPool SDL_GPUQueryPool;
++
++/**
++ * Creates a pool of GPU timestamp queries.
++ *
++ * Only the Vulkan backend supports timestamp queries.
++ *
++ * \param device a GPU context.
++ * \param count the number of timestamp slots in the pool.
++ * \returns a query pool, or NULL on failure (including an unsupported
++ *          backend or device); call SDL_GetError() for more information.
++ */
++extern SDL_DECLSPEC SDL_GPUQueryPool * SDLCALL SDL_CreateGPUTimestampQueryPool(
++    SDL_GPUDevice *device,
++    Uint32 count);
++
++/**
++ * Writes the GPU's time into a slot of a timestamp query pool once all the
++ * commands recorded before it in the command buffer have finished.
++ *
++ * Must be called outside of any render, compute or copy pass.
++ *
++ * \param command_buffer a command buffer.
++ * \param pool a timestamp query pool.
++ * \param index the slot to write.
++ */
++extern SDL_DECLSPEC void SDLCALL SDL_WriteGPUTimestamp(
++    SDL_GPUCommandBuffer *command_buffer,
++    SDL_GPUQueryPool *pool,
++    Uint32 index);
++
++/**
++ * Reads timestamps from a query pool, in nanoseconds from an arbitrary point.
++ *
++ * Only differences between timestamps are meaningful. This does not wait for
++ * the GPU.
++ *
++ * \param device a GPU context.
++ * \param pool a timestamp query pool.
++ * \param first the first slot to read.
++ * \param count the number of slots to read.
++ * \param nanoseconds receives count timestamps.
++ * \returns true if every slot was available, false if any is not ready yet or
++ *          on failure; call SDL_GetError() for more information.
++ */
++extern SDL_DECLSPEC bool SDLCALL SDL_GetGPUTimestamps(
++    SDL_GPUDevice *device,
++    SDL_GPUQueryPool *pool,
++    Uint32 first,
++    Uint32 count,
++    Uint64 *nanoseconds);
++
++/**
++ * Releases a query pool, waiting for the GPU to finish any work using it.
++ *
++ * \param device a GPU context.
++ * \param pool a query pool to release.
++ */
++extern SDL_DECLSPEC void SDLCALL SDL_ReleaseGPUQueryPool(
++    SDL_GPUDevice *device,
++    SDL_GPUQueryPool *pool);
++
+ /* Format Info */
+
+ /**
+diff --git a/src/dynapi/SDL_dynapi.sym b/src/dynapi/SDL_dynapi.sym
+index ec2e97beb..d8a2b42d5 100644
+--- a/src/dynapi/SDL_dynapi.sym
++++ b/src/dynapi/SDL_dynapi.sym
+@@ -1271,6 +1271,10 @@ SDL3_0.0.0 {
+     SDL_LoadSurface_IO;
+     SDL_LoadSurface;
+     SDL_SetWindowFillDocument;
++    SDL_CreateGPUTimestampQueryPool;
++    SDL_WriteGPUTimestamp;
++    SDL_GetGPUTimestamps;
++    SDL_ReleaseGPUQueryPool;
+     # extra symbols go here (don't modify this line)
+   local: *;
+ };
+diff --git a/src/dynapi/SDL_dynapi_overrides.h b/src/dynapi/SDL_dynapi_overrides.h
+index bf8d64273..1abb473d8 100644
+--- a/src/dynapi/SDL_dynapi_overrides.h
++++ b/src/dynapi/SDL_dynapi_overrides.h
+@@ -1297,3 +1297,7 @@
+ #define SDL_LoadSurface_IO SDL_LoadSurface_IO_REAL
+ #define SDL_LoadSurface SDL_LoadSurface_REAL
+ #define SDL_SetWindowFillDocument SDL_SetWindowFillDocument_REAL
++#define SDL_CreateGPUTimestampQueryPool SDL_CreateGPUTimestampQueryPool_REAL
++#define SDL_WriteGPUTimestamp SDL_WriteGPUTimestamp_REAL
++#define SDL_GetGPUTimestamps SDL_GetGPUTimestamps_REAL
++#define SDL_ReleaseGPUQueryPool SDL_ReleaseGPUQueryPool_REAL
+diff --git a/src/dynapi/SDL_dynapi_procs.h b/src/dynapi/SDL_dynapi_procs.h
+index 78a896a54..8891ecba3 100644
+--- a/src/dynapi/SDL_dynapi_procs.h
++++ b/src/dynapi/SDL_dynapi_procs.h
+@@ -1305,3 +1305,7 @@ SDL_DYNAPI_PROC(SDL_Surface*,SDL_RotateSurface,(SDL_Surface *a,float b),(a,b),re
+ SDL_DYNAPI_PROC(SDL_Surface*,SDL_LoadSurface_IO,(SDL_IOStream *a,bool b),(a,b),return)
+ SDL_DYNAPI_PROC(SDL_Surface*,SDL_LoadSurface,(const char *a),(a),return)
+ SDL_DYNAPI_PROC(bool,SDL_SetWindowFillDocument,(SDL_Window *a,bool b),(a,b),return)
++SDL_DYNAPI_PROC(SDL_GPUQueryPool*,SDL_CreateGPUTimestampQueryPool,(SDL_GPUDevice *a,Uint32 b),(a,b),return)
++SDL_DYNAPI_PROC(void,SDL_WriteGPUTimestamp,(SDL_GPUCommandBuffer *a,SDL_GPUQueryPool *b,Uint32 c),(a,b,c),)
++SDL_DYNAPI_PROC(bool,SDL_GetGPUTimestamps,(SDL_GPUDevice *a,SDL_GPUQueryPool *b,Uint32 c,Uint32 d,Uint64 *e),(a,b,c,d,e),return)
++SDL_DYNAPI_PROC(void,SDL_ReleaseGPUQueryPool,(SDL_GPUDevice *a,SDL_GPUQueryPool *b),(a,b),)
+diff --git a/src/gpu/SDL_gpu.c b/src/gpu/SDL_gpu.c
+index 95f088813..2d0957581 100644
+--- a/src/gpu/SDL_gpu.c
++++ b/src/gpu/SDL_gpu.c
+@@ -3543,6 +3543,95 @@ bool SDL_QueryGPUFence(
+         fence);
+ }
+
++// Timestamp Queries
++
++SDL_GPUQueryPool *SDL_CreateGPUTimestampQueryPool(
++    SDL_GPUDevice *device,
++    Uint32 count)
++{
++    CHECK_DEVICE_MAGIC(device, NULL);
++
++    CHECK_PARAM(count == 0) {
++        SDL_InvalidParamError("count");
++        return NULL;
++    }
++
++    if (device->CreateTimestampQueryPool == NULL) {
++        SDL_Unsupported();
++        return NULL;
++    }
++
++    return device->CreateTimestampQueryPool(
++        device->driverData,
++        count);
++}
++
++void SDL_WriteGPUTimestamp(
++    SDL_GPUCommandBuffer *command_buffer,
++    SDL_GPUQueryPool *pool,
++    Uint32 index)
++{
++    CHECK_PARAM(command_buffer == NULL) {
++        SDL_InvalidParamError("command_buffer");
++        return;
++    }
++    CHECK_PARAM(pool == NULL) {
++        SDL_InvalidParamError("pool");
++        return;
++    }
++
++    if (COMMAND_BUFFER_DEVICE->debug_mode) {
++        CHECK_COMMAND_BUFFER
++        CHECK_ANY_PASS_IN_PROGRESS("Cannot write a timestamp during a pass!", )
++    }
++
++    COMMAND_BUFFER_DEVICE->WriteTimestamp(
++        command_buffer,
++        pool,
++        index);
++}
++
++bool SDL_GetGPUTimestamps(
++    SDL_GPUDevice *device,
++    SDL_GPUQueryPool *pool,
++    Uint32 first,
++    Uint32 count,
++    Uint64 *nanoseconds)
++{
++    CHECK_DEVICE_MAGIC(device, false);
++
++    CHECK_PARAM(pool == NULL) {
++        SDL_InvalidParamError("pool");
++        return false;
++    }
++    CHECK_PARAM(nanoseconds == NULL) {
++        SDL_InvalidParamError("nanoseconds");
++        return false;
++    }
++
++    return device->GetTimestamps(
++        device->driverData,
++        pool,
++        first,
++        count,
++        nanoseconds);
++}
++
++void SDL_ReleaseGPUQueryPool(
++    SDL_GPUDevice *device,
++    SDL_GPUQueryPool *pool)
++{
++    CHECK_DEVICE_MAGIC(device, );
++
++    if (pool == NULL) {
++        return;
++    }
++
++    device->ReleaseQueryPool(
++        device->driverData,
++        pool);
++}
++
+ void SDL_ReleaseGPUFence(
+     SDL_GPUDevice *device,
+     SDL_GPUFence *fence)
+diff --git a/src/gpu/SDL_sysgpu.h b/src/gpu/SDL_sysgpu.h
+index e77d4a8c5..622d7df9f 100644
+--- a/src/gpu/SDL_sysgpu.h
++++ b/src/gpu/SDL_sysgpu.h
+@@ -1072,6 +1072,28 @@ struct SDL_GPUDevice
+         SDL_GPURenderer *driverData,
+         SDL_GPUFence *fence);
+
++    // Timestamp queries: optional, left NULL by backends without them (not in ASSIGN_DRIVER)
++
++    SDL_GPUQueryPool *(*CreateTimestampQueryPool)(
++        SDL_GPURenderer *driverData,
++        Uint32 count);
++
++    void (*WriteTimestamp)(
++        SDL_GPUCommandBuffer *commandBuffer,
++        SDL_GPUQueryPool *pool,
++        Uint32 index);
++
++    bool (*GetTimestamps)(
++        SDL_GPURenderer *driverData,
++        SDL_GPUQueryPool *pool,
++        Uint32 first,
++        Uint32 count,
++        Uint64 *nanoseconds);
++
++    void (*ReleaseQueryPool)(
++        SDL_GPURenderer *driverData,
++        SDL_GPUQueryPool *pool);
++
+     // Feature Queries
+
+     bool (*SupportsTextureFormat)(
+diff --git a/src/gpu/vulkan/SDL_gpu_vulkan.c b/src/gpu/vulkan/SDL_gpu_vulkan.c
+index a7d8d57d7..72ca3ebfe 100644
+--- a/src/gpu/vulkan/SDL_gpu_vulkan.c
++++ b/src/gpu/vulkan/SDL_gpu_vulkan.c
+@@ -9743,6 +9743,130 @@ static SDL_GPUCommandBuffer *VULKAN_AcquireCommandBuffer(
+     return (SDL_GPUCommandBuffer *)commandBuffer;
+ }
+
++// Timestamp Queries
++
++typedef struct VulkanQueryPool
++{
++    VkQueryPool queryPool;
++    Uint32 count;
++} VulkanQueryPool;
++
++static SDL_GPUQueryPool *VULKAN_CreateTimestampQueryPool(
++    SDL_GPURenderer *driverData,
++    Uint32 count)
++{
++    VulkanRenderer *renderer = (VulkanRenderer *)driverData;
++    VkQueryPoolCreateInfo createInfo;
++    VkQueryPool queryPool;
++    VkResult result;
++    VulkanQueryPool *pool;
++
++    // Graphics and compute queues all support timestamps when this is set
++    if (!renderer->physicalDeviceProperties.properties.limits.timestampComputeAndGraphics) {
++        SDL_SetError("This device doesn't support GPU timestamps");
++        return NULL;
++    }
++
++    SDL_zero(createInfo);
++    createInfo.sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
++    createInfo.queryType = VK_QUERY_TYPE_TIMESTAMP;
++    createInfo.queryCount = count;
++
++    result = renderer->vkCreateQueryPool(
++        renderer->logicalDevice,
++        &createInfo,
++        NULL,
++        &queryPool);
++    CHECK_VULKAN_ERROR_AND_RETURN(result, vkCreateQueryPool, NULL);
++
++    pool = SDL_malloc(sizeof(VulkanQueryPool));
++    pool->queryPool = queryPool;
++    pool->count = count;
++    return (SDL_GPUQueryPool *)pool;
++}
++
++static void VULKAN_WriteTimestamp(
++    SDL_GPUCommandBuffer *commandBuffer,
++    SDL_GPUQueryPool *pool,
++    Uint32 index)
++{
++    VulkanCommandBuffer *vulkanCommandBuffer = (VulkanCommandBuffer *)commandBuffer;
++    VulkanRenderer *renderer = vulkanCommandBuffer->renderer;
++    VulkanQueryPool *vulkanPool = (VulkanQueryPool *)pool;
++
++    if (index >= vulkanPool->count) {
++        SDL_SetError("Timestamp index %" SDL_PRIu32 " is outside the pool", index);
++        return;
++    }
++
++    // A slot must be reset before each write; resetting is only allowed outside passes
++    renderer->vkCmdResetQueryPool(
++        vulkanCommandBuffer->commandBuffer,
++        vulkanPool->queryPool,
++        index,
++        1);
++    renderer->vkCmdWriteTimestamp(
++        vulkanCommandBuffer->commandBuffer,
++        VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
++        vulkanPool->queryPool,
++        index);
++}
++
++static bool VULKAN_GetTimestamps(
++    SDL_GPURenderer *driverData,
++    SDL_GPUQueryPool *pool,
++    Uint32 first,
++    Uint32 count,
++    Uint64 *nanoseconds)
++{
++    VulkanRenderer *renderer = (VulkanRenderer *)driverData;
++    VulkanQueryPool *vulkanPool = (VulkanQueryPool *)pool;
++    double period = renderer->physicalDeviceProperties.properties.limits.timestampPeriod;
++    VkResult result;
++    Uint32 i;
++
++    if (first >= vulkanPool->count || count > vulkanPool->count - first) {
++        SDL_SetError("Timestamp range is outside the pool");
++        return false;
++    }
++
++    result = renderer->vkGetQueryPoolResults(
++        renderer->logicalDevice,
++        vulkanPool->queryPool,
++        first,
++        count,
++        count * sizeof(Uint64),
++        nanoseconds,
++        sizeof(Uint64),
++        VK_QUERY_RESULT_64_BIT);
++    if (result == VK_NOT_READY) {
++        return false;
++    }
++    CHECK_VULKAN_ERROR_AND_RETURN(result, vkGetQueryPoolResults, false);
++
++    // Ticks to nanoseconds
++    for (i = 0; i < count; i += 1) {
++        nanoseconds[i] = (Uint64)((double)nanoseconds[i] * period);
++    }
++    return true;
++}
++
++static void VULKAN_ReleaseQueryPool(
++    SDL_GPURenderer *driverData,
++    SDL_GPUQueryPool *pool)
++{
++    VulkanRenderer *renderer = (VulkanRenderer *)driverData;
++    VulkanQueryPool *vulkanPool = (VulkanQueryPool *)pool;
++
++    // shortcut: waits for the whole GPU rather than deferring the destroy; fine for long-lived pools
++    VULKAN_Wait(driverData);
++    renderer->vkDestroyQueryPool(
++        renderer->logicalDevice,
++        vulkanPool->queryPool,
++        NULL);
++    SDL_free(vulkanPool);
++}
++
+ static bool VULKAN_QueryFence(
+     SDL_GPURenderer *driverData,
+     SDL_GPUFence *fence)
+@@ -12879,6 +13003,10 @@ static SDL_GPUDevice *VULKAN_CreateDevice(bool debugMode, bool preferLowPower, S
+     // FIXME: just move this into this function
+     result = (SDL_GPUDevice *)SDL_calloc(1, sizeof(SDL_GPUDevice));
+     ASSIGN_DRIVER(VULKAN)
++    result->CreateTimestampQueryPool = VULKAN_CreateTimestampQueryPool;
++    result->WriteTimestamp = VULKAN_WriteTimestamp;
++    result->GetTimestamps = VULKAN_GetTimestamps;
++    result->ReleaseQueryPool = VULKAN_ReleaseQueryPool;
+
+     result->driverData = (SDL_GPURenderer *)renderer;
+     result->shader_formats = SDL_GPU_SHADERFORMAT_SPIRV;
+diff --git a/src/gpu/vulkan/SDL_gpu_vulkan_vkfuncs.h b/src/gpu/vulkan/SDL_gpu_vulkan_vkfuncs.h
+index a56beff11..6ac09a307 100644
+--- a/src/gpu/vulkan/SDL_gpu_vulkan_vkfuncs.h
++++ b/src/gpu/vulkan/SDL_gpu_vulkan_vkfuncs.h
+@@ -106,6 +106,8 @@ VULKAN_DEVICE_FUNCTION(vkCmdDrawIndexedIndirect)
+ VULKAN_DEVICE_FUNCTION(vkCmdDrawIndirect)
+ VULKAN_DEVICE_FUNCTION(vkCmdEndRenderPass)
+ VULKAN_DEVICE_FUNCTION(vkCmdPipelineBarrier)
++VULKAN_DEVICE_FUNCTION(vkCmdResetQueryPool)
++VULKAN_DEVICE_FUNCTION(vkCmdWriteTimestamp)
+ VULKAN_DEVICE_FUNCTION(vkCmdResolveImage)
+ VULKAN_DEVICE_FUNCTION(vkCmdSetBlendConstants)
+ VULKAN_DEVICE_FUNCTION(vkCmdSetDepthBias)
+@@ -117,6 +119,8 @@ VULKAN_DEVICE_FUNCTION(vkCreateCommandPool)
+ VULKAN_DEVICE_FUNCTION(vkCreateDescriptorPool)
+ VULKAN_DEVICE_FUNCTION(vkCreateDescriptorSetLayout)
+ VULKAN_DEVICE_FUNCTION(vkCreateFence)
++VULKAN_DEVICE_FUNCTION(vkCreateQueryPool)
++VULKAN_DEVICE_FUNCTION(vkDestroyQueryPool)
+ VULKAN_DEVICE_FUNCTION(vkCreateFramebuffer)
+ VULKAN_DEVICE_FUNCTION(vkCreateComputePipelines)
+ VULKAN_DEVICE_FUNCTION(vkCreateGraphicsPipelines)
+@@ -151,6 +155,7 @@ VULKAN_DEVICE_FUNCTION(vkFreeMemory)
+ VULKAN_DEVICE_FUNCTION(vkGetDeviceQueue)
+ VULKAN_DEVICE_FUNCTION(vkGetPipelineCacheData)
+ VULKAN_DEVICE_FUNCTION(vkGetFenceStatus)
++VULKAN_DEVICE_FUNCTION(vkGetQueryPoolResults)
+ VULKAN_DEVICE_FUNCTION(vkGetBufferMemoryRequirements)
+ VULKAN_DEVICE_FUNCTION(vkGetImageMemoryRequirements)
+ VULKAN_DEVICE_FUNCTION(vkMapMemory)

@@ -1,6 +1,10 @@
 {
   "version": "26.11",
   "commit": "6f9735ad5b495b36581b1387824fa57f371937a2",
+  "sdl": {
+    "repo": "https://github.com/libsdl-org/SDL.git",
+    "commit": "eac186a84c693d246f6d1eeed51c73dfd3fa7f30"
+  },
   "natives": {
     "repo": "FNA-XNA/fnalibs-dailies",
     "run_id": 41706379185,

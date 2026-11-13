@@ -12,7 +12,7 @@ import tempfile
 from pathlib import Path
 
 from . import paths
-from .fna import build_fna, fetch_natives, load_fna_json
+from .fna import build_fna, build_natives, fetch_natives, load_fna_json
 from .pinning import load_base_json, write_stamp
 from .steamworks import fetch_steamworks
 from .tree import tree_files
@@ -227,6 +227,7 @@ def build_base(game_dir: Path, allow_mismatch: bool) -> None:
         fna_pin = load_fna_json()
         build_fna(fna_pin, new_lib)
         fetch_natives(fna_pin, new_lib)
+        build_natives(fna_pin, new_lib)
         fetch_steamworks(new_lib)
 
         # Decompile against the net40 reference assemblies (not the game's Mono mscorlib,
