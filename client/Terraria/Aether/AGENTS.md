@@ -106,7 +106,8 @@ Started with `-aethermcp [PORT]` (`./aether run|launch|screens --mcp PORT`), the
 - `ControlServer` serves the `aether-game` MCP server on 127.0.0.1 (default port 47321; `McpHttpServer`, the official C# SDK's stateless Streamable HTTP transport over `HttpListener`), whose tools (`GameTools`) run control commands with `ControlServer.Execute`.
   Commands from all requests run in order on the main thread: `Main.Update` calls `ControlServer.Tick()` first, before the update reads its input.
   Each command is an iterator that yields once per update, so smooth moves, drags, stick and trigger glides and waits span updates, and the reply comes when the command has finished.
-  Screenshots read the back buffer in `Main.OnPostDraw`, optionally cropped and box-filtered.
+  Screenshots read the back buffer in `Main.OnPostDraw`, optionally cropped (to a component's bounds too) and box-filtered.
+  `ui layout` lists each component tree separately under `trees`: the game's retained UI (`UiAutomation`, tree `terraria`) and the trees mods register (`UiTrees`, `IUiTree`, e.g. FreshUI's Gum screens as `gum`); `ui act` sends an ID with a registered tree's prefix (`gum:12`) to that tree.
   The command list is its doc comment.
   `profile [FRAMES] [TOP] PATH` reports allocation call stacks when the game was started with the allocation profiler (`--profile`; .NET loads it from `CORECLR_PROFILER_PATH` at startup, and `NativeProfiler` loads that same library again to call its exports; the report is written from a native thread of its own, since .NET refuses the profiler's metadata lookups from managed threads).
   `alloc [FRAMES]` measures main-thread allocations (overall and per retained screen), `frames [FRAMES] [PATH]` returns frame statistics from `Aether.Profiling.FrameMeter` (and writes each frame as CSV), `overlay [on|off]` shows the profiler overlay, `resize W H` resizes the window and `menu MODE` switches title-menu screens.

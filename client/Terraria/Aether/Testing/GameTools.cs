@@ -54,7 +54,7 @@ public static class GameTools
     public static Task<string> State() => Run("state");
 
     [McpServerTool(Name = "game_ui_layout", ReadOnly = true)]
-    [Description("Inspect the next rendered UI frame, as JSON. Components include IDs, labels, bounds and available actions. Set interactive_only to return only actionable controls. IDs belong to the latest layout.")]
+    [Description("Inspect the next rendered UI frame, as JSON. Each component tree is listed separately under trees, with its id and owner: Terraria's retained UI (terraria) and mods' own (e.g. gum, FreshUI's Gum screens; their component IDs start with the tree's id, like gum:12). Components include IDs, parents, labels, bounds, values and available actions. Set interactive_only to return only actionable controls. IDs belong to the latest layout.")]
     public static Task<string> UiLayout(bool interactive_only = false) => Run("ui layout", interactive_only ? "interactive" : null);
 
     [McpServerTool(Name = "game_ui_action")]
@@ -72,7 +72,9 @@ public static class GameTools
     [Description("Capture the next drawn frame (the game's own back buffer, not the screen).")]
     public static async Task<CallToolResult> Screenshot(
         [Description("Downscale factor (0 to 1); multiply coordinates read off the image by 1/scale (relative to the crop's origin) before clicking.")] float scale = 0.5f,
-        [Description("[x, y, width, height] in window pixels, to look closely.")] int[] crop = null)
+        [Description("[x, y, width, height] in window pixels, to look closely.")] int[] crop = null,
+        [Description("A component ID from game_ui_layout (any tree), to capture just it.")] string component_id = null,
+        [Description("Window pixels to include around the component.")] int padding = 0)
     {
         if (scale is <= 0f or > 1f)
         {
@@ -82,7 +84,7 @@ public static class GameTools
         {
             throw new McpException("crop is [x, y, width, height]");
         }
-        (string path, string size) = await Shot(scale, crop);
+        (string path, string size) = await Shot(scale, crop, component_id, padding);
         return new CallToolResult
         {
             Content = [ImageContentBlock.FromBytes(File.ReadAllBytes(path), "image/png"), new TextContentBlock { Text = size }]
@@ -274,16 +276,26 @@ public static class GameTools
         results.Add(new TextContentBlock { Text = clock.Elapsed.TotalSeconds.ToString("0.00", CultureInfo.InvariantCulture) + "s" });
         if (screenshot_scale != null)
         {
-            (string path, _) = await Shot(screenshot_scale.Value, null);
+            (string path, _) = await Shot(screenshot_scale.Value, null, null, 0);
             results.Add(ImageContentBlock.FromBytes(File.ReadAllBytes(path), "image/png"));
         }
         return new CallToolResult { Content = results };
     }
 
-    private static async Task<(string Path, string Size)> Shot(float scale, int[] crop)
+    private static async Task<(string Path, string Size)> Shot(float scale, int[] crop, string component, int padding)
     {
         string path = NextFile("shot", ".png");
         List<object> words = new List<object> { "screenshot" };
+        if (component != null)
+        {
+            words.Add("component");
+            words.Add(component);
+            if (padding != 0)
+            {
+                words.Add("padding");
+                words.Add(padding);
+            }
+        }
         if (crop != null)
         {
             words.Add("crop");

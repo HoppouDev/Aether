@@ -294,6 +294,14 @@ internal static class UiAutomation
         });
     }
 
+    /// <summary>A component's bounds as the latest layout published them, in back-buffer pixels.</summary>
+    internal static bool TryGetPublishedBounds(string id, out Rectangle bounds)
+    {
+        bool found = _published.TryGetValue(id, out Entry entry);
+        bounds = found ? entry.Bounds : Rectangle.Empty;
+        return found;
+    }
+
     private static IEnumerable<string> ActionNames(Actions actions)
     {
         if (actions.HasFlag(Actions.Activate)) yield return "activate";

@@ -44,11 +44,13 @@ namespace Aether.Testing;
 /// pad stick left|right X Y [MS]        -1..1, Y up; glides over MS
 /// pad trigger left|right VALUE [MS]    0..1
 /// wait MS | wait frames N
-/// screenshot [crop X Y W H] [scale S] PATH
-///                                      the next drawn frame as PNG (box-filtered when S < 1);
+/// screenshot [crop X Y W H | component ID [padding P]] [scale S] PATH
+///                                      the next drawn frame as PNG (box-filtered when S < 1), or
+///                                      the part a component (ID from ui layout, any tree) covers;
 ///                                      answers WxH PATH
 /// state                                JSON: screen, menu, player, synthetic input
-/// ui layout [interactive]              JSON: visible retained UI and component actions
+/// ui layout [interactive]              JSON: each component tree (Terraria's retained UI, and
+///                                      registered ones, see UiTrees) and its component actions
 /// ui act ID ACTION [JSON]              activate, secondary, set_value (0..1) or set_text
 /// release                              let go of every button, key, stick and trigger
 /// alloc [FRAMES]                       bytes the main thread allocates over FRAMES updates (default 120),
@@ -860,6 +862,17 @@ public static class ControlServer
             {
                 throw new CommandError("this UI action does not take a value");
             }
+            IUiTree tree = UiTrees.ForComponent(parts[2]);
+            if (tree != null)
+            {
+                System.Text.Json.Nodes.JsonNode node = value == null ? null : System.Text.Json.Nodes.JsonNode.Parse(value.ToString(Formatting.None));
+                if (!tree.TryAct(parts[2], parts[3], node, out string treeError))
+                {
+                    throw new CommandError(treeError);
+                }
+                yield return null;
+                yield break;
+            }
         }
 
         UiAutomation.Frame frame = UiAutomation.Capture(layout ? null : parts[2]);
@@ -888,7 +901,7 @@ public static class ControlServer
             }
             if (layout)
             {
-                _current.Result = UiAutomation.Publish(frame, interactiveOnly);
+                _current.Result = Layout(UiAutomation.Publish(frame, interactiveOnly), interactiveOnly);
             }
             else if (!UiAutomation.TryAct(frame, parts[2], action, value, out string error))
             {
@@ -899,6 +912,43 @@ public static class ControlServer
         {
             UiAutomation.Cancel(frame);
         }
+    }
+
+    /// <summary>
+    /// The layout as one JSON object: the screen and title-menu state, and each component tree
+    /// separately under <c>trees</c>: Terraria's retained UI (<see cref="UiTrees.Terraria" />) first,
+    /// then the registered ones (<see cref="UiTrees" />), each with its <c>id</c>, <c>owner</c> and
+    /// <c>components</c>.
+    /// </summary>
+    private static string Layout(string terrariaLayout, bool interactiveOnly)
+    {
+        JObject terraria = JObject.Parse(terrariaLayout);
+        JArray trees = new JArray
+        {
+            new JObject
+            {
+                ["id"] = UiTrees.Terraria,
+                ["owner"] = "aether",
+                ["components"] = terraria["components"]
+            }
+        };
+        foreach (IUiTree tree in UiTrees.All)
+        {
+            JArray components = new JArray();
+            foreach (System.Text.Json.Nodes.JsonObject component in tree.Components(interactiveOnly))
+            {
+                components.Add(JObject.Parse(component.ToJsonString()));
+            }
+            trees.Add(new JObject
+            {
+                ["id"] = tree.Id,
+                ["owner"] = tree.Owner,
+                ["components"] = components
+            });
+        }
+        terraria.Remove("components");
+        terraria["trees"] = trees;
+        return terraria.ToString(Formatting.None);
     }
 
     private static IEnumerable<object> Screenshot(string[] words, string line)
@@ -915,6 +965,27 @@ public static class ControlServer
                 crop = new Rectangle(Int(words, index + 1, "x"), Int(words, index + 2, "y"), Int(words, index + 3, "width"), Int(words, index + 4, "height"));
                 index += 5;
             }
+            else if (option == "component")
+            {
+                // A component's bounds (from game_ui_layout), grown by padding.
+                string id = words[index + 1];
+                IUiTree tree = UiTrees.ForComponent(id);
+                Rectangle bounds;
+                if (!(tree != null ? tree.TryGetBounds(id, out bounds) : UiAutomation.TryGetPublishedBounds(id, out bounds)))
+                {
+                    throw new CommandError("stale UI component; request the current layout");
+                }
+                crop = bounds;
+                index += 2;
+            }
+            else if (option == "padding")
+            {
+                int padding = Int(words, index + 1, "padding");
+                Rectangle area = crop ?? throw new CommandError("padding goes after component or crop");
+                area.Inflate(padding, padding);
+                crop = area;
+                index += 2;
+            }
             else if (option == "scale")
             {
                 scale = MathHelper.Clamp(Number(words, index + 1, "scale"), 0.05f, 1f);
@@ -927,7 +998,7 @@ public static class ControlServer
         }
         if (words.Length <= index)
         {
-            throw new CommandError("screenshot [crop X Y W H] [scale S] PATH");
+            throw new CommandError("screenshot [crop X Y W H | component ID [padding P]] [scale S] PATH");
         }
         string rest = line.Trim().Substring(words[0].Length).TrimStart();
         for (int i = 1; i < index; i++)

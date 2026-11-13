@@ -32,9 +32,9 @@ The server answers at `http://127.0.0.1:47321/mcp` (`.mcp.json`) once the title 
 | `overlay` | Show or hide the profiler overlay (Right Shift + F12), or toggle it. |
 | `resize` | Resize the window, as dragging its edge does. |
 | `game_state` | Screen size, `loading`, `gameMenu`, `menuMode`, the frame and update rates (`fps`, `ups`, per second) and `presentInterval` (`One`: vsync), the synthetic mouse, keys and pad, `usingGamepad`. In game it also gives the player (tile, life, mana, held item, inventory open, chest, `talkNPC`, item on the cursor), `ingameOptions` and `mapFullscreen`. |
-| `game_ui_layout` | Read the next drawn frame’s retained UI, with component IDs, labels, bounds, and actions. Use `interactive_only: true` to return actionable controls only. |
+| `game_ui_layout` | Read the next drawn frame’s component trees, each separately under `trees` with its `id` and `owner`: the game's retained UI (`terraria`) and mods' own (`gum`: FreshUI's Gum screens, with IDs like `gum:12`). Components have IDs, labels, bounds, values and actions. Use `interactive_only: true` to return actionable controls only. |
 | `game_ui_action` | Act on a component ID from the latest layout. Use `activate`, `secondary`, `set_value` (a number from 0 to 1), or `set_text` (a string) as advertised by the component. |
-| `game_screenshot` | The next drawn frame. `scale` defaults to 0.5. `crop: [x, y, w, h]` with `scale: 1` reads small text or checks pixels. |
+| `game_screenshot` | The next drawn frame. `scale` defaults to 0.5. `crop: [x, y, w, h]` with `scale: 1` reads small text or checks pixels; `component_id` (any tree, with optional `padding`) captures one component. |
 | `mouse_move` | Move the cursor to (x, y), gliding over `duration_ms`. |
 | `mouse_click` | Click at (x, y), or where the cursor is. Options: `button`, `hold_frames` (default 2), `count`. |
 | `mouse_drag` | Press at (x1, y1), glide to (x2, y2) over `duration_ms` (default 400), release. |
@@ -96,6 +96,7 @@ menu MODE (title menu: show Main.menuMode MODE) | alloc [FRAMES] (allocations, J
 profile [FRAMES] [TOP] PATH (allocation call stacks, with --profile)
 frames [FRAMES] [PATH] (frame statistics, JSON; PATH: each frame as CSV)
 overlay [on|off] | resize W H
+screenshot component ID [padding P] [scale S] PATH
 ```
 
 ## Getting around
