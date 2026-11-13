@@ -256,3 +256,109 @@ index b1d3202..2fe8e3a 100644
  		public override string Name
  		{
  			get
+diff --git a/src/Input/GamePad.cs b/src/Input/GamePad.cs
+index b385981..830e25f 100644
+--- a/src/Input/GamePad.cs
++++ b/src/Input/GamePad.cs
+@@ -63,20 +63,24 @@ namespace Microsoft.Xna.Framework.Input
+
+ 		public static GamePadState GetState(PlayerIndex playerIndex)
+ 		{
+-			return FNAPlatform.GetGamePadState(
+-				(int) playerIndex,
+-				GamePadDeadZone.IndependentAxes
+-			);
++			return GetState(playerIndex, GamePadDeadZone.IndependentAxes);
+ 		}
+
+ 		public static GamePadState GetState(PlayerIndex playerIndex, GamePadDeadZone deadZoneMode)
+ 		{
+-			return FNAPlatform.GetGamePadState(
++			GamePadState state = FNAPlatform.GetGamePadState(
+ 				(int) playerIndex,
+ 				deadZoneMode
+ 			);
++			return (StateFilterEXT == null) ? state : StateFilterEXT(playerIndex, state);
+ 		}
+
++		/// <summary>
++		/// Filters what GetState returns for each player: the platform's state in, the game's
++		/// out, for input injection (automation, replays). Null for none.
++		/// </summary>
++		public static Func<PlayerIndex, GamePadState, GamePadState> StateFilterEXT;
++
+ 		public static bool SetVibration(PlayerIndex playerIndex, float leftMotor, float rightMotor)
+ 		{
+ 			return FNAPlatform.SetGamePadVibration(
+diff --git a/src/Input/Keyboard.cs b/src/Input/Keyboard.cs
+index 0caa8b9..c1833dc 100644
+--- a/src/Input/Keyboard.cs
++++ b/src/Input/Keyboard.cs
+@@ -27,7 +27,7 @@ namespace Microsoft.Xna.Framework.Input
+ 		/// <returns>Current keyboard state.</returns>
+ 		public static KeyboardState GetState()
+ 		{
+-			return keys;
++			return (StateFilterEXT == null) ? keys : StateFilterEXT(keys);
+ 		}
+
+ 		/// <summary>
+@@ -37,13 +37,19 @@ namespace Microsoft.Xna.Framework.Input
+ 		/// <returns>Current keyboard state.</returns>
+ 		public static KeyboardState GetState(PlayerIndex playerIndex)
+ 		{
+-			return keys;
++			return GetState();
+ 		}
+
+ 		#endregion
+
+ 		#region Public Static FNA Extensions
+
++		/// <summary>
++		/// Filters what GetState returns: the platform's state in, the game's out, for input
++		/// injection (automation, replays). Null for none.
++		/// </summary>
++		public static Func<KeyboardState, KeyboardState> StateFilterEXT;
++
+ 		public static Keys GetKeyFromScancodeEXT(Keys scancode)
+ 		{
+ 			return FNAPlatform.GetKeyFromScancode(scancode);
+diff --git a/src/Input/Mouse.cs b/src/Input/Mouse.cs
+index bda2498..edaa7cd 100644
+--- a/src/Input/Mouse.cs
++++ b/src/Input/Mouse.cs
+@@ -57,6 +57,16 @@ namespace Microsoft.Xna.Framework.Input
+
+ 		#endregion
+
++		#region Public Static FNA Extensions
++
++		/// <summary>
++		/// Filters what GetState returns: the platform's state in, the game's out, for input
++		/// injection (automation, replays). Null for none.
++		/// </summary>
++		public static Func<MouseState, MouseState> StateFilterEXT;
++
++		#endregion
++
+ 		#region Public Interface
+
+ 		/// <summary>
+@@ -84,7 +94,7 @@ namespace Microsoft.Xna.Framework.Input
+ 			x = (int) ((double) x * INTERNAL_BackBufferWidth / INTERNAL_WindowWidth);
+ 			y = (int) ((double) y * INTERNAL_BackBufferHeight / INTERNAL_WindowHeight);
+
+-			return new MouseState(
++			MouseState state = new MouseState(
+ 				x,
+ 				y,
+ 				(int) INTERNAL_MouseWheel,
+@@ -94,6 +104,7 @@ namespace Microsoft.Xna.Framework.Input
+ 				x1,
+ 				x2
+ 			);
++			return (StateFilterEXT == null) ? state : StateFilterEXT(state);
+ 		}
+
+ 		/// <summary>

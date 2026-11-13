@@ -22,15 +22,15 @@ internal static class LocalMovementPreview
             left=PlayerInput.Triggers.Current.Left;right=PlayerInput.Triggers.Current.Right;jump=PlayerInput.Triggers.Current.Jump;
             for(int i=0;i<4;i++)
             {
-                var pad=Aether.Testing.SyntheticInput.GamePad(i, GamePad.GetState((PlayerIndex)i));if(!pad.IsConnected)continue;
+                var pad=GamePad.GetState((PlayerIndex)i);if(!pad.IsConnected)continue;
                 left=pad.ThumbSticks.Left.X<-.2f||BoundPad(pad,"Left");
                 right=pad.ThumbSticks.Left.X>.2f||BoundPad(pad,"Right");jump=BoundPad(pad,"Jump");break;
             }
         }
         else
         {
-            var keyboard = Aether.Testing.SyntheticInput.Keyboard(Keyboard.GetState());
-            var mouse = Aether.Testing.SyntheticInput.Mouse(Mouse.GetState());
+            var keyboard = Keyboard.GetState();
+            var mouse = Mouse.GetState();
             left=BoundKey(keyboard,mouse,"Left");right=BoundKey(keyboard,mouse,"Right");jump=BoundKey(keyboard,mouse,"Jump");
         }
         int desired=(right?1:0)-(left?1:0),simulated=(player.controlRight?1:0)-(player.controlLeft?1:0);

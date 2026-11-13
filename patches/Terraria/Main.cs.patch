@@ -1018,7 +1018,7 @@
          {
              ChatMessage message = ChatManager.Commands.CreateOutgoingMessage(chatText);
              if (netMode == 1)
-@@ -18581,16 +18634,28 @@
+@@ -18581,9 +18634,21 @@
          SoundEngine.PlaySound(11);
      }
  
@@ -1041,14 +1041,6 @@
          UpdateViewZoomKeys();
          PlayerInput.SetZoom_Unscaled();
          UILinkPointNavigator.Update();
-         PlayerInput.CacheMousePositionForZoom();
-         PlayerInput.SetZoom_MouseInWorld();
-         oldKeyState = keyState;
--        keyState = (FocusHelper.AllowInputProcessing ? Keyboard.GetState() : default(KeyboardState));
-+        keyState = (FocusHelper.AllowInputProcessing ? Aether.Testing.SyntheticInput.Keyboard(Keyboard.GetState()) : default(KeyboardState));
-     }
- 
-     private static void DoUpdate_AltEnter_ToggleFullscreen()
 @@ -20271,7 +20336,7 @@
                      text2 = PasteTextIn(allowMultiLine, text2);
                  }
@@ -1058,15 +1050,6 @@
              {
                  inputTextEscape = true;
              }
-@@ -20296,7 +20361,7 @@
-         keyCount = 0;
-         text += text2;
-         oldInputText = inputText;
--        inputText = Keyboard.GetState();
-+        inputText = Aether.Testing.SyntheticInput.Keyboard(Keyboard.GetState());
-         if (inputText.IsKeyDown(Microsoft.Xna.Framework.Input.Keys.Back) && oldInputText.IsKeyDown(Microsoft.Xna.Framework.Input.Keys.Back) && !imeCompositionActive)
-         {
-             backSpaceRate -= 0.05f;
 @@ -22705,6 +22770,7 @@
  
      protected void DrawNPC(NPC npc, bool behindTiles)

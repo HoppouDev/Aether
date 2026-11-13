@@ -212,6 +212,7 @@ public static class ControlServer
             return;
         }
         SyntheticInput.Enabled = true;
+        SyntheticInput.Install();
         SyntheticInput.MousePosition = new Vector2(Main.screenWidth / 2, Main.screenHeight / 2);
         Main.OnPostDraw += AfterDraw;
         Thread thread = new Thread(() => Accept(listener));
@@ -431,10 +432,10 @@ public static class ControlServer
         switch (sub)
         {
         case "down":
-            SyntheticInput.KeysDown.UnionWith(keys);
+            SyntheticInput.HoldKeys(keys);
             return Frames(1);
         case "up":
-            SyntheticInput.KeysDown.ExceptWith(keys);
+            SyntheticInput.ReleaseKeys(keys);
             return Frames(1);
         case "press":
             return KeyPress(keys, (int)Optional(words, 3, 2f));
@@ -446,12 +447,12 @@ public static class ControlServer
     private static IEnumerable<object> KeyPress(List<Keys> keys, int frames)
     {
         // Modifiers first, so e.g. ctrl+shift+l reads as a chord.
-        SyntheticInput.KeysDown.UnionWith(keys);
+        SyntheticInput.HoldKeys(keys);
         for (int i = 0; i < Math.Max(1, frames); i++)
         {
             yield return null;
         }
-        SyntheticInput.KeysDown.ExceptWith(keys);
+        SyntheticInput.ReleaseKeys(keys);
         yield return null;
     }
 

@@ -12,7 +12,7 @@ public static class CursorHooks
     public static void SampleMouse()
     {
         // Sample once per rendered frame so the cursor and outline stay aligned.
-        MouseState mouse = Aether.Testing.SyntheticInput.Mouse(Mouse.GetState());
+        MouseState mouse = Mouse.GetState();
         mousePosition = new Vector2(mouse.X, mouse.Y) * PlayerInput.RawMouseScale;
     }
 

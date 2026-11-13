@@ -14,19 +14,6 @@
      {
          get
          {
-@@ -510,9 +515,9 @@
-         {
-             MouseInfo = default;
-             MouseInfoOld = default;
--            Main.keyState = Keyboard.GetState();
--            Main.inputText = Keyboard.GetState();
--            Main.oldInputText = Keyboard.GetState();
-+            Main.keyState = Aether.Testing.SyntheticInput.Keyboard(Keyboard.GetState());
-+            Main.inputText = Aether.Testing.SyntheticInput.Keyboard(Keyboard.GetState());
-+            Main.oldInputText = Aether.Testing.SyntheticInput.Keyboard(Keyboard.GetState());
-             Main.keyCount = 0;
-             Triggers.Reset();
-             Triggers.Reset();
 @@ -541,6 +546,26 @@
          return list;
      }
@@ -93,7 +80,7 @@
 +        {
 +            return;
 +        }
-+        MouseState mouse = Aether.Testing.SyntheticInput.Mouse(Mouse.GetState());
++        MouseState mouse = Mouse.GetState();
 +        int x = (int)((float)mouse.X * RawMouseScale.X);
 +        int y = (int)((float)mouse.Y * RawMouseScale.Y);
 +        if (x == _originalMouseX && y == _originalMouseY)
@@ -122,15 +109,6 @@
      public static void CacheZoomableValues()
      {
          CacheOriginalInput();
-@@ -981,7 +1058,7 @@
-         bool flag2 = false;
-         for (int i = 0; i < 4; i++)
-         {
--            GamePadState state = GamePad.GetState((PlayerIndex)i);
-+            GamePadState state = Aether.Testing.SyntheticInput.GamePad(i, GamePad.GetState((PlayerIndex)i));
-             if (state.IsConnected)
-             {
-                 flag2 = true;
 @@ -1032,7 +1109,7 @@
              {
                  continue;
@@ -248,19 +226,6 @@
              if (CheckRebindingProcessGamepad(newKey))
              {
                  return false;
-@@ -1400,10 +1477,10 @@
-         if (!FocusHelper.AllowInputProcessing)
-         {
-             MouseInfo = new MouseState(MouseInfo.X, MouseInfo.Y, 0, ButtonState.Released, ButtonState.Released, ButtonState.Released, ButtonState.Released, ButtonState.Released);
--            ScrollWheelValue = (ScrollWheelValueOld = Mouse.GetState().ScrollWheelValue);
-+            ScrollWheelValue = (ScrollWheelValueOld = Aether.Testing.SyntheticInput.Mouse(Mouse.GetState()).ScrollWheelValue);
-             return;
-         }
--        MouseInfo = Mouse.GetState();
-+        MouseInfo = Aether.Testing.SyntheticInput.Mouse(Mouse.GetState());
-         ScrollWheelValue += MouseInfo.ScrollWheelValue;
-         if (DebugOptions.ForceGamepad)
-         {
 @@ -1456,11 +1533,11 @@
      {
          bool flag = false;

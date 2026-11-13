@@ -9,8 +9,9 @@ namespace Aether.Testing;
 /// <summary>
 /// Input the control server (<see cref="ControlServer" />) feeds the game in place of the real devices,
 /// so tests can drive it without the window having focus and without moving the real cursor or sending
-/// system input. The game reads its devices through the <c>Mouse</c>/<c>Keyboard</c>/<c>GamePad</c>
-/// methods here (patched in where it calls <c>Mouse.GetState()</c> and friends):
+/// system input. <see cref="Install" /> makes the methods here FNA's state filters (Aether's FNA patch:
+/// <c>Mouse</c>/<c>Keyboard</c>/<c>GamePad.StateFilterEXT</c>), so everything that reads FNA's input
+/// (the game, Aether, the profiler overlay) sees it:
 /// <list type="bullet">
 /// <item>the mouse is entirely synthetic while control is enabled (the real one is ignored);</item>
 /// <item>synthetic keys are added to the real keyboard's;</item>
@@ -32,7 +33,17 @@ public static class SyntheticInput
 
     public static int ScrollWheel;
 
-    public static readonly HashSet<Keys> KeysDown = new HashSet<Keys>();
+    private static readonly HashSet<Keys> HeldKeys = new HashSet<Keys>();
+
+    // The last merged keyboard state, rebuilt only when the real keys or the held ones change:
+    // the game reads the keyboard several times a frame.
+    private static KeyboardState _realKeys;
+
+    private static KeyboardState _mergedKeys;
+
+    private static bool _keysChanged;
+
+    public static IReadOnlyCollection<Keys> KeysDown => HeldKeys;
 
     public static bool GamePadConnected;
 
@@ -55,7 +66,27 @@ public static class SyntheticInput
         return ButtonState.Pressed;
     }
 
-    public static MouseState Mouse(MouseState real)
+    /// <summary>Makes this FNA's input: what Mouse, Keyboard and GamePad.GetState return pass through it.</summary>
+    public static void Install()
+    {
+        Microsoft.Xna.Framework.Input.Mouse.StateFilterEXT = Mouse;
+        Microsoft.Xna.Framework.Input.Keyboard.StateFilterEXT = Keyboard;
+        Microsoft.Xna.Framework.Input.GamePad.StateFilterEXT = (player, real) => GamePad((int)player, real);
+    }
+
+    public static void HoldKeys(IEnumerable<Keys> keys)
+    {
+        HeldKeys.UnionWith(keys);
+        _keysChanged = true;
+    }
+
+    public static void ReleaseKeys(IEnumerable<Keys> keys)
+    {
+        HeldKeys.ExceptWith(keys);
+        _keysChanged = true;
+    }
+
+    private static MouseState Mouse(MouseState real)
     {
         if (!Enabled)
         {
@@ -64,20 +95,26 @@ public static class SyntheticInput
         return new MouseState((int)Math.Round(MousePosition.X), (int)Math.Round(MousePosition.Y), ScrollWheel, State(LeftButton), State(MiddleButton), State(RightButton), ButtonState.Released, ButtonState.Released);
     }
 
-    public static KeyboardState Keyboard(KeyboardState real)
+    private static KeyboardState Keyboard(KeyboardState real)
     {
-        if (!Enabled || KeysDown.Count == 0)
+        if (!Enabled || HeldKeys.Count == 0)
         {
             return real;
         }
-        HashSet<Keys> keys = new HashSet<Keys>(real.GetPressedKeys());
-        keys.UnionWith(KeysDown);
-        Keys[] array = new Keys[keys.Count];
-        keys.CopyTo(array);
-        return new KeyboardState(array);
+        if (_keysChanged || real != _realKeys)
+        {
+            HashSet<Keys> keys = new HashSet<Keys>(real.GetPressedKeys());
+            keys.UnionWith(HeldKeys);
+            Keys[] array = new Keys[keys.Count];
+            keys.CopyTo(array);
+            _realKeys = real;
+            _mergedKeys = new KeyboardState(array);
+            _keysChanged = false;
+        }
+        return _mergedKeys;
     }
 
-    public static GamePadState GamePad(int index, GamePadState real)
+    private static GamePadState GamePad(int index, GamePadState real)
     {
         if (!Enabled || !GamePadConnected)
         {
@@ -106,7 +143,8 @@ public static class SyntheticInput
     public static void ReleaseAll()
     {
         LeftButton = (RightButton = (MiddleButton = false));
-        KeysDown.Clear();
+        HeldKeys.Clear();
+        _keysChanged = true;
         GamePadButtons = (Buttons)0;
         LeftStick = (RightStick = Vector2.Zero);
         LeftTrigger = (RightTrigger = 0f);
