@@ -176,12 +176,18 @@ public static class ProfilerOverlay
         {
             return;
         }
+        // One width whatever the numbers: an auto-sized window otherwise widens whenever a line does
+        // (a hitch over 100 ms, a larger allocation), and the graph no longer fills it.
+        ImGuiStylePtr style = ImGui.GetStyle();
+        float content = MathF.Max(ImGui.CalcTextSize("Frame  000.00  000.00  000.00  000.00").X,
+            ImGui.CalcTextSize("Alloc  1023.9 KB/frame (max 1023.9 KB)").X);
+        float windowWidth = content + style.WindowPadding.X * 2f;
+        ImGui.SetNextWindowSizeConstraints(new Vector2(windowWidth, 0f), new Vector2(windowWidth, float.MaxValue));
         ImGui.SetNextWindowPos(new Vector2(2f, 2f));
         ImGui.SetNextWindowBgAlpha(0.5f);
         if (ImGui.Begin("Profiler", OverlayFlags))
         {
-            // A fixed width: the default follows the window's, which an auto-sized window takes from it.
-            float width = ImGui.CalcTextSize("Frame  00.00  00.00  00.00  00.00").X;
+            float width = content;
             ImGui.TextUnformatted(_rates);
             ImGui.PushStyleColor(ImGuiCol.PlotHistogram, _used < 0.5f ? Green : _used < 0.9f ? Yellow : Red);
             ImGui.ProgressBar(MathF.Min(1f, _used), new Vector2(width, 0f), _budget);
