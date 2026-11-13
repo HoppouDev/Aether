@@ -73,6 +73,8 @@
     <PackageReference Include="System.Drawing.Common" Version="10.0.0" />
     <!-- Dear ImGui (and its native cimgui) for the profiler overlay (Aether/Graphics/DearImGui). -->
     <PackageReference Include="ImGui.NET" Version="1.91.6.1" />
+    <!-- The MCP server agents drive the client with (Aether/Testing/McpHttpServer.cs). -->
+    <PackageReference Include="ModelContextProtocol.Core" Version="2.4.0" />
     <!-- System.IO.FileFormatException (WorldFile), in WindowsBase on .NET Framework. -->
     <PackageReference Include="System.IO.Packaging" Version="10.0.0" />
     <!-- Code-access-security types the .NET Framework builds of the embedded libraries reference. -->

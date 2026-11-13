@@ -5,15 +5,17 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
-using System.Net;
-using System.Net.Sockets;
 using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
+using Aether.Profiling;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using ModelContextProtocol;
+using ModelContextProtocol.Protocol;
 using Terraria;
 using Terraria.GameInput;
 
@@ -21,12 +23,13 @@ namespace Aether.Testing;
 
 /// <summary>
 /// Lets tests and agents drive the game without focusing its window or sending system input. Start
-/// the game with <c>-aethercontrol [PORT]</c> (default <see cref="DefaultPort" />): it listens on
-/// 127.0.0.1 for one command per line and answers each with one line, <c>ok [RESULT]</c> or
-/// <c>error MESSAGE</c>, once the command has finished (a 300 ms drag answers after 300 ms). Commands
-/// from all connections run one at a time, in order, on the game's main thread, at the start of each
-/// update; their input goes through <see cref="SyntheticInput" />, and the window counts as focused.
-/// <c>tools/aether/control.py</c> is the client, and the <c>aether-game</c> MCP server wraps it.
+/// the game with <c>-aethermcp [PORT]</c> (default <see cref="DefaultPort" />): it serves the
+/// <c>aether-game</c> MCP server on <c>http://127.0.0.1:PORT/mcp</c> (<see cref="McpHttpServer" />,
+/// tools in <see cref="GameTools" />), whose tools run the commands below with <see cref="Execute" />
+/// (<c>game_send</c> runs them raw, as <c>./aether control</c> does). A command's result comes back
+/// once it has finished (a 300 ms drag after 300 ms). Commands run one at a time, in order, on the
+/// game's main thread, at the start of each update; their input goes through
+/// <see cref="SyntheticInput" />, and the window counts as focused.
 /// <code>
 /// mouse move X Y [MS]                  glide there over MS milliseconds (eased; 0 = jump)
 /// mouse down|up [left|right|middle]
@@ -56,6 +59,11 @@ namespace Aether.Testing;
 ///                                      --profile`): record allocation stacks for FRAMES updates
 ///                                      (default 120) and write the TOP (default 40) sites and methods,
 ///                                      per frame, to PATH; answers with the report's first line
+/// frames [FRAMES] [PATH]               measure the next FRAMES drawn frames (default 120, up to 100000):
+///                                      JSON statistics (Aether.Profiling.FrameStats); with PATH, also
+///                                      each frame as CSV (FrameLog)
+/// overlay [on|off]                     show, hide or toggle the profiler overlay; answers shown|hidden
+/// resize W H                           resize the window, as dragging its edge does; answers WxH
 /// ping
 /// </code>
 /// </summary>
@@ -72,7 +80,7 @@ public static class ControlServer
         // Answered already because the game stopped updating; skipped if it ever gets to it.
         public volatile bool Abandoned;
 
-        public readonly ManualResetEvent Done = new ManualResetEvent(initialState: false);
+        public readonly TaskCompletionSource<string> Done = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
     }
 
     private class CommandError : Exception
@@ -105,14 +113,17 @@ public static class ControlServer
 
     private static int _draws;
 
-    // When the main thread last ticked (Clock milliseconds), read by the connection threads.
+    // Serves for the rest of the process's life.
+    private static McpHttpServer _server;
+
+    // When the main thread last ticked (Clock milliseconds), read by the MCP server's threads.
     private static long _lastTick;
 
     /// <summary>How long the game can go without an update before waiting commands fail.</summary>
     private const long FrozenMilliseconds = 10000;
 
-    /// <summary>Whether the game was started with <c>-aethercontrol</c>.</summary>
-    public static bool IsEnabled => Program.LaunchParameters.ContainsKey("-aethercontrol");
+    /// <summary>Whether the game was started with <c>-aethermcp</c>.</summary>
+    public static bool IsEnabled => Program.LaunchParameters.ContainsKey("-aethermcp");
 
     /// <summary>Starts the server the first time and runs queued commands; called at the start of Main.Update.</summary>
     public static void Tick()
@@ -187,7 +198,7 @@ public static class ControlServer
     private static void Finish(string response)
     {
         _current.Result = response;
-        _current.Done.Set();
+        _current.Done.TrySetResult(response);
         _current = null;
         _running = null;
     }
@@ -195,87 +206,63 @@ public static class ControlServer
     private static void Start()
     {
         int port = DefaultPort;
-        string value = Program.LaunchParameters["-aethercontrol"];
+        string value = Program.LaunchParameters["-aethermcp"];
         if (value != "" && !int.TryParse(value, out port))
         {
-            AetherLog.For("Aether.Control").Warning("-aethercontrol: {Value} isn't a port; using {Port}.", value, DefaultPort);
+            AetherLog.For("Aether.Mcp").Warning("-aethermcp: {Value} isn't a port; using {Port}.", value, DefaultPort);
             port = DefaultPort;
         }
-        TcpListener listener = new TcpListener(IPAddress.Loopback, port);
+        McpHttpServer server = new McpHttpServer(port, new Implementation { Name = "aether-game", Version = "1.0" }, GameTools.Instructions, new[] { typeof(GameTools) });
         try
         {
-            listener.Start();
+            server.Start();
         }
-        catch (SocketException exception)
+        catch (Exception exception) when (exception is System.Net.HttpListenerException or InvalidOperationException)
         {
-            AetherLog.For("Aether.Control").Warning("-aethercontrol: can't listen on 127.0.0.1:{Port}: {Reason}", port, exception.Message);
+            AetherLog.For("Aether.Mcp").Warning("-aethermcp: can't listen on 127.0.0.1:{Port}: {Reason}", port, exception.Message);
             return;
         }
+        _server = server;
         SyntheticInput.Enabled = true;
         SyntheticInput.Install();
         SyntheticInput.MousePosition = new Vector2(Main.screenWidth / 2, Main.screenHeight / 2);
         Main.OnPostDraw += AfterDraw;
-        Thread thread = new Thread(() => Accept(listener));
-        thread.IsBackground = true;
-        thread.Name = "Aether control";
-        thread.Start();
-        AetherLog.For("Aether.Control").Information("Listening on 127.0.0.1:{Port}", port);
+        AetherLog.For("Aether.Mcp").Information("MCP server at http://127.0.0.1:{Port}/mcp", port);
     }
 
-    private static void Accept(TcpListener listener)
+    /// <summary>
+    /// Runs one command on the main thread (from any thread) and returns its result once it has
+    /// finished; its error, or the game freezing for <see cref="FrozenMilliseconds" />, is an
+    /// <see cref="McpException" /> with the message.
+    /// </summary>
+    public static async Task<string> Execute(string line)
     {
-        while (true)
+        if (line.Contains('\n') || line.Contains('\r'))
         {
-            TcpClient client = listener.AcceptTcpClient();
-            Thread thread = new Thread(() => Serve(client));
-            thread.IsBackground = true;
-            thread.Name = "Aether control client";
-            thread.Start();
+            throw new McpException("a command can't contain a line break");
         }
-    }
-
-    private static void Serve(TcpClient client)
-    {
-        try
+        Command command = new Command
         {
-            using (client)
+            Line = line
+        };
+        Pending.Enqueue(command);
+        while (await Task.WhenAny(command.Done.Task, Task.Delay(1000)) != command.Done.Task)
+        {
+            if ((long)Clock.Elapsed.TotalMilliseconds - Interlocked.Read(ref _lastTick) > FrozenMilliseconds)
             {
-                NetworkStream stream = client.GetStream();
-                StreamReader reader = new StreamReader(stream, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
-                StreamWriter writer = new StreamWriter(stream, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
-                writer.NewLine = "\n";
-                writer.AutoFlush = true;
-                string line;
-                while ((line = reader.ReadLine()) != null)
+                command.Abandoned = true;
+                if (!command.Done.Task.IsCompleted)
                 {
-                    line = line.TrimEnd('\r');
-                    if (line.Trim() == "")
-                    {
-                        continue;
-                    }
-                    Command command = new Command
-                    {
-                        Line = line
-                    };
-                    Pending.Enqueue(command);
-                    while (!command.Done.WaitOne(1000))
-                    {
-                        if ((long)Clock.Elapsed.TotalMilliseconds - Interlocked.Read(ref _lastTick) > FrozenMilliseconds)
-                        {
-                            command.Abandoned = true;
-                            break;
-                        }
-                    }
-                    writer.WriteLine(command.Abandoned && !command.Done.WaitOne(0) ? "error the game stopped updating (frozen, or showing an error dialog)" : command.Result);
+                    throw new McpException("the game stopped updating (frozen, or showing an error dialog)");
                 }
             }
         }
-        catch (IOException)
+        string response = command.Done.Task.Result;
+        if (response.StartsWith("error ", StringComparison.Ordinal))
         {
+            throw new McpException(response.Substring(6));
         }
-        catch (ObjectDisposedException)
-        {
-        }
+        return response.Length > 3 ? response.Substring(3) : "";
     }
 
     private static IEnumerable<object> Run(string line)
@@ -302,6 +289,19 @@ public static class ControlServer
             }
             Main.menuMode = Int(words, 1, "menuMode");
             return Frames(2);
+        case "frames":
+            return FrameStatistics(words, line);
+        case "overlay":
+            ProfilerOverlay.Shown = sub switch
+            {
+                "on" => true,
+                "off" => false,
+                "" => !ProfilerOverlay.Shown,
+                _ => throw new CommandError("overlay [on|off]")
+            };
+            return Result(ProfilerOverlay.Shown ? "shown" : "hidden");
+        case "resize":
+            return Resize(Int(words, 1, "width"), Int(words, 2, "height"));
         case "quit":
             Main.instance.Exit();
             return Frames(0);
@@ -696,6 +696,84 @@ public static class ControlServer
         {
             _current.Result = reader.ReadLine() + " -> " + path;
         }
+    }
+
+    private static IEnumerable<object> FrameStatistics(string[] words, string line)
+    {
+        // frames [FRAMES] [PATH]: the number first, the rest of the line is the path.
+        int index = 1;
+        int frames = 120;
+        if (words.Length > index && IsNumber(words[index]))
+        {
+            frames = Int(words, index++, "frames");
+        }
+        if (frames < 1 || frames > 100000)
+        {
+            throw new CommandError("frames is 1 to 100000");
+        }
+        string path = null;
+        if (words.Length > index)
+        {
+            string rest = line.Trim().Substring(words[0].Length).TrimStart();
+            if (index > 1)
+            {
+                rest = rest.Substring(words[1].Length).TrimStart();
+            }
+            path = Path.GetFullPath(rest);
+        }
+        List<FrameSample> samples = new List<FrameSample>(frames);
+        Stopwatch sinceSample = Stopwatch.StartNew();
+        Action<FrameSample> record = sample =>
+        {
+            samples.Add(sample);
+            sinceSample.Restart();
+        };
+        FrameMeter.FrameMeasured += record;
+        try
+        {
+            while (samples.Count < frames)
+            {
+                // The game doesn't draw while its window is minimized.
+                if (sinceSample.Elapsed.TotalSeconds > 3)
+                {
+                    throw new CommandError("no frames were drawn for 3 s (is the window minimized?)");
+                }
+                yield return null;
+            }
+        }
+        finally
+        {
+            FrameMeter.FrameMeasured -= record;
+        }
+        string json = System.Text.Json.JsonSerializer.Serialize(FrameStats.Of(samples, FrameMeter.BudgetMs), System.Text.Json.JsonSerializerOptions.Web);
+        if (path != null)
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(path));
+            FrameLog.Write(path, samples);
+        }
+        _current.Result = json;
+    }
+
+    private static IEnumerable<object> Resize(int width, int height)
+    {
+        if (width < 1 || height < 1)
+        {
+            throw new CommandError("resize W H: positive sizes");
+        }
+        if (!SDL3.SDL.SDL_SetWindowSize(Main.instance.Window.Handle, width, height))
+        {
+            throw new CommandError("the window can't be resized: " + SDL3.SDL.SDL_GetError());
+        }
+        for (int i = 0; i < 3; i++)
+        {
+            yield return null;
+        }
+        Rectangle window = Main.instance.Window.ClientBounds;
+        if (window.Width != width || window.Height != height)
+        {
+            throw new CommandError("the window stayed " + window.Width + "x" + window.Height + " (fullscreen or maximized?)");
+        }
+        _current.Result = window.Width + "x" + window.Height;
     }
 
     private static IEnumerable<object> Wait(float milliseconds)

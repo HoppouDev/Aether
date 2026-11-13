@@ -1,42 +1,62 @@
 import json
 import socket
 import threading
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import pytest
 from typer.testing import CliRunner
 
-from aether import cli, control
-from aether.control import Control, ControlError, GameProcess, command_line, escape_text
+from aether import cli
+from aether.control import Control, ControlError
 
 
 class FakeGame:
-    """A control socket that answers like the game: one reply line per command line."""
+    """An MCP server that answers game_send like the client: one result line per command."""
 
     def __init__(self, replies):
         self.replies = replies
         self.received: list[str] = []
-        self.server = socket.create_server(("127.0.0.1", 0))
-        self.port = self.server.getsockname()[1]
-        threading.Thread(target=self.serve, daemon=True).start()
+        game = self
 
-    def serve(self):
-        while True:
-            try:
-                conn, _ = self.server.accept()
-            except OSError:
-                return
-            with conn, conn.makefile("rwb") as f:
-                for raw in f:
-                    line = raw.decode().rstrip("\n")
-                    self.received.append(line)
-                    reply = self.replies(line)
-                    if reply is None:
-                        break
-                    f.write(reply.encode() + b"\n")
-                    f.flush()
+        class Handler(BaseHTTPRequestHandler):
+            def do_POST(self):
+                request = json.loads(
+                    self.rfile.read(int(self.headers["Content-Length"]))
+                )
+                params = request["params"]
+                assert request["method"] == "tools/call"
+                assert params["name"] == "game_send"
+                content = []
+                for line in params["arguments"]["commands"]:
+                    game.received.append(line)
+                    content.append(
+                        {
+                            "type": "text",
+                            "text": f"{line} -> {game.replies(line)}".rstrip(),
+                        }
+                    )
+                body = {
+                    "jsonrpc": "2.0",
+                    "id": request["id"],
+                    "result": {"content": content},
+                }
+                data = f"event: message\ndata: {json.dumps(body)}\n\n".encode()
+                self.send_response(200)
+                self.send_header("Content-Type", "text/event-stream")
+                self.send_header("Content-Length", str(len(data)))
+                self.end_headers()
+                self.wfile.write(data)
+
+            def log_message(self, *args):
+                pass
+
+        self.server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+        self.port = self.server.server_address[1]
+        threading.Thread(target=self.server.serve_forever, daemon=True).start()
 
     def close(self):
-        self.server.close()
+        self.server.shutdown()
+        self.server.server_close()
 
 
 @pytest.fixture
@@ -44,10 +64,6 @@ def game():
     def replies(line):
         if line == "ping":
             return "ok pong"
-        if line == "state":
-            return "ok " + json.dumps({"screen": [960, 600], "loading": False})
-        if line.startswith("ui layout"):
-            return 'ok {"components":[{"id":"abcd0123-1","actions":["set_text"]}]}'
         if line.startswith("bad"):
             return "error unknown command bad"
         return "ok"
@@ -60,53 +76,19 @@ def game():
 def test_send_returns_results_and_raises_errors(game):
     c = Control(game.port)
     assert c.send("ping") == "pong"
-    assert c.state() == {"screen": [960, 600], "loading": False}
     assert c.send("mouse move 1 2 300") == ""
     with pytest.raises(ControlError, match="unknown command bad"):
         c.send("bad")
-    assert game.received == ["ping", "state", "mouse move 1 2 300", "bad"]
+    with pytest.raises(ControlError, match="line break"):
+        c.send("type a\nb")
+    assert game.received == ["ping", "mouse move 1 2 300", "bad"]
 
 
-def test_send_reconnects_once_when_the_connection_drops():
-    calls = []
-
-    def replies(line):
-        calls.append(line)
-        # The first connection dies without answering; the retry gets a reply.
-        return None if len(calls) == 1 else "ok pong"
-
-    fake = FakeGame(replies)
-    try:
-        assert Control(fake.port).send("ping") == "pong"
-        assert calls == ["ping", "ping"]
-    finally:
-        fake.close()
-
-
-def test_ui_action_is_not_replayed_after_disconnect():
-    fake = FakeGame(lambda _: None)
-    try:
-        with pytest.raises(ControlError, match="closed the connection"):
-            Control(fake.port).send("ui act abcd0123-1 activate")
-        assert fake.received == ["ui act abcd0123-1 activate"]
-    finally:
-        fake.close()
-
-
-def test_no_game_listening():
+def test_no_game_serving():
     with socket.create_server(("127.0.0.1", 0)) as s:
         port = s.getsockname()[1]
-    c = Control(port)
-    assert not c.ping()
-    with pytest.raises(ControlError, match="-aethercontrol"):
-        c.send("ping")
-
-
-def test_command_lines():
-    assert command_line("mouse move", 1, 2.5, None) == "mouse move 1 2.5"
-    with pytest.raises(ControlError):
-        command_line("type a\nb")
-    assert escape_text("a\\b\nc\td") == "a\\\\b\\nc\\td"
+    with pytest.raises(ControlError, match="--mcp"):
+        Control(port).send("ping")
 
 
 def test_control_command(game):
@@ -125,58 +107,3 @@ def test_control_command_reads_stdin(game):
     )
     assert result.exit_code == 0, result.output
     assert game.received == ["ping", "wait 5"]
-
-
-def test_game_process_command(monkeypatch, tmp_path):
-    seen = {}
-
-    class Popen:
-        def __init__(self, cmd, **kwargs):
-            seen["cmd"] = cmd
-
-    monkeypatch.setattr(control.subprocess, "Popen", Popen)
-    GameProcess.start(5000, "screens", ["--no-build"], ["-x"], log=tmp_path / "log")
-    assert seen["cmd"][3:] == [
-        "screens",
-        "--control",
-        "5000",
-        "--no-build",
-        "--",
-        "-x",
-    ]
-
-
-def test_mcp_server_tools(game):
-    import asyncio
-
-    from fastmcp import Client
-
-    from aether.mcp_server import build_server
-
-    async def run():
-        async with Client(build_server(game.port)) as client:
-            names = {t.name for t in await client.list_tools()}
-            state = await client.call_tool("game_state", {})
-            ui = await client.call_tool("game_ui_layout", {"interactive_only": True})
-            action = await client.call_tool(
-                "game_ui_action",
-                {
-                    "component_id": ui.data["components"][0]["id"],
-                    "action": "set_text",
-                    "value": 'a "b"\nc',
-                },
-            )
-            await client.call_tool(
-                "mouse_drag", {"x1": 1, "y1": 2, "x2": 3, "y2": 4, "duration_ms": 50}
-            )
-            await client.call_tool("type_text", {"text": "hi\nthere"})
-            return names, state.data, action.data
-
-    names, state, action = asyncio.run(run())
-    assert {"game_launch", "game_screenshot", "mouse_drag", "gamepad_stick"} <= names
-    assert state["screen"] == [960, 600]
-    assert action == "ok"
-    assert "ui layout interactive" in game.received
-    assert 'ui act abcd0123-1 set_text "a \\"b\\"\\nc"' in game.received
-    assert "mouse drag 1 2 3 4 50 left" in game.received
-    assert "type hi\\nthere" in game.received

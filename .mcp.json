@@ -1,8 +1,8 @@
 {
   "mcpServers": {
     "aether-game": {
-      "command": "./aether",
-      "args": ["mcp"]
+      "type": "http",
+      "url": "http://127.0.0.1:47321/mcp"
     }
   }
 }

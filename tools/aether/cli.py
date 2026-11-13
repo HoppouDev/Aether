@@ -219,12 +219,12 @@ SaveDirOption = Annotated[
 RealSavesOption = Annotated[
     bool, typer.Option("--real-saves", help="Use the game's normal save directory.")
 ]
-ControlOption = Annotated[
+McpOption = Annotated[
     int | None,
     typer.Option(
-        "--control",
-        help="Accept input and commands on this local port (-aethercontrol): `aether control`, "
-        f"the `aether mcp` server (default port {DEFAULT_PORT}).",
+        "--mcp",
+        help="Serve the aether-game MCP server on this local port (-aethermcp; "
+        f"{DEFAULT_PORT} in .mcp.json): agents' tools, and `aether control`.",
     ),
 ]
 ProfileOption = Annotated[
@@ -232,7 +232,7 @@ ProfileOption = Annotated[
     typer.Option(
         "--profile",
         help="Preload Aether's allocation profiler (Linux): the control command `profile` "
-        "(MCP: game_profile) then records allocation call stacks. Use with --control.",
+        "(MCP: game_profile) then records allocation call stacks. Use with --mcp.",
     ),
 ]
 ProfileDepthOption = Annotated[
@@ -242,8 +242,8 @@ ProfileDepthOption = Annotated[
 GAME_ARGS = {"allow_extra_args": True, "ignore_unknown_options": True}
 
 
-def game_args(ctx: typer.Context, control: int | None) -> list[str]:
-    return [*(["-aethercontrol", str(control)] if control else []), *ctx.args]
+def game_args(ctx: typer.Context, mcp_port: int | None) -> list[str]:
+    return [*(["-aethermcp", str(mcp_port)] if mcp_port else []), *ctx.args]
 
 
 def launch_build(
@@ -351,7 +351,7 @@ def launch_command(
     platform_dir: PlatformDirOption = None,
     save_dir: SaveDirOption = None,
     real_saves: RealSavesOption = False,
-    control: ControlOption = None,
+    mcp_port: McpOption = None,
     profile: ProfileOption = False,
     profile_depth: ProfileDepthOption = 16,
 ) -> None:
@@ -365,7 +365,7 @@ def launch_command(
         platform_dir,
         save_dir,
         real_saves,
-        game_args(ctx, control),
+        game_args(ctx, mcp_port),
         profile_depth if profile else None,
     )
 
@@ -378,7 +378,7 @@ def run_game(
     release: ReleaseOption = False,
     save_dir: SaveDirOption = None,
     real_saves: RealSavesOption = False,
-    control: ControlOption = None,
+    mcp_port: McpOption = None,
     profile: ProfileOption = False,
     profile_depth: ProfileDepthOption = 16,
 ) -> None:
@@ -396,7 +396,7 @@ def run_game(
         platform_dir,
         save_dir,
         real_saves,
-        game_args(ctx, control),
+        game_args(ctx, mcp_port),
         profile_depth if profile else None,
     )
 
@@ -443,7 +443,7 @@ def screens(
     ] = False,
     save_dir: SaveDirOption = None,
     real_saves: RealSavesOption = False,
-    control: ControlOption = None,
+    mcp_port: McpOption = None,
     profile: ProfileOption = False,
     profile_depth: ProfileDepthOption = 16,
 ) -> None:
@@ -457,7 +457,7 @@ def screens(
         if no_build
         else build_client("Release" if release else "Debug", host_platform())
     )
-    extra = game_args(ctx, control)
+    extra = game_args(ctx, mcp_port)
     # After `--`, click hands the first game argument to MODE when there's no mode.
     if mode is not None and not mode.isdigit():
         if not mode.startswith("-"):
@@ -478,7 +478,7 @@ def screens(
 
 PortOption = Annotated[
     int,
-    typer.Option("--port", help="The game's control port (its -aethercontrol PORT)."),
+    typer.Option("--port", help="The client's MCP port (its -aethermcp PORT)."),
 ]
 
 
@@ -493,12 +493,13 @@ def control(
     ] = None,
     port: PortOption = DEFAULT_PORT,
 ) -> None:
-    """Send commands to a client started with `-aethercontrol` and print their results.
+    """Send commands to a client started with `--mcp` and print their results.
 
     The input goes straight into the game (no window focus or system input): mouse moves and
-    drags, keys, typing, a synthetic gamepad, screenshots and state. Start a client for it with
-    e.g. `./aether run --control 47321`. The commands are listed in
-    client/Terraria/Aether/Testing/ControlServer.cs. Agents can use the `aether mcp` server instead.
+    drags, keys, typing, a synthetic gamepad, screenshots, state and frame statistics. Start a
+    client for it with e.g. `./aether run --mcp 47321`. The commands are listed in
+    client/Terraria/Aether/Testing/ControlServer.cs; they go through the client's MCP server
+    (its game_send tool), which agents use directly.
     """
     game = Control(port)
     lines = commands if commands else (line.rstrip("\n") for line in sys.stdin)
@@ -511,17 +512,6 @@ def control(
             log(f"error: {line}: {e}")
             raise typer.Exit(1) from e
         print(result if result else "ok")
-
-
-@app.command()
-def mcp(port: PortOption = DEFAULT_PORT) -> None:
-    """Run the `aether-game` MCP server (stdio), which lets agents launch and drive the client.
-
-    Registered for this repo in .mcp.json; see .agents/skills/aether-game/SKILL.md.
-    """
-    from .mcp_server import serve
-
-    serve(port)
 
 
 @app.command()

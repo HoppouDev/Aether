@@ -1,7 +1,7 @@
 # Remote UI automation
 
-Start the client with `./aether run --control 47321` or `./aether launch --control 47321`.
-The control socket listens on loopback, and the `aether-game` MCP server uses it to run actions on the game thread.
+Start the client with `./aether run --mcp 47321` or `./aether launch --mcp 47321`.
+It serves the `aether-game` MCP server itself on loopback (`http://127.0.0.1:47321/mcp`), and runs the tools' actions on the game thread.
 
 ## Inspect and interact
 

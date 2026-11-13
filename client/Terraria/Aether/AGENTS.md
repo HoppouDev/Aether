@@ -88,7 +88,7 @@ Pieces move to retained mode one at a time, each through a small hook at the top
   The hotbar shown while the inventory is closed (`UIHotbar`, from `Main.GUIHotbarDrawInner`): its slots are laid out every frame (`UpdateState`) because they grow with `Main.hotbarScale`, and selecting is on mouse held, as in the legacy code.
 - **Testing in game:** with `-aetherscreens` (`./aether screens`), `InGamePreview` adds Ctrl+Shift+L (switch every migrated in-game piece between retained and legacy) and Ctrl+Shift+B (open the player's piggy bank, a container to test with), Ctrl+Shift+S (talk to the nearest town NPC and open the Merchant's shop) Ctrl+Shift+G (the same, with the Guide's crafting slot) and Ctrl+Shift+R (the same, with the reforge slot; press again to fill it with a gold broadsword or empty it) Ctrl+Shift+U (a few timed buffs) and Ctrl+Shift+I (crafting materials, a watch, depth meter and ruler, and coins in the piggy bank and safe for the savings displays), Ctrl+Shift+K (enough kills for a slime and a zombie banner) Ctrl+Shift+N (bring the nearest town NPC over and talk to it) Ctrl+Shift+H (the same, then open the hair window) Ctrl+Shift+O (place a dresser beside the player, which changes the world, and open its window), Ctrl+Shift+V (cycle the life and mana style), Ctrl+Shift+J (333/500 life with life fruit, 77/200 mana), Ctrl+Shift+X (kill the player), Ctrl+Shift+E (show invasion progress: partway, a wave, cleared, in turn) and Ctrl+Shift+A (show an achievement unlocked popup, without unlocking it); they work while a migrated piece is being drawn, which in game is always (the hotbar or the inventory).
   To compare a migrated piece with the legacy code, take the same screenshot before and after Ctrl+Shift+L (in the title-menu gallery, Tab) and diff them with `magick compare -metric AE -fuzz 20% retained.png legacy.png diff.png`; the pieces migrated so far match pixel for pixel.
-  Agents can do this with the `aether-game` MCP server: `game_launch` with `screens: true`, then `key_press` `ctrl+shift+l` between two `game_screenshot`s at `scale: 1`.
+  Agents can do this with the `aether-game` MCP server: start `./aether screens --mcp 47321`, then `key_press` `ctrl+shift+l` between two `game_screenshot`s at `scale: 1`.
 - Still legacy: the full-screen map, tooltips and mouse text, and the rest of the interface layers (entity health bars, the boss bar, chat, the cursor and others).
 - **UI sampler hook** (`PixelArt.Sampler`): every sprite batch that draws the UI (the title menu, the interface layers, the cursor and mouse text, vanilla's options and fancy UI, camera mode) takes its sampler from it, and it answers with the batch's own (vanilla's linear filtering), so mods can redirect it; FreshUI makes the UI point-sampled and pixel-snapped there.
   A new UI sprite batch should do the same.
@@ -96,22 +96,22 @@ Pieces move to retained mode one at a time, each through a small hook at the top
 
 ## Synthetic input and remote control (`Testing/`)
 
-Started with `-aethercontrol [PORT]` (`./aether run|launch|screens --control PORT`), the client can be driven without its window having focus and without system input, for agents and tests:
+Started with `-aethermcp [PORT]` (`./aether run|launch|screens --mcp PORT`), the client can be driven without its window having focus and without system input, for agents and tests:
 
 - `SyntheticInput` is the input the game reads instead of the devices.
-  The game's input reads are patched to go through it: `Mouse.GetState()` and `GamePad.GetState()` in `PlayerInput`, and `Keyboard.GetState()` in `PlayerInput` and `Main`.
+  It's installed as FNA's input filters (`Mouse`/`Keyboard`/`GamePad.StateFilterEXT`, Aether's patch to FNA), so every `GetState()` call (the game's, Aether's, the profiler overlay's) reads it.
   While control is on, the mouse is entirely synthetic, synthetic keys are added to the real keyboard's, and a connected synthetic gamepad replaces the real first one.
   Typed text goes into `Main.keyInt`, like the IME listener's.
   `FocusHelper.UpdateFocus` treats the window as focused, and `Main` doesn't throttle an inactive window.
-- `ControlServer` listens on 127.0.0.1 (default port 47321) for one command per line.
-  Commands from all connections run in order on the main thread: `Main.Update` calls `ControlServer.Tick()` first, before the update reads its input.
+- `ControlServer` serves the `aether-game` MCP server on 127.0.0.1 (default port 47321; `McpHttpServer`, the official C# SDK's stateless Streamable HTTP transport over `HttpListener`), whose tools (`GameTools`) run control commands with `ControlServer.Execute`.
+  Commands from all requests run in order on the main thread: `Main.Update` calls `ControlServer.Tick()` first, before the update reads its input.
   Each command is an iterator that yields once per update, so smooth moves, drags, stick and trigger glides and waits span updates, and the reply comes when the command has finished.
   Screenshots read the back buffer in `Main.OnPostDraw`, optionally cropped and box-filtered.
   The command list is its doc comment.
   `profile [FRAMES] [TOP] PATH` reports allocation call stacks when the game was started with the allocation profiler (`--profile`; .NET loads it from `CORECLR_PROFILER_PATH` at startup, and `NativeProfiler` loads that same library again to call its exports; the report is written from a native thread of its own, since .NET refuses the profiler's metadata lookups from managed threads).
-  `alloc [FRAMES]` measures main-thread allocations (overall and per retained screen) and `menu MODE` switches title-menu screens.
+  `alloc [FRAMES]` measures main-thread allocations (overall and per retained screen), `frames [FRAMES] [PATH]` returns frame statistics from `Aether.Profiling.FrameMeter` (and writes each frame as CSV), `overlay [on|off]` shows the profiler overlay, `resize W H` resizes the window and `menu MODE` switches title-menu screens.
   If the main thread stops updating for 10 s (a hang, or a crash showing its error dialog), waiting commands fail instead of blocking, and are skipped if it recovers.
-- Clients: `./aether control` (`tools/aether/control.py`) and the `aether-game` MCP server (`tools/aether/mcp_server.py`, FastMCP, registered in `.mcp.json`); `.agents/skills/aether-game/SKILL.md` is the guide for agents.
+- Clients: agents connect to the MCP server directly (registered in `.mcp.json`), and `./aether control` (`tools/aether/control.py`) sends raw commands through its `game_send` tool; `.agents/skills/aether-game/SKILL.md` is the guide for agents.
 
 ## Allocation-free helpers (`Utilities/`)
 

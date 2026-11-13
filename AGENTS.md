@@ -31,8 +31,7 @@ Aether allows client and server exploits, provided Aether changes do not introdu
 ./aether build     # just build (bin/<Debug|Release>/net10.0/); --target lin64|win64|mac64|macarm|mac|all: also package dist/<target>/
 ./aether launch    # just play the most recent build (Debug or Release), no build
 ./aether screens   # build and open the gallery of Aether's retained-mode title-menu screens (MODE: just that one)
-./aether control   # send input/commands to a client started with --control PORT (run, launch, screens)
-./aether mcp       # the aether-game MCP server (.mcp.json): agents launch and drive the client
+./aether control   # send input/commands to a client started with --mcp PORT (run, launch, screens)
 ./aether update    # move the base to the newest Terraria on Steam and re-apply the patches (--check: just look)
 ```
 
@@ -107,7 +106,7 @@ dotnet build Aether.slnx -c Debug
 - The bootstrap discovers local mod archives before loading the client.
   See [the mod authoring guide](docs/modding.md).
 - The client exe has no headless mode: `Main.dedServ` is only set in the separate server build, so any runtime test opens a game window.
-  To drive that window without focusing it or sending system input, start it with `--control PORT` and use `./aether control` or the `aether-game` MCP server (see `.agents/skills/aether-game/SKILL.md`).
+  To drive that window without focusing it or sending system input, start it with `--mcp PORT`: the client then serves the `aether-game` MCP server itself (`.mcp.json`), which agents use directly and `./aether control` sends commands through (see `.agents/skills/aether-game/SKILL.md`).
   Use [remote UI automation](docs/ui-automation.md) to inspect and act on retained components by ID.
 - **Logging:** Terraria and Aether log through Serilog (`client/Modding/AetherLog.cs`), which the bootstrap starts first thing; `Serilog` is shared with mods like FNA.
   Terraria's and ReLogic's own prints are log events (`Aether.GameLog.Terraria`, `ReLogic.ReLogicLog.Log`; sources `Terraria` and `ReLogic`), except the dedicated server's prompts written without a newline (`Console.Write`), and FNA's (`FNALoggerEXT`) and SDL's (`SDL_SetLogOutputFunction`) logs are routed in too (`GameLog.CaptureLibraries`, from `Program.SetupLogging`).
@@ -118,7 +117,7 @@ dotnet build Aether.slnx -c Debug
 - **Frame profiling:** `Aether.Profiling.FrameMeter` measures every drawn frame from one hook at the end of `Main.Draw` (`FrameProfiling.EndFrame`): real frame time, the main thread's CPU time, the GPU time (Linux, through the patched FNA3D; n/a elsewhere) and what the .NET runtime did (allocations, collections, GC pauses, heap size, JIT compiles).
   Right Shift + F12 shows the profiler overlay (`ProfilerOverlay`), a Dear ImGui window (ImGui.NET, hosted by `Aether.Graphics.DearImGui.ImGuiHost` over the finished frame) with the frame rate and its 1% and 0.1% lows, a frame-budget bar, a frame time graph, frame/CPU/GPU time percentiles and the runtime's figures over the last two seconds.
   ImGui only runs while a window is shown, so the hidden overlay costs nothing but the measuring.
-- **Finding allocations:** `--profile` (Linux; with `--control`) has .NET load Aether's allocation profiler at startup (`CORECLR_PROFILER*`), a CoreCLR profiler (`ICorProfilerCallback3`) compiled from `tools/aether/profiler/aether_profiler.c` into `.aether/profiler/` (needs `cc`).
+- **Finding allocations:** `--profile` (Linux; with `--mcp`) has .NET load Aether's allocation profiler at startup (`CORECLR_PROFILER*`), a CoreCLR profiler (`ICorProfilerCallback3`) compiled from `tools/aether/profiler/aether_profiler.c` into `.aether/profiler/` (needs `cc`).
   The control command `profile [FRAMES] [TOP] PATH` (MCP: `game_profile`) then records every managed allocation's class, size and call stack and writes the methods with the most bytes allocated under them and the top sites, per frame.
   Allocation tracking turns off the runtime's allocation fast paths for the whole run, so only compare profiled runs with each other.
 
@@ -126,9 +125,9 @@ dotnet build Aether.slnx -c Debug
 
 | Path | Committed? | What it is |
 | --- | --- | --- |
-| `aether`, `pyproject.toml`, `uv.lock`, `tools/` | yes | Patch workflow CLI: a uv project (typer) whose package is `tools/aether/` (`cli.py` commands, `decompile.py` recipe, `fna.py` FNA build and natives, `steamworks.py` the 64-bit Steamworks.NET, `game.py` building, run folders and `dist/` targets, `control.py` and `mcp_server.py` the control-socket client and FastMCP server, `profiler.py` and `profiler/aether_profiler.c` the allocation profiler, `steam.py` SteamCMD, `update.py`, `patches.py` diff/apply, `guard.py` commit guard, `tree.py`, `pinning.py`, `paths.py`, `util.py`); `./aether` runs it with `uv run`. Plus the pinned base (`tools/base.json`), FNA (`tools/fna.json`, and Aether's patches to it, `tools/fna.patch`, and to FNA3D and SDL, `tools/fna3d.patch` and `tools/sdl.patch`) and Steamworks.NET (`tools/steamworks.json`). |
+| `aether`, `pyproject.toml`, `uv.lock`, `tools/` | yes | Patch workflow CLI: a uv project (typer) whose package is `tools/aether/` (`cli.py` commands, `decompile.py` recipe, `fna.py` FNA build and natives, `steamworks.py` the 64-bit Steamworks.NET, `game.py` building, run folders and `dist/` targets, `control.py` the client of the game's MCP server (`aether control`), `profiler.py` and `profiler/aether_profiler.c` the allocation profiler, `steam.py` SteamCMD, `update.py`, `patches.py` diff/apply, `guard.py` commit guard, `tree.py`, `pinning.py`, `paths.py`, `util.py`); `./aether` runs it with `uv run`. Plus the pinned base (`tools/base.json`), FNA (`tools/fna.json`, and Aether's patches to it, `tools/fna.patch`, and to FNA3D and SDL, `tools/fna3d.patch` and `tools/sdl.patch`) and Steamworks.NET (`tools/steamworks.json`). |
 | `patches/` | yes | Changes to game files as unified diffs mirroring `src/`. |
-| `.mcp.json`, `.agents/skills/` | yes | The `aether-game` MCP server registration and the agent skill for driving the game (`aether-game`). |
+| `.mcp.json`, `.agents/skills/` | yes | The `aether-game` MCP server registration (the client's own, on port 47321) and the agent skill for driving the game (`aether-game`). |
 | `prek.toml`, `rumdl.toml`, `cog.toml` | yes | Git hooks (patch guard, basic checks, rumdl, conventional-pre-commit, cocogitto) and their configs. |
 | `Aether.slnx`, `client/` | yes | .NET solution, projects, and Aether source. The Terraria and ReLogic projects compile Aether code alongside the generated game sources under `src/`. |
 | `.config/dotnet-tools.json` | yes | The pinned ilspycmd local tool. |

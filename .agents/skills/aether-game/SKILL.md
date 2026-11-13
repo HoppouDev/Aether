@@ -1,6 +1,6 @@
 ---
 name: aether-game
-description: Launch, play and test the Aether Terraria client through the aether-game MCP server, which inspects and acts on UI components and sends synthetic input straight into the game without moving the real cursor. Use to check UI changes in game, reproduce bugs, take screenshots, or drive menus and gameplay.
+description: Play and test the Aether Terraria client through the aether-game MCP server the client itself serves, which inspects and acts on UI components and sends synthetic input straight into the game without moving the real cursor. Use to check UI changes in game, reproduce bugs, take screenshots, or drive menus and gameplay.
 ---
 
 # Driving the game with the aether-game MCP server
@@ -8,13 +8,29 @@ description: Launch, play and test the Aether Terraria client through the aether
 The `aether-game` MCP server's input goes straight into the game.
 The window doesn't need focus and can sit behind other windows, and the user's real cursor and keyboard are never touched.
 
+## Starting the client
+
+The client serves the MCP server itself, so start it first, in the background, from the repository root:
+
+```bash
+./aether run --mcp 47321 > .aether/game.log 2>&1 &
+```
+
+`run` builds first (`launch` reuses the latest build; `screens` starts the screen gallery, see `client/Terraria/Aether/AGENTS.md`).
+Saves default to `.aether/saves/`: always use a test save directory and leave the user's real saves alone.
+`--profile` (Linux) preloads the allocation profiler for `game_profile` (allocations are slower for the whole run).
+Steam must be running.
+The server answers at `http://127.0.0.1:47321/mcp` (`.mcp.json`) once the title menu is up; if the MCP client connected before that, reconnect it.
+
 ## Tools
 
 | Tool | What it does |
 | --- | --- |
-| `game_launch` | Start the client and return once the title menu is up, with the screen size. Builds first by default (`build: false` reuses the last build). `screens: true` starts it in screen-testing mode (see `client/Terraria/Aether/AGENTS.md`). `save_dir` defaults to `.aether/saves/`. Always use a test save directory and leave the user's real saves alone. `game_args` are extra launch arguments. `profile: true` preloads the allocation profiler for `game_profile` (allocations are slower for the whole run). |
-| `game_profile` | With `game_launch` `profile: true` (Linux), record every allocation's class, size and call stack over `frames` updates and return the report per frame: methods by bytes allocated under them, then the top `top` allocation sites. Use it to find what allocates every frame. |
-| `game_quit` | Close the client, including one this server didn't start. Progress since the last save is lost. |
+| `game_profile` | With the client started with `--profile` (Linux), record every allocation's class, size and call stack over `frames` updates and return the report per frame: methods by bytes allocated under them, then the top `top` allocation sites. Use it to find what allocates every frame. |
+| `game_quit` | Close the client. Progress since the last save is lost. |
+| `frame_stats` | Measure the next `frames` drawn frames, MangoHud-style: FPS with 1% and 0.1% lows, the frame budget and its use, frame, CPU and GPU (Linux) time percentiles, long frames, and the .NET runtime (allocations, GC pauses and collections, heap, JIT). With `path`, also writes every frame to a CSV file. |
+| `overlay` | Show or hide the profiler overlay (Right Shift + F12), or toggle it. |
+| `resize` | Resize the window, as dragging its edge does. |
 | `game_state` | Screen size, `loading`, `gameMenu`, `menuMode`, the frame and update rates (`fps`, `ups`, per second) and `presentInterval` (`One`: vsync), the synthetic mouse, keys and pad, `usingGamepad`. In game it also gives the player (tile, life, mana, held item, inventory open, chest, `talkNPC`, item on the cursor), `ingameOptions` and `mapFullscreen`. |
 | `game_ui_layout` | Read the next drawn frame’s retained UI, with component IDs, labels, bounds, and actions. Use `interactive_only: true` to return actionable controls only. |
 | `game_ui_action` | Act on a component ID from the latest layout. Use `activate`, `secondary`, `set_value` (a number from 0 to 1), or `set_text` (a string) as advertised by the component. |
@@ -37,16 +53,18 @@ The window doesn't need focus and can sit behind other windows, and the user's r
 
 Every tool returns once its input has finished (a 400 ms drag after 400 ms).
 If the game stops updating for 10 s (it froze, or it crashed and is showing an error dialog), tools fail with "the game stopped updating".
-Then `game_screenshot` can't help: call `game_quit` and `game_launch` again, and check the log path that `game_launch` reported.
+Then `game_screenshot` can't help: stop the client, check `.aether/game.log`, and start it again.
 
 ## Workflow
 
-1. Run `game_launch`.
+1. Start the client (see above).
 2. Use `game_ui_layout` to find controls on the current screen and `game_ui_action` to act on them by ID.
 3. Request a fresh layout after changing screens or if a component ID becomes stale.
 4. For gameplay or controls without an action, use a screenshot and the mouse, key, text or gamepad tools.
 5. Check the result with the next layout, `game_state`, or a screenshot.
 6. Call `game_quit` when done.
+
+The same commands work from a shell: `./aether control 'key press e' state`.
 
 ## Coordinates, keys and buttons
 
@@ -75,7 +93,9 @@ pad stick left|right X Y [MS] | pad trigger left|right VALUE [MS]
 wait MS | wait frames N | release | state | ping
 ui layout [interactive] | ui act ID ACTION [JSON]
 menu MODE (title menu: show Main.menuMode MODE) | alloc [FRAMES] (allocations, JSON) | quit
-profile [FRAMES] [TOP] PATH (allocation call stacks, with profile: true)
+profile [FRAMES] [TOP] PATH (allocation call stacks, with --profile)
+frames [FRAMES] [PATH] (frame statistics, JSON; PATH: each frame as CSV)
+overlay [on|off] | resize W H
 ```
 
 ## Getting around
