@@ -1,0 +1,38 @@
+{
+	// Each configuration starts the game through a task in tasks.json (with the aether-game MCP
+	// server on port 47321), then attaches: pick Aether.Bootstrap from the list (netcoredbg can't
+	// attach by name). Stopping the session ends the game.
+	"version": "0.2.0",
+	"configurations": [
+		{
+			"name": "Debug",
+			"type": "coreclr",
+			"request": "attach",
+			"processId": "${command:pickProcess}",
+			"preLaunchTask": "run game",
+			"postDebugTask": "stop game"
+		},
+		{
+			"name": "Debug with hot reload",
+			"type": "coreclr",
+			"request": "attach",
+			"processId": "${command:pickProcess}",
+			"preLaunchTask": "run game with hot reload",
+			"postDebugTask": "stop game"
+		},
+		{
+			"name": "Debug with profiler",
+			"type": "coreclr",
+			"request": "attach",
+			"processId": "${command:pickProcess}",
+			"preLaunchTask": "run game with profiler",
+			"postDebugTask": "stop game"
+		},
+		{
+			"name": "Attach to running game",
+			"type": "coreclr",
+			"request": "attach",
+			"processId": "${command:pickProcess}"
+		}
+	]
+}

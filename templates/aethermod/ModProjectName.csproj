@@ -7,6 +7,8 @@
     <AetherUseApi>true</AetherUseApi>
     <EnableDynamicLoading>true</EnableDynamicLoading>
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <!-- dotnet run and dotnet watch (./aether watch) start the game through the launcher. -->
+    <RunCommand>$(MSBuildProjectDirectory)/aether</RunCommand>
   </PropertyGroup>
 
   <ItemGroup>

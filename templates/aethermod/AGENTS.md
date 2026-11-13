@@ -5,6 +5,7 @@ This is a standalone .NET 10 mod for Aether.
 | Path | Purpose |
 | --- | --- |
 | `ModProjectName.slnx` | IDE solution for the mod project. |
+| `.vscode/`, `.mcp.json` | VS Code build, run and debug tasks (see Build and test), and the game's MCP server for agents. |
 | `.gitignore` | Keeps the local client, test saves, build output, and IDE state out of Git. |
 | `src/Startup.cs` | Mod initializer and mod ID used by the starter code. |
 | `src/Mixins/` | C# mixins. Register new mixin types in the manifest. |
@@ -50,6 +51,12 @@ Relative paths are resolved from the mod repo.
   Set `-p:AetherSaveDirectory=/path/to/test-saves` to install into a different profile.
 - `./aether -- -mixindebug` builds, installs, and launches with the local test profile on Linux or macOS.
   On Windows use `.\aether.cmd -- -mixindebug` or `.\aether.ps1 -- -mixindebug`.
+- `./aether watch` (Linux, macOS; needs the ASP.NET Core runtime, which `dotnet watch` runs on) launches the game under `dotnet watch` with .NET hot reload: saved edits to the mod's own code apply to the running game.
+  The project's `RunCommand` is the launcher, which keeps the agent's startup hook (`DOTNET_STARTUP_HOOKS`) out of its builds and passes it to the game; edits to mixins (merged into the game at startup) and rude edits restart it.
+- `AETHER_LAUNCH_OPTIONS` passes extra `aether launch` options through the launcher (Linux, macOS), such as `--profile` for Aether's allocation profiler (Linux; record with the MCP tool `game_profile`).
+- In VS Code, the launch configurations (`.vscode/`) start the game from a task (Debug, Debug with hot reload under `./aether watch`, Debug with profiler), each serving the aether-game MCP server on port 47321 (`-aethermcp`, `.mcp.json`), and attach the debugger: pick `Aether.Bootstrap` from the list, since netcoredbg attaches only by process ID.
+  Stopping the session ends the game.
+  `PackMod` packages the mod's `.pdb`, which Aether loads with the assembly, so breakpoints bind in the mod's code (mixins are merged into the game, so likely not in them).
 
 For manual builds, `-p:AetherClientDirectory=/path/to/client-output` can point directly to the folder containing `Aether.Modding.dll` and `Terraria.dll`.
 Set `AetherApiDirectory` to use an API build from another directory.

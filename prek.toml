@@ -24,7 +24,8 @@ hooks = [
   { id = "mixed-line-ending" },
   { id = "check-yaml" },
   { id = "check-toml" },
-  { id = "check-json" },
+  # VS Code's settings, tasks and launch files are JSON with comments.
+  { id = "check-json", exclude = '(^|/)\.vscode/' },
   { id = "check-merge-conflict" },
   { id = "check-case-conflict" },
   { id = "check-added-large-files" },

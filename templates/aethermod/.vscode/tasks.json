@@ -1,0 +1,122 @@
+{
+	// The game tasks run the launcher (./aether, Linux and macOS) with the aether-game MCP server on
+	// port 47321 (.mcp.json), and stay running in the background while the game does.
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "build",
+			"command": "dotnet",
+			"type": "process",
+			"args": [
+				"build",
+				"${workspaceFolder}/ModProjectName.csproj",
+				"/property:GenerateFullPaths=true",
+				"/consoleloggerparameters:NoSummary"
+			],
+			"problemMatcher": "$msCompile",
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			}
+		},
+		{
+			"label": "run game",
+			"command": "${workspaceFolder}/aether",
+			"type": "process",
+			"args": ["--", "-aethermcp", "47321"],
+			"isBackground": true,
+			"problemMatcher": {
+				// Done (for a debug session's attach) once the launcher starts the game.
+				"owner": "aether",
+				"source": "dotnet",
+				"fileLocation": "absolute",
+				"pattern": {
+					"regexp": "^\\s*(?:\\d+>)?(\\S.*?)(?:\\((\\d+|\\d+,\\d+|\\d+,\\d+,\\d+,\\d+)\\))?\\s*:\\s+(error|warning|info)\\s+(\\w+\\d+)\\s*:\\s*(.*)$",
+					"file": 1,
+					"location": 2,
+					"severity": 3,
+					"code": 4,
+					"message": 5
+				},
+				"background": {
+					"activeBegin": true,
+					"beginsPattern": "^launching ",
+					"endsPattern": "^starting the client"
+				}
+			}
+		},
+		{
+			"label": "run game with hot reload",
+			"command": "${workspaceFolder}/aether",
+			"type": "process",
+			"args": ["watch", "--", "-aethermcp", "47321"],
+			"isBackground": true,
+			"problemMatcher": {
+				// Done (for a debug session's attach) once the launcher starts the game.
+				"owner": "aether",
+				"source": "dotnet",
+				"fileLocation": "absolute",
+				"pattern": {
+					"regexp": "^\\s*(?:\\d+>)?(\\S.*?)(?:\\((\\d+|\\d+,\\d+|\\d+,\\d+,\\d+,\\d+)\\))?\\s*:\\s+(error|warning|info)\\s+(\\w+\\d+)\\s*:\\s*(.*)$",
+					"file": 1,
+					"location": 2,
+					"severity": 3,
+					"code": 4,
+					"message": 5
+				},
+				"background": {
+					"activeBegin": true,
+					"beginsPattern": "^launching ",
+					"endsPattern": "^starting the client"
+				}
+			}
+		},
+		{
+			// Aether's allocation profiler (Linux): record with the MCP tool game_profile.
+			"label": "run game with profiler",
+			"command": "${workspaceFolder}/aether",
+			"type": "process",
+			"args": ["--", "-aethermcp", "47321"],
+			"options": {
+				"env": {
+					"AETHER_LAUNCH_OPTIONS": "--profile"
+				}
+			},
+			"isBackground": true,
+			"problemMatcher": {
+				// Done (for a debug session's attach) once the launcher starts the game.
+				"owner": "aether",
+				"source": "dotnet",
+				"fileLocation": "absolute",
+				"pattern": {
+					"regexp": "^\\s*(?:\\d+>)?(\\S.*?)(?:\\((\\d+|\\d+,\\d+|\\d+,\\d+,\\d+,\\d+)\\))?\\s*:\\s+(error|warning|info)\\s+(\\w+\\d+)\\s*:\\s*(.*)$",
+					"file": 1,
+					"location": 2,
+					"severity": 3,
+					"code": 4,
+					"message": 5
+				},
+				"background": {
+					"activeBegin": true,
+					"beginsPattern": "^launching ",
+					"endsPattern": "^starting the client"
+				}
+			}
+		},
+		{
+			// Ends the game tasks when a debug session stops (the debugger only attaches).
+			"label": "stop game",
+			"command": "echo ${input:terminateTasks}",
+			"type": "shell",
+			"problemMatcher": []
+		}
+	],
+	"inputs": [
+		{
+			"id": "terminateTasks",
+			"type": "command",
+			"command": "workbench.action.tasks.terminate",
+			"args": "terminateAll"
+		}
+	]
+}

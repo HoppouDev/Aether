@@ -60,8 +60,11 @@ It prepares the client automatically when you launch before running setup.
 The checkout is reused on subsequent launches.
 Set `AETHER_REPOSITORY` before the first run to clone a different Git remote.
 For an existing built checkout, set `AETHER_ROOT` or use the Git-ignored `.aether-root` file.
+`./aether watch` (Linux, macOS; needs the ASP.NET Core runtime) launches under `dotnet watch`, so saved edits to the mod's code apply to the running game with .NET hot reload; edits to mixins restart it.
+`AETHER_LAUNCH_OPTIONS` passes extra `aether launch` options, such as `--profile` for the allocation profiler (Linux).
+In VS Code, the template's launch configurations start the game with the aether-game MCP server on port 47321 (`.mcp.json`) and attach the debugger: plainly, with hot reload, or with the profiler.
 
-For an existing mod repo, copy the template launchers and `build/Aether.Mod.targets` to the project root and ignore `.aether/` and `.aether-root` in Git.
+For an existing mod repo, copy the template launchers, `build/Aether.Mod.targets`, and optionally `.vscode/` and `.mcp.json` to the project root, add the template project's `RunCommand` for `./aether watch`, and ignore `.aether/` and `.aether-root` in Git.
 The launcher calls the project's `InstallMod` target.
 Set `AetherUseApi` to `true` in the project and add `"aether-api": "0.1.0"` to the manifest's `depends` to enable the template's API setup and installation.
 If your mod was generated before the client projects moved under `client/`, update its launchers and `build/Aether.Mod.targets` from the template.
