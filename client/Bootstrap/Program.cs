@@ -83,6 +83,11 @@ internal static class Program
                 ValidateApiReferences(package, usesApi);
                 if (usesApi && api.Context != null)
                     context.Api = api.Context;
+                foreach (ModDependency dependency in package.Dependencies)
+                {
+                    if (dependency.Id != "aether-api" && contexts.Values.FirstOrDefault(entry => entry.Package.Manifest.Id == dependency.Id) is { Context: { } required })
+                        context.Dependencies.Add(required);
+                }
             }
 
             phase = "assembly weaving";

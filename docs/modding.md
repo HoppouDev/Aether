@@ -235,9 +235,11 @@ Managed-only mods can use one archive across Aether's platforms.
 The game, FNA, ReLogic, and `Aether.Modding` are shared host assemblies.
 Keep them out of your package.
 
-`depends` controls presence and startup order.
-An IDE reference can give you autocomplete for another mod's DLL, but declaring its ID in `depends` does not resolve that DLL at runtime.
-Keep direct private dependencies in your own archive.
+`depends` controls presence and startup order, and shares code.
+A mod resolves the entry DLL of each mod it depends on, and the managed DLLs that mod ships, from that mod's own context, ahead of its own copies, so both use the same types and static state.
+Reference a dependency's DLLs at compile time only and keep them out of your archive.
+Only direct dependencies are shared: depend on a library's own dependencies too if you use their types.
+Keep your other private dependencies in your own archive.
 When woven code references a private DLL, Aether resolves it from the mod that contributed the reference.
 If multiple mixins reference the same assembly identity, their resolved DLLs must be byte-identical and Aether shares one copy among those mods.
 Copies bundled by unrelated mods stay private.

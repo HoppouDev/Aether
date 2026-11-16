@@ -177,6 +177,8 @@ internal sealed class ModContext(ModPackage package) : AssemblyLoadContext(packa
     internal Assembly? Game { get; set; }
     // The aether-api package's context, for mods that depend on it (and the API itself).
     internal ModContext? Api { get; set; }
+    // The contexts of the other mods this one depends on, whose entry assemblies and libraries it shares.
+    internal List<ModContext> Dependencies { get; } = [];
 
     internal string EntryPath => package.EntryPath;
 
@@ -226,6 +228,14 @@ internal sealed class ModContext(ModPackage package) : AssemblyLoadContext(packa
         // copies, so the types in the API's signatures are the API's.
         if (ResolveApiLibrary(name) is { } shared)
             return shared.Context.LoadManaged(shared.Path);
+
+        // A dependency's own assembly and the libraries it ships, so the types in its signatures are its own.
+        // shortcut: direct dependencies only; a dependency's dependencies are not searched.
+        foreach (ModContext required in Dependencies)
+        {
+            if (required.ResolveManagedPath(name) is { } requiredPath)
+                return required.LoadManaged(requiredPath);
+        }
 
         if (wovenDependencies.TryGetValue(name.FullName, out var dependency))
             return dependency.Context.LoadManaged(dependency.Path);
