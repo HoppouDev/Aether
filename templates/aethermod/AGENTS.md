@@ -6,6 +6,8 @@ This is a standalone .NET 10 mod for Aether.
 | --- | --- |
 | `ModProjectName.slnx` | IDE solution for the mod project. |
 | `.vscode/`, `.mcp.json` | VS Code build, run and debug tasks (see Build and test), and the game's MCP server for agents. |
+| `docs/modding.md` | Building, testing, packaging, and distributing the mod: the launcher, build targets and properties. |
+| `docs/automation.md` | The game's MCP server: UI automation, synthetic input, screenshots, and performance tools. |
 | `.gitignore` | Keeps the local client, test saves, build output, and IDE state out of Git. |
 | `src/Startup.cs` | Mod initializer and mod ID used by the starter code. |
 | `src/Mixins/` | C# mixins. Register new mixin types in the manifest. |
@@ -20,49 +22,17 @@ This is a standalone .NET 10 mod for Aether.
   Use a dedicated mixin class for `EditIL`.
   See `docs/mixin-wrappers.md` in the Aether checkout for signatures, ordering, and examples.
 - Add required mods to `depends` by manifest ID with a version constraint, such as `"shared-library": ">=1.2 <2"`.
-  Aether checks these constraints on launch.
-- Leave the generated Aether and Terraria version placeholders in place to use exact versions from the local client when packaging.
-  Set a literal version or range to target a different version.
+- Leave the `@aether-version@` and `@terraria-version@` placeholders in the manifest to require the local client's exact versions.
 - Keep the local Aether checkout path and game binaries out of Git and the mod archive.
-
-`PackMod` copies the manifest to the archive root and preserves files under `resources/`.
-Use archive-relative paths in manifest entries such as `"mappings": "resources/mappings.json"`.
-From C# use a resource-relative path such as `ModResources.OpenRead(Startup.ModId, "welcome.txt")` and dispose the returned stream.
+- Use resource paths relative to `resources/`, such as `ModResources.OpenRead(Startup.ModId, "welcome.txt")`, and dispose the stream.
 
 ## Build and test
 
-Run `./aether setup` on Linux or macOS, or `.\aether.cmd setup` on Windows, to prepare the client without opening the game.
-The launcher clones Aether into `.aether/client`, runs the checkout's setup if Terraria sources have not been generated, and builds the client and Aether API in the selected configuration.
-Launching the mod directly also prepares the client on first use.
-You need the checkout's setup prerequisites and the pinned Linux Terraria build.
-If setup cannot find that build, see the cloned checkout's `AGENTS.md` for its `download` and setup instructions.
+- `./aether setup` (`.\aether.cmd setup` on Windows) prepares the Aether client in `.aether/client` without starting the game.
+- `dotnet build` checks that the mod compiles; `dotnet build -t:PackMod` writes the `.aethermod`.
+- `./aether -- -mixindebug` builds, installs, and starts the game with the test profile in `.aether/saves`.
+- Add `-aethermcp 47321` to the game arguments to drive the game through the MCP server (`.mcp.json`).
 
-Use `AETHER_CONFIGURATION=Release` to select Release.
-The launcher reuses the checkout and builds the client in the selected configuration on every run, which is quick when nothing changed.
-After you pull new commits into `.aether/client`, the next run re-applies its patches and rebuilds the client.
-Set `AETHER_REPOSITORY` before the first clone to use a different Git remote.
-To use an existing built checkout, set `AETHER_ROOT` or put its path in `.aether-root`.
-Relative paths are resolved from the mod repo.
-
-- Open `ModProjectName.slnx` in your IDE after setup.
-- `dotnet build` checks that the mod compiles against the local client and API.
-- `dotnet build -t:PackMod` creates the archive in the build output.
-- `dotnet build -t:InstallMod` packages the mod and installs it alongside `aether-api.aethermod` into `.aether/saves/Mods`.
-  Set `-p:AetherSaveDirectory=/path/to/test-saves` to install into a different profile.
-- `./aether -- -mixindebug` builds, installs, and launches with the local test profile on Linux or macOS.
-  On Windows use `.\aether.cmd -- -mixindebug` or `.\aether.ps1 -- -mixindebug`.
-- `./aether watch` (Linux, macOS; needs the ASP.NET Core runtime, which `dotnet watch` runs on) launches the game under `dotnet watch` with .NET hot reload: saved edits to the mod's own code apply to the running game.
-  The project's `RunCommand` is the launcher, which keeps the agent's startup hook (`DOTNET_STARTUP_HOOKS`) out of its builds and passes it to the game; edits to mixins (merged into the game at startup) and rude edits restart it.
-- `AETHER_LAUNCH_OPTIONS` passes extra `aether launch` options through the launcher (Linux, macOS), such as `--profile` for Aether's allocation profiler (Linux; record with the MCP tool `game_profile`).
-- In VS Code, the launch configurations (`.vscode/`) start the game from a task (Debug, Debug with hot reload under `./aether watch`, Debug with profiler), each serving the aether-game MCP server on port 47321 (`-aethermcp`, `.mcp.json`), and attach the debugger: pick `Aether.Bootstrap` from the list, since netcoredbg attaches only by process ID.
-  Stopping the session ends the game.
-  `PackMod` packages the mod's `.pdb`, which Aether loads with the assembly, so breakpoints bind in the mod's code (mixins are merged into the game, so likely not in them).
-
-For manual builds, `-p:AetherClientDirectory=/path/to/client-output` can point directly to the folder containing `Aether.Modding.dll` and `Terraria.dll`.
-Set `AetherApiDirectory` to use an API build from another directory.
-That directory must contain `Aether.Api.dll` and `Brigadier.NET.dll` (compile-only references), and for installation `aether-api.aethermod`, from the matching build.
-
-The template references Aether API `0.1.0` by default.
-Distribute the mod archive and tell users to install a matching Aether API archive separately.
-To opt out, set `AetherUseApi` to `false` in the project and remove `aether-api` from `depends` in the manifest.
-See `docs/api/index.md` in the Aether checkout for the API guide.
+See [docs/modding.md](docs/modding.md) for the launcher, the client checkout and its environment variables, the build targets and properties, packaging, depending on other mods, hot reload, debugging, and distribution.
+See [docs/automation.md](docs/automation.md) for the MCP server: UI automation, synthetic input, screenshots, and performance tools.
+For Aether's modding APIs, see `docs/modding.md`, `docs/mixin-wrappers.md`, and `docs/api/index.md` in the Aether checkout.

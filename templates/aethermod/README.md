@@ -8,4 +8,4 @@ The first run clones Aether into `.aether/client` and builds the client and Aeth
 Add `setup` to prepare the client without starting the game.
 
 Run `dotnet build -t:PackMod` to create an `.aethermod`.
-See [AGENTS.md](AGENTS.md) for prerequisites and build options.
+See [docs/modding.md](docs/modding.md) for prerequisites and build options, and [docs/automation.md](docs/automation.md) for driving the game from agents and scripts.
