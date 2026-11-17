@@ -2,14 +2,25 @@ $ErrorActionPreference = 'Stop'
 
 $first = 0
 $prepareOnly = $args.Count -gt 0 -and $args[0] -ceq 'setup'
+if ($args.Count -gt 0 -and $args[0] -ceq 'watch') {
+    # .NET hot reload: dotnet watch builds the mod, then runs this launcher (the project's RunCommand, through
+    # aether.cmd) with its hot reload agent's startup hook, and sends each saved edit to the game.
+    $watchArgs = @($args | Select-Object -Skip 1)
+    if ($watchArgs.Count -gt 0 -and $watchArgs[0] -eq '--') {
+        $watchArgs = @($watchArgs | Select-Object -Skip 1)
+    }
+    & dotnet watch --project (Join-Path $PSScriptRoot 'ModProjectName.csproj') --non-interactive run -- @watchArgs
+    exit $LASTEXITCODE
+}
 if ($prepareOnly -or ($args.Count -gt 0 -and $args[0] -ceq 'run')) {
     $first++
 }
 if ($args.Count -gt $first) {
     if ($args[$first] -in '-h', '--help') {
-        Write-Output 'Usage: Run .\aether.ps1 [run | setup] [-- game-args...]'
+        Write-Output 'Usage: Run .\aether.ps1 [run | setup | watch] [-- game-args...]'
         Write-Output 'On first use, clone and build Aether under .aether/client.'
         Write-Output 'Use setup to prepare the client without starting the game.'
+        Write-Output 'Use watch to run the game with .NET hot reload of the mod (needs the ASP.NET Core runtime).'
         exit 0
     }
     if ($args[$first] -eq '--') {
@@ -64,6 +75,11 @@ if (-not (Test-Path -LiteralPath $launcher -PathType Leaf) -or
 $clientBuild = Join-Path $bootstrap "bin/$configuration/net10.0"
 $saveDir = Join-Path $PSScriptRoot '.aether/saves'
 
+# Under .\aether.ps1 watch, dotnet watch's hot reload agent is a startup hook for the game only: the
+# builds below are .NET processes too, and would take the agent's connection.
+$startupHooks = $env:DOTNET_STARTUP_HOOKS
+Remove-Item Env:DOTNET_STARTUP_HOOKS -ErrorAction SilentlyContinue
+
 # Built on every run (incremental), so a pulled checkout re-applies its patches and is rebuilt.
 if ($managed) {
     Push-Location -LiteralPath $clientRoot
@@ -97,9 +113,18 @@ if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE
 }
 
+if ($startupHooks) {
+    $env:DOTNET_STARTUP_HOOKS = $startupHooks
+}
+# AETHER_LAUNCH_OPTIONS: extra `aether launch` options, such as --profile, split into words.
+$launchOptions = @()
+if ($env:AETHER_LAUNCH_OPTIONS) {
+    $launchOptions = @($env:AETHER_LAUNCH_OPTIONS -split '\s+' | Where-Object { $_ })
+}
+
 Push-Location -LiteralPath $clientRoot
 try {
-    $launchArgs = @('launch', '--configuration', $configuration, '--save-dir', $saveDir, '--') + $gameArgs
+    $launchArgs = @('launch', '--configuration', $configuration, '--save-dir', $saveDir) + $launchOptions + @('--') + $gameArgs
     & $launcher @launchArgs
     $exitCode = $LASTEXITCODE
 }

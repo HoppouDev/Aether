@@ -60,7 +60,7 @@ It prepares the client automatically when you launch before running setup.
 The checkout is reused on subsequent launches.
 Set `AETHER_REPOSITORY` before the first run to clone a different Git remote.
 For an existing built checkout, set `AETHER_ROOT` or use the Git-ignored `.aether-root` file.
-`./aether watch` (Linux, macOS; needs the ASP.NET Core runtime) launches under `dotnet watch`, so saved edits to the mod's code apply to the running game with .NET hot reload; edits to mixins restart it.
+`./aether watch` (`.\aether.cmd watch` on Windows; needs the ASP.NET Core runtime) launches under `dotnet watch`, so saved edits to the mod's code apply to the running game with .NET hot reload; edits to mixins restart it.
 `AETHER_LAUNCH_OPTIONS` passes extra `aether launch` options, such as `--profile` for the allocation profiler (Linux).
 In VS Code, the template's launch configurations start the game with the aether-game MCP server on port 47321 (`.mcp.json`) and attach the debugger: plainly, with hot reload, or with the profiler.
 
